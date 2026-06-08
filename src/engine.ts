@@ -2,6 +2,7 @@ import type { DayAgg, CachePayload, DaySpend, LangStat, ModelStat, ProjectStat, 
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseFile } from "./parser.js";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
@@ -234,4 +235,64 @@ export async function isCacheValid(
   if (!cached) return false;
   const currentSig = await computeSignature(sessionsDir);
   return cached.signature === currentSig;
+}
+
+// ---- Aggregate loading ----
+
+function deserializeDay(s: SerializedDayAgg): DayAgg {
+  return {
+    ...s,
+    sessionIds: new Set(s.sessionIds),
+    projectSessions: Object.fromEntries(
+      Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)])
+    ),
+  };
+}
+
+async function findAllJsonlFiles(dir: string): Promise<string[]> {
+  const result: string[] = [];
+  async function walk(d: string) {
+    let entries;
+    try { entries = await readdir(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = join(d, e.name);
+      if (e.isDirectory()) await walk(full);
+      else if (e.isFile() && e.name.endsWith(".jsonl")) result.push(full);
+    }
+  }
+  await walk(dir);
+  return result;
+}
+
+export async function loadAggregate(
+  cachePath: string,
+  sessionsDir: string,
+  force = false,
+  onProgress?: (p: number) => void,
+): Promise<DayAgg[]> {
+  // Try cache first
+  if (!force) {
+    const valid = await isCacheValid(cachePath, sessionsDir);
+    if (valid) {
+      const cached = await readCache(cachePath);
+      if (cached) return cached.days.map(deserializeDay);
+    }
+  }
+
+  // Parse all JSONL files
+  const files = await findAllJsonlFiles(sessionsDir);
+  const map = new Map<string, DayAgg>();
+
+  for (let i = 0; i < files.length; i++) {
+    parseFile(files[i], map);
+    if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+  }
+
+  const days = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Write cache
+  const sig = await computeSignature(sessionsDir);
+  await writeCache(cachePath, sig, days);
+
+  return days;
 }

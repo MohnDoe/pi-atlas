@@ -1,5 +1,5 @@
 import { matchesKey } from "@earendil-works/pi-tui";
-import type { DaySpend } from "./types.js";
+import type { DaySpend, StatsSummary } from "./types.js";
 
 // ---- TabBar ----
 
@@ -261,4 +261,147 @@ function formatLabel(dateStr: string, index: number, data: DaySpend[], range: st
   const prevD = new Date(data[index - 1].date + "T00:00:00Z");
   if (prevD.getUTCMonth() !== d.getUTCMonth()) return month;
   return "";
+}
+
+// ---- Dashboard ----
+
+export class Dashboard {
+  private tabBar: TabBar;
+  private rangeSelector: RangeSelector;
+  private summaries: StatsSummary[]; // [1d, 7d, 30d, All]
+  private onClose: (() => void) | null = null;
+  private cachedLines: string[] | null = null;
+  private cachedWidth = -1;
+
+  constructor(summaries: StatsSummary[], onClose?: () => void) {
+    this.summaries = summaries;
+    this.onClose = onClose ?? null;
+    this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects + Tools"], 0);
+    this.rangeSelector = new RangeSelector(["1d", "7d", "30d", "All"], 1); // default 7d
+  }
+
+  private get currentSummary(): StatsSummary {
+    return this.summaries[this.rangeSelector.selectedIndex] ?? this.summaries[1];
+  }
+
+  render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+
+    const lines: string[] = [];
+
+    // Top border
+    lines.push("─".repeat(Math.min(width, 60)));
+
+    // Tab bar
+    const tabLines = this.tabBar.render(width);
+    lines.push(...tabLines);
+
+    // Separator
+    lines.push("─".repeat(Math.min(width, 60)));
+
+    // Range selector
+    const rangeLines = this.rangeSelector.render(width);
+    lines.push(...rangeLines);
+
+    // Separator
+    lines.push("─".repeat(Math.min(width, 60)));
+
+    // Content area - KPI cards + bar chart for Overview tab
+    const kpiLines = new KpiCards({
+      totalCost: this.currentSummary.totalCost,
+      sessionCount: this.currentSummary.sessionCount,
+      totalMessages: this.currentSummary.totalMessages,
+      totalTokens: this.currentSummary.totalTokens,
+      daysActive: this.currentSummary.daysActive,
+      avgCostPerDay: this.currentSummary.avgCostPerDay,
+    }).render(width);
+    lines.push(...kpiLines);
+
+    lines.push(""); // spacer
+
+    // Bar chart fills remaining space
+    const remainingH = Math.max(8, 15);
+    const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
+    lines.push(...chartLines);
+
+    // Footer
+    lines.push("─".repeat(Math.min(width, 60)));
+    lines.push("Esc/q close  ←→ tabs  ↑↓ range  Enter select");
+
+    this.cachedLines = lines;
+    this.cachedWidth = width;
+    return lines;
+  }
+
+  handleInput(data: string): boolean {
+    if (matchesKey(data, "escape") || data === "q" || data === "Q") {
+      this.onClose?.();
+      return true;
+    }
+
+    // Tab bar input (left/right)
+    if (matchesKey(data, "left") || matchesKey(data, "right")) {
+      this.tabBar.handleInput(data);
+      this.invalidate();
+      return true;
+    }
+
+    // Range selector input (up/down/enter)
+    if (matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) {
+      this.rangeSelector.handleInput(data);
+      this.invalidate();
+      return true;
+    }
+
+    return false;
+  }
+
+  invalidate(): void {
+    this.cachedLines = null;
+    this.cachedWidth = -1;
+    this.tabBar.invalidate();
+    this.rangeSelector.invalidate();
+  }
+}
+
+// ---- LoadingView ----
+
+export class LoadingView {
+  private progress = 0;
+  private message: string;
+  private cachedLines: string[] | null = null;
+  private cachedWidth = -1;
+
+  constructor(message = "Parsing session logs...") {
+    this.message = message;
+  }
+
+  setProgress(p: number): void {
+    this.progress = p;
+    this.invalidate();
+  }
+
+  render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+
+    const barW = Math.min(40, width - 10);
+    const filled = Math.round((this.progress / 100) * barW);
+    const bar = "█".repeat(filled) + "░".repeat(barW - filled);
+
+    const lines = [
+      "",
+      `  ${this.message}`,
+      `  [${bar}] ${this.progress}%`,
+      "",
+    ];
+
+    this.cachedLines = lines;
+    this.cachedWidth = width;
+    return lines;
+  }
+
+  invalidate(): void {
+    this.cachedLines = null;
+    this.cachedWidth = -1;
+  }
 }

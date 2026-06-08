@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { summarize, computeSignature, writeCache, readCache } from "./engine.js";
+import { summarize, computeSignature, writeCache, readCache, isCacheValid, loadAggregate } from "./engine.js";
 import type { DayAgg, CachePayload } from "./types.js";
 import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -258,5 +258,89 @@ describe("cache read/write", () => {
     await writeFile(cachePath, "not-json");
     const payload = await readCache(cachePath);
     expect(payload).toBeNull();
+  });
+});
+
+describe("loadAggregate", () => {
+  let tmpDir: string;
+  let sessionsDir: string;
+  let cachePath: string;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `pi-usage-load-${Date.now()}`);
+    await mkdir(tmpDir, { recursive: true });
+    sessionsDir = join(tmpDir, "sessions");
+    await mkdir(sessionsDir, { recursive: true });
+    cachePath = join(tmpDir, "cache.json");
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns empty array for empty sessions dir", async () => {
+    const days = await loadAggregate(cachePath, sessionsDir);
+    expect(days).toEqual([]);
+  });
+
+  it("parses session files and returns DayAgg array", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(join(subDir, "s1.jsonl"), [
+      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
+      JSON.stringify({ type: "message", id: "m1", parentId: "p", timestamp: "2026-06-08T10:01:00.000Z", message: { role: "user", content: [{ type: "text", text: "hi" }] } }),
+    ].join("\n"));
+
+    const days = await loadAggregate(cachePath, sessionsDir);
+    expect(days).toHaveLength(1);
+    expect(days[0].date).toBe("2026-06-08");
+    expect(days[0].userMsgs).toBe(1);
+  });
+
+  it("caches results and reuses them", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(join(subDir, "s1.jsonl"), [
+      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
+    ].join("\n"));
+
+    const days1 = await loadAggregate(cachePath, sessionsDir);
+    expect(days1).toHaveLength(1);
+
+    // Second call should use cache
+    const days2 = await loadAggregate(cachePath, sessionsDir);
+    expect(days2).toHaveLength(1);
+  });
+
+  it("invalidates cache when session files change", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(join(subDir, "s1.jsonl"), [
+      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
+    ].join("\n"));
+
+    await loadAggregate(cachePath, sessionsDir);
+
+    // Add a new file
+    await writeFile(join(subDir, "s2.jsonl"), [
+      JSON.stringify({ type: "session", version: 3, id: "s2", timestamp: "2026-06-09T10:00:00.000Z", cwd: "/home/doe/proj-b" }),
+    ].join("\n"));
+
+    const days = await loadAggregate(cachePath, sessionsDir);
+    expect(days).toHaveLength(2); // two days now
+  });
+
+  it("calls onProgress during parsing", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(join(subDir, "s1.jsonl"), [
+      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
+    ].join("\n"));
+
+    const progress: number[] = [];
+    await loadAggregate(cachePath, sessionsDir, false, (p) => progress.push(p));
+
+    // Should have reported some progress
+    expect(progress.length).toBeGreaterThan(0);
   });
 });

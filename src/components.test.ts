@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TabBar, RangeSelector, KpiCards, BarChart } from "./components.js";
+import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView } from "./components.js";
 
 function visibleLength(s: string): number {
   return s.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -230,5 +230,87 @@ describe("BarChart", () => {
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(60);
     }
+  });
+});
+
+describe("Dashboard", () => {
+  const makeSummary = () => ({
+    totalCost: 5.00,
+    sessionCount: 3,
+    totalMessages: 50,
+    totalTokens: 10000,
+    daysActive: 3,
+    avgCostPerDay: 1.67,
+    todayCost: 1.00,
+    languages: [],
+    models: [],
+    projects: [],
+    tools: [],
+    dailySpend: [
+      { date: "2026-06-06", cost: 1.00 },
+      { date: "2026-06-07", cost: 2.00 },
+      { date: "2026-06-08", cost: 2.00 },
+    ],
+  });
+
+  it("renders all sections", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries);
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("Overview");
+    expect(text).toContain("1d");
+    expect(text).toContain("7d");
+    expect(text).toContain("Total Cost");
+    expect(text).toContain("Esc/q close");
+    expect(text).toContain("█");
+  });
+
+  it("handles escape to close", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    let closed = false;
+    const dash = new Dashboard(summaries, () => { closed = true; });
+    dash.handleInput("\x1b");
+    expect(closed).toBe(true);
+  });
+
+  it("handles q to close", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    let closed = false;
+    const dash = new Dashboard(summaries, () => { closed = true; });
+    dash.handleInput("q");
+    expect(closed).toBe(true);
+  });
+
+  it("switches tabs with left/right arrows", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries);
+    dash.handleInput("\x1b[C"); // right
+    const lines = dash.render(80);
+    expect(lines.join("\n")).toContain("Languages");
+  });
+});
+
+describe("LoadingView", () => {
+  it("renders with 0% progress", () => {
+    const lv = new LoadingView();
+    const lines = lv.render(80);
+    expect(lines.join("\n")).toContain("Parsing session logs...");
+    expect(lines.join("\n")).toContain("0%");
+  });
+
+  it("updates progress", () => {
+    const lv = new LoadingView();
+    lv.setProgress(50);
+    const lines = lv.render(80);
+    expect(lines.join("\n")).toContain("50%");
+  });
+
+  it("renders progress bar with block chars", () => {
+    const lv = new LoadingView();
+    lv.setProgress(75);
+    const lines = lv.render(80);
+    expect(lines.join("\n")).toContain("█");
+    expect(lines.join("\n")).toContain("75%");
   });
 });
