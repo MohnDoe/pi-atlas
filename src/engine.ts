@@ -1,4 +1,7 @@
-import type { DayAgg, DaySpend, LangStat, ModelStat, ProjectStat, StatsSummary, TimeRange, ToolStat } from "./types.js";
+import type { DayAgg, CachePayload, DaySpend, LangStat, ModelStat, ProjectStat, SerializedDayAgg, StatsSummary, TimeRange, ToolStat } from "./types.js";
+import { createHash } from "node:crypto";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
@@ -146,4 +149,89 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     tools,
     dailySpend: fillDailySpend(filtered, range),
   };
+}
+
+// ---- Signature ----
+
+export async function computeSignature(sessionsDir: string): Promise<string> {
+  const hash = createHash("sha256");
+  const entries: Array<{ path: string; size: number; mtimeMs: number }> = [];
+
+  async function walk(dir: string): Promise<void> {
+    let dirents;
+    try {
+      dirents = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const d of dirents) {
+      const full = join(dir, d.name);
+      if (d.isDirectory()) {
+        await walk(full);
+      } else if (d.isFile() && d.name.endsWith(".jsonl")) {
+        const s = await stat(full);
+        entries.push({ path: full, size: s.size, mtimeMs: s.mtimeMs });
+      }
+    }
+  }
+
+  await walk(sessionsDir);
+
+  if (entries.length === 0) return "";
+
+  // Sort by path for deterministic hashing
+  entries.sort((a, b) => a.path.localeCompare(b.path));
+
+  for (const e of entries) {
+    hash.update(`${e.path}\n${e.size}\n${e.mtimeMs}\n`);
+  }
+
+  return hash.digest("hex");
+}
+
+// ---- Cache ----
+
+function serializeDay(d: DayAgg): SerializedDayAgg {
+  return {
+    ...d,
+    sessionIds: [...d.sessionIds],
+    projectSessions: Object.fromEntries(
+      Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]])
+    ),
+  };
+}
+
+export async function writeCache(
+  cachePath: string,
+  signature: string,
+  days: DayAgg[]
+): Promise<void> {
+  const payload: CachePayload = {
+    signature,
+    generatedAt: new Date().toISOString(),
+    days: days.map(serializeDay),
+  };
+  await writeFile(cachePath, JSON.stringify(payload), "utf-8");
+}
+
+export async function readCache(cachePath: string): Promise<CachePayload | null> {
+  try {
+    const raw = await readFile(cachePath, "utf-8");
+    const payload = JSON.parse(raw) as CachePayload;
+    if (!payload.signature || !Array.isArray(payload.days)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/** Check if cache is still valid against current directory signature */
+export async function isCacheValid(
+  cachePath: string,
+  sessionsDir: string
+): Promise<boolean> {
+  const cached = await readCache(cachePath);
+  if (!cached) return false;
+  const currentSig = await computeSignature(sessionsDir);
+  return cached.signature === currentSig;
 }
