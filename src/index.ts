@@ -16,25 +16,34 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      // Show loading spinner
-      const loadingView = new LoadingView();
-      const loadingHandle = ctx.ui.custom(loadingView);
+      // Phase 1: Show loading, parse session logs
+      let days: Awaited<ReturnType<typeof loadAggregate>>;
+      try {
+        days = await ctx.ui.custom<Awaited<ReturnType<typeof loadAggregate>>>(
+          (tui, _theme, _kb, done) => {
+            const loadingView = new LoadingView("Parsing session logs...", tui);
 
-      // Parse session logs
-      const days = await loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
-        loadingView.setProgress(p);
-        loadingHandle.requestRender();
-      });
+            loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
+              loadingView.setProgress(p);
+              tui.requestRender();
+            })
+              .then((result) => done(result))
+              .catch((err) => done(err));
 
-      // Close loading, open dashboard
-      loadingHandle.close();
+            return loadingView;
+          },
+        );
+      } catch {
+        ctx.ui.notify("Failed to parse session logs", "error");
+        return;
+      }
 
-      if (days.length === 0) {
+      if (!Array.isArray(days) || days.length === 0) {
         ctx.ui.notify("No session logs found in " + SESSIONS_DIR, "warning");
         return;
       }
 
-      // Pre-compute all 4 range summaries
+      // Phase 2: Show dashboard
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 
@@ -42,7 +51,9 @@ export default function (pi: ExtensionAPI) {
         const dashboard = new Dashboard(summaries, () => done(undefined));
         return {
           render: (w: number) => dashboard.render(w),
-          handleInput: (d: string) => { dashboard.handleInput(d); },
+          handleInput: (d: string) => {
+            dashboard.handleInput(d);
+          },
           invalidate: () => dashboard.invalidate(),
         };
       });

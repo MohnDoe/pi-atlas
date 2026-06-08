@@ -371,9 +371,11 @@ export class LoadingView {
   private message: string;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
+  private tui: { requestRender: () => void } | null;
 
-  constructor(message = "Parsing session logs...") {
+  constructor(message = "Parsing session logs...", tui?: { requestRender: () => void }) {
     this.message = message;
+    this.tui = tui ?? null;
   }
 
   setProgress(p: number): void {

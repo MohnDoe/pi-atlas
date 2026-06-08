@@ -1,4 +1,15 @@
-import type { DayAgg, CachePayload, DaySpend, LangStat, ModelStat, ProjectStat, SerializedDayAgg, StatsSummary, TimeRange, ToolStat } from "./types.js";
+import type {
+  DayAgg,
+  CachePayload,
+  DaySpend,
+  LangStat,
+  ModelStat,
+  ProjectStat,
+  SerializedDayAgg,
+  StatsSummary,
+  TimeRange,
+  ToolStat,
+} from "./types.js";
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -197,7 +208,7 @@ function serializeDay(d: DayAgg): SerializedDayAgg {
     ...d,
     sessionIds: [...d.sessionIds],
     projectSessions: Object.fromEntries(
-      Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]])
+      Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]]),
     ),
   };
 }
@@ -205,7 +216,7 @@ function serializeDay(d: DayAgg): SerializedDayAgg {
 export async function writeCache(
   cachePath: string,
   signature: string,
-  days: DayAgg[]
+  days: DayAgg[],
 ): Promise<void> {
   const payload: CachePayload = {
     signature,
@@ -227,10 +238,7 @@ export async function readCache(cachePath: string): Promise<CachePayload | null>
 }
 
 /** Check if cache is still valid against current directory signature */
-export async function isCacheValid(
-  cachePath: string,
-  sessionsDir: string
-): Promise<boolean> {
+export async function isCacheValid(cachePath: string, sessionsDir: string): Promise<boolean> {
   const cached = await readCache(cachePath);
   if (!cached) return false;
   const currentSig = await computeSignature(sessionsDir);
@@ -244,7 +252,7 @@ function deserializeDay(s: SerializedDayAgg): DayAgg {
     ...s,
     sessionIds: new Set(s.sessionIds),
     projectSessions: Object.fromEntries(
-      Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)])
+      Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)]),
     ),
   };
 }
@@ -253,7 +261,11 @@ async function findAllJsonlFiles(dir: string): Promise<string[]> {
   const result: string[] = [];
   async function walk(d: string) {
     let entries;
-    try { entries = await readdir(d, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = await readdir(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of entries) {
       const full = join(d, e.name);
       if (e.isDirectory()) await walk(full);

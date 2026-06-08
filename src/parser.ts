@@ -5,41 +5,59 @@ import { basename } from "node:path";
 // ---- Language detection ----
 
 const EXT_TO_LANG: Record<string, string> = {
-  ts: "TypeScript", tsx: "TypeScript",
-  js: "JavaScript", jsx: "JavaScript",
-  py: "Python", pyi: "Python",
+  ts: "TypeScript",
+  tsx: "TypeScript",
+  js: "JavaScript",
+  jsx: "JavaScript",
+  py: "Python",
+  pyi: "Python",
   rs: "Rust",
   go: "Go",
   rb: "Ruby",
   java: "Java",
-  kt: "Kotlin", kts: "Kotlin",
+  kt: "Kotlin",
+  kts: "Kotlin",
   swift: "Swift",
-  c: "C", h: "C",
-  cpp: "C++", hpp: "C++", cc: "C++", cxx: "C++",
+  c: "C",
+  h: "C",
+  cpp: "C++",
+  hpp: "C++",
+  cc: "C++",
+  cxx: "C++",
   cs: "C#",
   php: "PHP",
   scala: "Scala",
   dart: "Dart",
   lua: "Lua",
   r: "R",
-  m: "Objective-C", mm: "Objective-C",
-  sh: "Shell", bash: "Shell", zsh: "Shell",
+  m: "Objective-C",
+  mm: "Objective-C",
+  sh: "Shell",
+  bash: "Shell",
+  zsh: "Shell",
   sql: "SQL",
-  html: "HTML", htm: "HTML",
-  css: "CSS", scss: "SCSS", less: "Less",
+  html: "HTML",
+  htm: "HTML",
+  css: "CSS",
+  scss: "SCSS",
+  less: "Less",
   json: "JSON",
-  yaml: "YAML", yml: "YAML",
+  yaml: "YAML",
+  yml: "YAML",
   toml: "TOML",
   xml: "XML",
-  md: "Markdown", mdx: "Markdown",
-  graphql: "GraphQL", gql: "GraphQL",
+  md: "Markdown",
+  mdx: "Markdown",
+  graphql: "GraphQL",
+  gql: "GraphQL",
   proto: "Protobuf",
   tf: "Terraform",
   dockerfile: "Dockerfile",
   env: "Env",
   gitignore: "Gitignore",
   prisma: "Prisma",
-  vue: "Vue", svelte: "Svelte",
+  vue: "Vue",
+  svelte: "Svelte",
 };
 
 function langFromPath(path: string): string {
@@ -63,12 +81,22 @@ function ensureDay(map: Map<string, DayAgg>, date: string): DayAgg {
   if (!day) {
     day = {
       date,
-      cost: 0, inTok: 0, outTok: 0, crTok: 0, cwTok: 0,
-      userMsgs: 0, asstMsgs: 0, toolResults: 0,
+      cost: 0,
+      inTok: 0,
+      outTok: 0,
+      crTok: 0,
+      cwTok: 0,
+      userMsgs: 0,
+      asstMsgs: 0,
+      toolResults: 0,
       sessionIds: new Set(),
-      langLines: {}, langEdits: {}, modelCost: {},
-      modelCount: {}, projectCost: {},
-      projectSessions: {}, toolCount: {},
+      langLines: {},
+      langEdits: {},
+      modelCost: {},
+      modelCount: {},
+      projectCost: {},
+      projectSessions: {},
+      toolCount: {},
     };
     map.set(date, day);
   }
@@ -171,7 +199,7 @@ export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
     // model stats
     const model = msg.model as string | undefined;
     if (model && usage?.cost) {
-      const cost = (usage.cost as Record<string, number>);
+      const cost = usage.cost as Record<string, number>;
       const totalCost = cost.total ?? 0;
       day.modelCost[model] = (day.modelCost[model] ?? 0) + totalCost;
       day.modelCount[model] = (day.modelCount[model] ?? 0) + 1;
@@ -194,7 +222,9 @@ export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
             if (path) {
               const lang = langFromPath(path);
               if (tcName === "edit") {
-                const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
+                const edits = args?.edits as
+                  | Array<{ newText?: string; oldText?: string }>
+                  | undefined;
                 if (Array.isArray(edits)) {
                   let totalNewChars = 0;
                   for (const edit of edits) {
@@ -226,7 +256,7 @@ export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
 export function parseFile(
   filePath: string,
   map: Map<string, DayAgg>,
-  onWarning?: (count: number) => void
+  onWarning?: (count: number) => void,
 ): void {
   let content: string;
   try {
