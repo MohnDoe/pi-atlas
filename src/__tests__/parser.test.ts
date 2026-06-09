@@ -2,14 +2,10 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseFile, parseLine } from "../parser.js";
+import { parseEntry, mergeDay, parseFile } from "../parser.js";
 import type { DayAgg } from "../types.js";
 
-function makeDayMap(): Map<string, DayAgg> {
-  return new Map();
-}
-
-function newDayAgg(date: string): DayAgg {
+function emptyDay(date: string): DayAgg {
   return {
     date,
     cost: 0,
@@ -31,9 +27,12 @@ function newDayAgg(date: string): DayAgg {
   };
 }
 
-describe("parseLine", () => {
-  it("parses a session entry and adds day to map", () => {
-    const map = makeDayMap();
+function makeDayMap(): Map<string, DayAgg> {
+  return new Map();
+}
+
+describe("parseEntry", () => {
+  it("returns a DayAgg for a session entry", () => {
     const entry = {
       type: "session" as const,
       version: 3,
@@ -42,30 +41,29 @@ describe("parseLine", () => {
       cwd: "/home/doe/Work/dev/pi-usage",
     };
 
-    parseLine(entry, map);
+    const day = parseEntry(entry)!;
 
-    expect(map.size).toBe(1);
-    const day = map.get("2026-06-08")!;
-    expect(day).toBeDefined();
     expect(day.date).toBe("2026-06-08");
     expect(day.sessionIds.has("abc-123")).toBe(true);
   });
 
-  it("parses an assistant message with usage", () => {
-    const map = makeDayMap();
-    // seed the day first via session entry
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+  it("returns null for corrupt entries", () => {
+    // @ts-expect-error: testing runtime resilience
+    expect(parseEntry(null)).toBeNull();
+    // @ts-expect-error: testing runtime resilience
+    expect(parseEntry(undefined)).toBeNull();
+  });
 
-    const entry = {
+  it("returns a DayAgg for an assistant message with usage", () => {
+    const sessionEntry = {
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    };
+
+    const msgEntry = {
       type: "message" as const,
       id: "msg-1",
       parentId: "prev",
@@ -93,341 +91,332 @@ describe("parseLine", () => {
       },
     };
 
-    parseLine(entry, map);
+    // merge both into one day (session + assistant message)
+    const day = parseEntry(sessionEntry)!;
+    mergeDay(day, parseEntry(msgEntry)!);
 
-    const day = map.get("2026-06-08")!;
     expect(day.cost).toBe(0.00141);
     expect(day.inTok).toBe(1000);
     expect(day.outTok).toBe(200);
     expect(day.crTok).toBe(100);
     expect(day.cwTok).toBe(0);
     expect(day.asstMsgs).toBe(1);
-
-    // model stats
     expect(day.modelCost["deepseek-v4-pro"]).toBe(0.00141);
     expect(day.modelCount["deepseek-v4-pro"]).toBe(1);
   });
 
-  it("parses a user message", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+  it("returns a DayAgg for a user message", () => {
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: { role: "user" as const, content: [{ type: "text" as const, text: "hi" }] },
-      } as const,
-      map,
-    );
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: { role: "user" as const, content: [{ type: "text" as const, text: "hi" }] },
+    })!;
 
-    expect(map.get("2026-06-08")!.userMsgs).toBe(1);
+    mergeDay(session, day);
+    expect(session.userMsgs).toBe(1);
   });
 
-  it("parses a tool result message", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+  it("returns a DayAgg for a tool result message", () => {
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:02:00.000Z",
-        message: { role: "toolResult" as const, toolName: "bash", toolCallId: "c1", content: [] },
-      } as const,
-      map,
-    );
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:02:00.000Z",
+      message: { role: "toolResult" as const, toolName: "bash", toolCallId: "c1", content: [] },
+    })!;
 
-    expect(map.get("2026-06-08")!.toolResults).toBe(1);
-    expect(map.get("2026-06-08")!.toolCount["bash"]).toBe(1);
+    mergeDay(session, day);
+    expect(session.toolResults).toBe(1);
+    expect(session.toolCount["bash"]).toBe(1);
   });
 
-  it("detects languages from edit/write tool calls in assistant messages", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+  it("detects languages from edit/write tool calls", () => {
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: {
-          role: "assistant" as const,
-          content: [
-            {
-              type: "toolCall" as const,
-              id: "c1",
-              name: "edit",
-              arguments: {
-                path: "/home/doe/proj/src/foo.ts",
-                edits: [{ oldText: "a", newText: "ab" }],
-              },
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [
+          {
+            type: "toolCall" as const,
+            id: "c1",
+            name: "edit",
+            arguments: {
+              path: "/home/doe/proj/src/foo.ts",
+              edits: [{ oldText: "a", newText: "ab" }],
             },
-            {
-              type: "toolCall" as const,
-              id: "c2",
-              name: "write",
-              arguments: { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" },
-            },
-            {
-              type: "toolCall" as const,
-              id: "c3",
-              name: "read",
-              arguments: { path: "/home/doe/proj/README.md" },
-            },
-          ],
-          model: "sonnet",
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
           },
+          {
+            type: "toolCall" as const,
+            id: "c2",
+            name: "write",
+            arguments: { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" },
+          },
+          {
+            type: "toolCall" as const,
+            id: "c3",
+            name: "read",
+            arguments: { path: "/home/doe/proj/README.md" },
+          },
+        ],
+        model: "sonnet",
+        usage: {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-      } as const,
-      map,
-    );
+      },
+    })!;
 
-    const day = map.get("2026-06-08")!;
-    // edit: foo.ts => TypeScript, 2 new chars in the edit
-    expect(day.langLines["TypeScript"]).toBe(2);
-    expect(day.langEdits["TypeScript"]).toBe(1);
-    // write: bar.rs => Rust, full content length
-    expect(day.langLines["Rust"]).toBe(12); // "fn main() {}"
-    // read doesn't count
-    expect(day.langLines["Markdown"]).toBeUndefined();
+    mergeDay(session, day);
+    expect(session.langLines["TypeScript"]).toBe(2);
+    expect(session.langEdits["TypeScript"]).toBe(1);
+    expect(session.langLines["Rust"]).toBe(12);
+    expect(session.langLines["Markdown"]).toBeUndefined();
   });
 
   it("extracts project name from session cwd", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/Work/dev/my-cool-project",
-      } as const,
-      map,
-    );
+    const day = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/Work/dev/my-cool-project",
+    })!;
 
-    const day = map.get("2026-06-08")!;
     expect(day.projectCost["my-cool-project"]).toBe(0);
-    expect(day.projectSessions["my-cool-project"]).toBeDefined();
-    expect(day.projectSessions["my-cool-project"].has("s1")).toBe(true);
+    expect(day.projectSessions["my-cool-project"]?.has("s1")).toBe(true);
   });
 
   it("attributes cost to project from session cwd", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: {
-          role: "assistant" as const,
-          content: [{ type: "text" as const, text: "ok" }],
-          model: "gpt",
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
-          },
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "ok" }],
+        model: "gpt",
+        usage: {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
         },
-      } as const,
-      map,
-    );
+      },
+    })!;
 
-    const day = map.get("2026-06-08")!;
-    expect(day.projectCost["proj"]).toBe(0.05);
+    mergeDay(session, day);
+    expect(session.projectCost["proj"]).toBe(0.05);
   });
 
   it("counts tool calls from assistant content", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: {
-          role: "assistant" as const,
-          content: [
-            { type: "toolCall" as const, id: "c1", name: "bash", arguments: { command: "ls" } },
-            { type: "toolCall" as const, id: "c2", name: "read", arguments: { path: "f" } },
-            { type: "toolCall" as const, id: "c3", name: "read", arguments: { path: "g" } },
-          ],
-          model: "m",
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-          },
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [
+          { type: "toolCall" as const, id: "c1", name: "bash", arguments: { command: "ls" } },
+          { type: "toolCall" as const, id: "c2", name: "read", arguments: { path: "f" } },
+          { type: "toolCall" as const, id: "c3", name: "read", arguments: { path: "g" } },
+        ],
+        model: "m",
+        usage: {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-      } as const,
-      map,
-    );
+      },
+    })!;
 
-    const day = map.get("2026-06-08")!;
-    expect(day.toolCount["bash"]).toBe(1);
-    expect(day.toolCount["read"]).toBe(2);
-  });
-
-  it("skips corrupt lines gracefully", () => {
-    const map = makeDayMap();
-
-    // entries without type should be skipped — these are runtime rejects, not type errors
-    // @ts-expect-error: testing runtime resilience with invalid data
-    parseLine(null, map);
-    // @ts-expect-error: testing runtime resilience with invalid data
-    parseLine(undefined, map);
-
-    // days should be empty
-    expect(map.size).toBe(0);
+    mergeDay(session, day);
+    expect(session.toolCount["bash"]).toBe(1);
+    expect(session.toolCount["read"]).toBe(2);
   });
 
   it("handles missing usage gracefully", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    // assistant without usage
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: {
-          role: "assistant" as const,
-          content: [{ type: "text" as const, text: "hi" }],
-          model: "m",
-        },
-      } as const,
-      map,
-    );
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "hi" }],
+        model: "m",
+      },
+    })!;
 
-    const day = map.get("2026-06-08")!;
-    expect(day.asstMsgs).toBe(1);
-    expect(day.cost).toBe(0);
-    expect(day.inTok).toBe(0);
+    mergeDay(session, day);
+    expect(session.asstMsgs).toBe(1);
+    expect(session.cost).toBe(0);
+    expect(session.inTok).toBe(0);
   });
 
   it("parses unknown file extensions as 'Other'", () => {
-    const map = makeDayMap();
-    parseLine(
-      {
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
-      } as const,
-      map,
-    );
+    const session = parseEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "/home/doe/proj",
+    })!;
 
-    parseLine(
-      {
-        type: "message",
-        id: "m1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: {
-          role: "assistant" as const,
-          content: [
-            {
-              type: "toolCall" as const,
-              id: "c1",
-              name: "write",
-              arguments: { path: "/x/config.xyz", content: "abc" },
-            },
-          ],
-          model: "m",
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    const day = parseEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [
+          {
+            type: "toolCall" as const,
+            id: "c1",
+            name: "write",
+            arguments: { path: "/x/config.xyz", content: "abc" },
           },
+        ],
+        model: "m",
+        usage: {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-      } as const,
-      map,
-    );
+      },
+    })!;
 
-    const day = map.get("2026-06-08")!;
-    expect(day.langLines["Other"]).toBe(3);
+    mergeDay(session, day);
+    expect(session.langLines["Other"]).toBe(3);
+  });
+});
+
+describe("mergeDay", () => {
+  it("sums scalar fields across two DayAggs", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      cost: 1,
+      inTok: 100,
+      outTok: 50,
+      userMsgs: 2,
+      asstMsgs: 3,
+      toolResults: 1,
+    };
+
+    mergeDay(a, b);
+    expect(a.cost).toBe(1);
+    expect(a.inTok).toBe(100);
+    expect(a.outTok).toBe(50);
+    expect(a.userMsgs).toBe(2);
+    expect(a.asstMsgs).toBe(3);
+    expect(a.toolResults).toBe(1);
+  });
+
+  it("merges session id sets", () => {
+    const a = emptyDay("2026-06-08");
+    const b = emptyDay("2026-06-08");
+    b.sessionIds.add("s1");
+    b.sessionIds.add("s2");
+
+    mergeDay(a, b);
+    expect(a.sessionIds.has("s1")).toBe(true);
+    expect(a.sessionIds.has("s2")).toBe(true);
+  });
+
+  it("merges record accumulators", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      langLines: { TypeScript: 10, Rust: 5 },
+      toolCount: { bash: 2, edit: 1 },
+    };
+
+    mergeDay(a, b);
+    expect(a.langLines).toEqual({ TypeScript: 10, Rust: 5 });
+    expect(a.toolCount).toEqual({ bash: 2, edit: 1 });
+  });
+
+  it("sums record values from multiple merges", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      langLines: { TypeScript: 10 },
+      toolCount: { bash: 2 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      langLines: { TypeScript: 20, Rust: 5 },
+      toolCount: { edit: 1 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.langLines).toEqual({ TypeScript: 30, Rust: 5 });
+    expect(a.toolCount).toEqual({ bash: 2, edit: 1 });
+  });
+
+  it("merges project sessions sets", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      projectSessions: { proj1: new Set(["s1", "s2"]) },
+    };
+
+    mergeDay(a, b);
+    expect(a.projectSessions["proj1"]?.has("s1")).toBe(true);
+    expect(a.projectSessions["proj1"]?.has("s2")).toBe(true);
   });
 });
 
@@ -447,35 +436,22 @@ describe("parseFile", () => {
     const filePath = join(tmpDir, "test.jsonl");
     const lines = [
       JSON.stringify({
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/home/doe/proj",
+        type: "session", version: 3, id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj",
       }),
       JSON.stringify({
-        type: "message",
-        id: "m1",
-        parentId: "p",
+        type: "message", id: "m1", parentId: "p",
         timestamp: "2026-06-08T10:01:00.000Z",
         message: { role: "user", content: [{ type: "text", text: "hi" }] },
       }),
       "invalid json {broken",
       JSON.stringify({
-        type: "message",
-        id: "m2",
-        parentId: "m1",
+        type: "message", id: "m2", parentId: "m1",
         timestamp: "2026-06-08T10:02:00.000Z",
         message: {
-          role: "assistant",
-          content: [{ type: "text", text: "hey" }],
-          model: "m",
+          role: "assistant", content: [{ type: "text", text: "hey" }], model: "m",
           usage: {
-            input: 100,
-            output: 50,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 150,
+            input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150,
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
           },
         },
@@ -485,9 +461,7 @@ describe("parseFile", () => {
 
     const map = makeDayMap();
     let warnings = 0;
-    parseFile(filePath, map, (count) => {
-      warnings = count;
-    });
+    parseFile(filePath, map, (count) => { warnings = count; });
 
     expect(map.size).toBe(1);
     const day = map.get("2026-06-08")!;

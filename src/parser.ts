@@ -76,81 +76,110 @@ function projectNameFromCwd(cwd: string): string {
 // Tracks session ID → project name for cost attribution
 const sessionProject: SessionProjectMap = new Map();
 
-function ensureDay(map: Map<string, DayAgg>, date: string): DayAgg {
-  let day = map.get(date);
-  if (!day) {
-    day = {
-      date,
-      cost: 0,
-      inTok: 0,
-      outTok: 0,
-      crTok: 0,
-      cwTok: 0,
-      userMsgs: 0,
-      asstMsgs: 0,
-      toolResults: 0,
-      sessionIds: new Set(),
-      langLines: {},
-      langEdits: {},
-      modelCost: {},
-      modelCount: {},
-      projectCost: {},
-      projectSessions: {},
-      toolCount: {},
-    };
-    map.set(date, day);
-  }
-  return day;
-}
-
 function dateFromTimestamp(ts: string): string {
   return ts.slice(0, 10);
 }
 
+function emptyDay(date: string): DayAgg {
+  return {
+    date,
+    cost: 0,
+    inTok: 0,
+    outTok: 0,
+    crTok: 0,
+    cwTok: 0,
+    userMsgs: 0,
+    asstMsgs: 0,
+    toolResults: 0,
+    sessionIds: new Set(),
+    langLines: {},
+    langEdits: {},
+    modelCost: {},
+    modelCount: {},
+    projectCost: {},
+    projectSessions: {},
+    toolCount: {},
+  };
+}
+
+// ---- Merge two DayAggs ----
+
+export function mergeDay(base: DayAgg, update: DayAgg): void {
+  base.cost += update.cost;
+  base.inTok += update.inTok;
+  base.outTok += update.outTok;
+  base.crTok += update.crTok;
+  base.cwTok += update.cwTok;
+  base.userMsgs += update.userMsgs;
+  base.asstMsgs += update.asstMsgs;
+  base.toolResults += update.toolResults;
+
+  for (const id of update.sessionIds) base.sessionIds.add(id);
+
+  for (const [k, v] of Object.entries(update.langLines)) {
+    base.langLines[k] = (base.langLines[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.langEdits)) {
+    base.langEdits[k] = (base.langEdits[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.modelCost)) {
+    base.modelCost[k] = (base.modelCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.modelCount)) {
+    base.modelCount[k] = (base.modelCount[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.projectCost)) {
+    base.projectCost[k] = (base.projectCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.projectSessions)) {
+    if (!base.projectSessions[k]) base.projectSessions[k] = new Set();
+    for (const id of v) base.projectSessions[k].add(id);
+  }
+  for (const [k, v] of Object.entries(update.toolCount)) {
+    base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
+  }
+}
+
 // ---- Parse single entry ----
 
-export function parseLine(entry: SessionLogEntry, map: Map<string, DayAgg>): void {
+export function parseEntry(entry: SessionLogEntry): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
-  if (!entry || typeof entry !== "object") return;
+  if (!entry || typeof entry !== "object") return null;
+
+  const day = emptyDay(dateFromTimestamp(entry.timestamp));
 
   if (entry.type === "session") {
-    const date = dateFromTimestamp(entry.timestamp);
-    const day = ensureDay(map, date);
     day.sessionIds.add(entry.id);
 
     // project tracking
     if (entry.cwd) {
       const proj = projectNameFromCwd(entry.cwd);
       sessionProject.set(entry.id, proj);
-      day.projectCost[proj] = day.projectCost[proj] ?? 0;
-      if (!day.projectSessions[proj]) day.projectSessions[proj] = new Set();
-      day.projectSessions[proj].add(entry.id);
+      day.projectCost[proj] = 0;
+      day.projectSessions[proj] = new Set([entry.id]);
     }
-    return;
+    return day;
   }
 
   // entry.type === "message"
   const { message: msg } = entry;
-  const date = dateFromTimestamp(entry.timestamp);
-  const day = ensureDay(map, date);
 
   if (msg.role === "user") {
-    day.userMsgs++;
-    return;
+    day.userMsgs = 1;
+    return day;
   }
 
   if (msg.role === "toolResult") {
-    day.toolResults++;
+    day.toolResults = 1;
     if (msg.toolName) {
-      day.toolCount[msg.toolName] = (day.toolCount[msg.toolName] ?? 0) + 1;
+      day.toolCount[msg.toolName] = 1;
     }
-    return;
+    return day;
   }
 
   if (msg.role === "assistant") {
-    day.asstMsgs++;
+    day.asstMsgs = 1;
 
-    let msgCost = 0;
     if (msg.usage) {
       day.inTok += msg.usage.input;
       day.outTok += msg.usage.output;
@@ -158,23 +187,22 @@ export function parseLine(entry: SessionLogEntry, map: Map<string, DayAgg>): voi
       day.cwTok += msg.usage.cacheWrite;
 
       if (msg.usage.cost) {
-        msgCost = msg.usage.cost.total;
+        const msgCost = msg.usage.cost.total;
         day.cost += msgCost;
-      }
-    }
 
-    // attribute cost to all projects active on this day
-    if (msgCost > 0) {
-      for (const proj of Object.keys(day.projectCost)) {
-        day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msgCost;
+        // attribute cost to all known projects
+        const activeProjects = new Set(sessionProject.values());
+        for (const proj of activeProjects) {
+          day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msgCost;
+        }
       }
     }
 
     // model stats
     if (msg.model && msg.usage?.cost) {
       const totalCost = msg.usage.cost.total;
-      day.modelCost[msg.model] = (day.modelCost[msg.model] ?? 0) + totalCost;
-      day.modelCount[msg.model] = (day.modelCount[msg.model] ?? 0) + 1;
+      day.modelCost[msg.model] = totalCost;
+      day.modelCount[msg.model] = 1;
     }
 
     // tool calls in assistant content
@@ -205,9 +233,8 @@ export function parseLine(entry: SessionLogEntry, map: Map<string, DayAgg>): voi
               } else {
                 // write
                 const contentStr = block.arguments?.content as string | undefined;
-                const lines = contentStr?.length ?? 0;
-                if (lines > 0) {
-                  day.langLines[lang] = (day.langLines[lang] ?? 0) + lines;
+                if (contentStr) {
+                  day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
                 }
               }
             }
@@ -215,7 +242,10 @@ export function parseLine(entry: SessionLogEntry, map: Map<string, DayAgg>): voi
         }
       }
     }
+    return day;
   }
+
+  return day;
 }
 
 // ---- Parse a full JSONL file ----
@@ -241,7 +271,15 @@ export function parseFile(
 
     try {
       const entry = JSON.parse(trimmed) as SessionLogEntry;
-      parseLine(entry, map);
+      const result = parseEntry(entry);
+      if (result) {
+        const existing = map.get(result.date);
+        if (existing) {
+          mergeDay(existing, result);
+        } else {
+          map.set(result.date, result);
+        }
+      }
     } catch {
       corruptCount++;
       if (onWarning) onWarning(corruptCount);
