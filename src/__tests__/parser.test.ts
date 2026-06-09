@@ -6,6 +6,7 @@ import {
   dateFromISOString,
   detectLanguage,
   emptyDay,
+  formatModelName,
   langFromPath,
   mergeDay,
   parseAssistantMessage,
@@ -25,6 +26,23 @@ import type {
   SessionEntry,
   ToolResultMessageBody,
 } from "../types";
+
+describe("formatModelName", () => {
+  it("handles standard model names", () => {
+    expect(formatModelName("deepseek-v4-pro")).toBe("Deepseek V4 Pro");
+    expect(formatModelName("llama-3-70b")).toBe("Llama 3 70b");
+    expect(formatModelName("claude-haiku-3.5")).toBe("Claude Haiku 3.5");
+    expect(formatModelName("gemini-2.5-pro")).toBe("Gemini 2.5 Pro");
+  });
+
+  it("strips 8-digit date suffix", () => {
+    expect(formatModelName("claude-opus-4-20250514")).toBe("Claude Opus 4");
+  });
+
+  it("strips YYYY-MM-DD date suffix", () => {
+    expect(formatModelName("some-model-2025-05-14")).toBe("Some Model");
+  });
+});
 
 describe("langFromPath", () => {
   it("maps .ts to TypeScript", () => {
