@@ -412,8 +412,8 @@ export class Dashboard {
       lines.push("");
       lines.push("  No data for this time range");
       lines.push("");
-    } else {
-      // Content area - KPI cards + bar chart for Overview tab
+    } else if (this.tabBar.activeIndex === 0) {
+      // Overview tab: KPI cards + bar chart
       const kpiLines = new KpiCards({
         totalCost: this.currentSummary.totalCost,
         sessionCount: this.currentSummary.sessionCount,
@@ -430,6 +430,32 @@ export class Dashboard {
       const remainingH = Math.max(8, 15);
       const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
       lines.push(...chartLines);
+    } else if (this.tabBar.activeIndex === 1) {
+      // Languages tab: ranked table
+      if (this.currentSummary.languages.length === 0) {
+        lines.push("");
+        lines.push("  No language data for this time range");
+        lines.push("");
+      } else {
+        const langColumns: ColumnDef[] = [
+          { header: "Language", width: 20 },
+          { header: "Lines", width: 10 },
+          { header: "Edits", width: 10 },
+        ];
+        const langRows = this.currentSummary.languages.map((l) => [
+          l.language,
+          String(l.lines),
+          String(l.edits),
+        ]);
+        const tableH = Math.max(5, 15);
+        const tableLines = new RankedTable(langColumns, langRows, tableH).render(width);
+        lines.push(...tableLines);
+      }
+    } else {
+      // Models, Projects+Tools tabs: placeholder
+      lines.push("");
+      lines.push("  Coming soon");
+      lines.push("");
     }
 
     // Footer

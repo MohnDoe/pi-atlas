@@ -477,6 +477,76 @@ describe("Dashboard", () => {
     expect(closed).toBe(true);
   });
 
+  it("renders Languages tab with ranked table when active", () => {
+    const summary = {
+      ...makeSummary(),
+      languages: [
+        { language: "TypeScript", lines: 1500, edits: 45 },
+        { language: "Python", lines: 800, edits: 20 },
+        { language: "JSON", lines: 300, edits: 5 },
+      ],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    // Switch to Languages tab (index 1)
+    dash.handleInput("\x1b[C"); // right arrow
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("TypeScript");
+    expect(text).toContain("Python");
+    expect(text).toContain("JSON");
+    expect(text).toContain("1500");
+    expect(text).toContain("800");
+    expect(text).toContain("#");
+    expect(text).toContain("Language");
+    expect(text).toContain("Lines");
+    expect(text).toContain("Edits");
+  });
+
+  it("Languages tab updates when time range changes", () => {
+    const summary1d = {
+      ...makeSummary(),
+      languages: [{ language: "TypeScript", lines: 100, edits: 3 }],
+    };
+    const summary7d = {
+      ...makeSummary(),
+      languages: [
+        { language: "TypeScript", lines: 1500, edits: 45 },
+        { language: "Go", lines: 200, edits: 8 },
+      ],
+    };
+    const summaries = [summary1d, summary7d, summary7d, summary7d];
+    const dash = new Dashboard(summaries);
+
+    // Switch to Languages tab
+    dash.handleInput("\x1b[C"); // right
+    let lines = dash.render(80);
+    let text = lines.join("\n");
+    // Default range is 7d (index 1), should show 2 languages
+    expect(text).toContain("Go");
+
+    // Switch to 1d range
+    dash.handleInput("\x1b[A"); // up to switch to 1d
+    lines = dash.render(80);
+    text = lines.join("\n");
+    // Now 1d, only 1 language
+    expect(text).toContain("TypeScript");
+    expect(text).not.toContain("Go");
+  });
+
+  it("Languages tab shows empty state when no language data", () => {
+    const summary = { ...makeSummary(), languages: [] };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    dash.handleInput("\x1b[C"); // right to Languages
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("No language data");
+  });
+
   it("switches tabs with left/right arrows", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries);
