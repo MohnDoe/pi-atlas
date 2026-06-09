@@ -172,7 +172,7 @@ export function parseUserMessage(): DayAgg {
   return day;
 }
 
-function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
+export function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
   const day = emptyDay("");
   day.toolResults = 1;
   if (msg.toolName) {

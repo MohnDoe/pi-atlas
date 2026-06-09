@@ -2,8 +2,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseUserMessage, projectNameFromCwd } from "../parser";
-import type { AssistantMessageBody, MessageEntry, SessionEntry } from "../types";
+import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd } from "../parser";
+import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
 
 describe("langFromPath", () => {
   it("maps .ts to TypeScript", () => {
@@ -109,6 +109,29 @@ describe("parseUserMessage", () => {
     expect(day.userMsgs).toBe(1);
     expect(day.asstMsgs).toBe(0);
     expect(day.toolResults).toBe(0);
+  });
+});
+
+describe("parseToolResultMessage", () => {
+  it("counts one tool result and the tool name", () => {
+    const msg: ToolResultMessageBody = {
+      role: "toolResult",
+      toolName: "bash",
+      toolCallId: "c1",
+    };
+    const day = parseToolResultMessage(msg);
+    expect(day.toolResults).toBe(1);
+    expect(day.toolCount["bash"]).toBe(1);
+  });
+
+  it("handles missing toolName gracefully", () => {
+    const msg: ToolResultMessageBody = {
+      role: "toolResult",
+      toolCallId: "c1",
+    };
+    const day = parseToolResultMessage(msg);
+    expect(day.toolResults).toBe(1);
+    expect(day.toolCount).toEqual({});
   });
 });
 
