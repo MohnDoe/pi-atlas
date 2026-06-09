@@ -253,7 +253,7 @@ export function detectLanguage(toolName: string, args: Record<string, unknown> |
   return day;
 }
 
-function parseMessageEntry(entry: MessageEntry): DayAgg {
+export function parseMessageEntry(entry: MessageEntry): DayAgg {
   const day = emptyDay(dateFromTimestamp(entry.timestamp));
   const { message: msg } = entry;
 

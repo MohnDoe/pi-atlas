@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseSessionEntry, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
+import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseMessageEntry, parseSessionEntry, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
 import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
 
 describe("langFromPath", () => {
@@ -381,6 +381,80 @@ describe("parseSessionEntry", () => {
     expect(sessionProject.has("s2")).toBe(false);
     expect(day.projectCost).toEqual({});
     expect(day.projectSessions).toEqual({});
+  });
+});
+
+describe("parseMessageEntry", () => {
+  it("routes user messages to parseUserMessage", () => {
+    const entry: MessageEntry = {
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      message: { role: "user", content: [{ type: "text", text: "hi" }] },
+    };
+    const day = parseMessageEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.userMsgs).toBe(1);
+  });
+
+  it("routes tool result messages to parseToolResultMessage", () => {
+    const entry: MessageEntry = {
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      message: {
+        role: "toolResult",
+        toolName: "bash",
+        toolCallId: "c1",
+      },
+    };
+    const day = parseMessageEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.toolResults).toBe(1);
+    expect(day.toolCount["bash"]).toBe(1);
+  });
+
+  it("routes assistant messages to parseAssistantMessage", () => {
+    const entry: MessageEntry = {
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "ok" }],
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+        },
+      },
+    };
+    const day = parseMessageEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.asstMsgs).toBe(1);
+    expect(day.inTok).toBe(100);
+    expect(day.outTok).toBe(50);
+  });
+
+  it("returns a mostly empty DayAgg for unknown role", () => {
+    const entry: MessageEntry = {
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      // @ts-expect-error: testing runtime resilience against unknown message role
+      message: { role: "unknown" },
+    };
+    const day = parseMessageEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.userMsgs).toBe(0);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
   });
 });
 
