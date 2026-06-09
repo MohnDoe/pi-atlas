@@ -2,8 +2,29 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseMessageEntry, parseSessionEntry, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
-import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
+import {
+  dateFromTimestamp,
+  detectLanguage,
+  emptyDay,
+  langFromPath,
+  mergeDay,
+  parseAssistantMessage,
+  parseFile,
+  parseMessageEntry,
+  parseSessionEntry,
+  parseSessionLogEntry,
+  parseToolResultMessage,
+  parseUserMessage,
+  projectNameFromCwd,
+  sessionProject,
+} from "../parser";
+import type {
+  AssistantMessageBody,
+  DayAgg,
+  MessageEntry,
+  SessionEntry,
+  ToolResultMessageBody,
+} from "../types";
 
 describe("langFromPath", () => {
   it("maps .ts to TypeScript", () => {
@@ -883,7 +904,7 @@ describe("mergeDay", () => {
     const a = emptyDay("2026-06-08");
     const b: DayAgg = {
       ...emptyDay("2026-06-08"),
-      modelCost: { "deepseek-v4": 0.05, "gpt-5": 0.10 },
+      modelCost: { "deepseek-v4": 0.05, "gpt-5": 0.1 },
       modelCount: { "deepseek-v4": 3, "gpt-5": 1 },
     };
     const c: DayAgg = {
@@ -894,7 +915,7 @@ describe("mergeDay", () => {
 
     mergeDay(a, b);
     mergeDay(a, c);
-    expect(a.modelCost).toEqual({ "deepseek-v4": 0.08, "gpt-5": 0.10 });
+    expect(a.modelCost).toEqual({ "deepseek-v4": 0.08, "gpt-5": 0.1 });
     expect(a.modelCount).toEqual({ "deepseek-v4": 5, "gpt-5": 1 });
   });
 
