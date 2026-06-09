@@ -176,6 +176,24 @@ describe("KpiCards", () => {
     expect(lines.join("\n")).toContain("1.5M");
   });
 
+  it("formats large costs with compact notation", () => {
+    const cards = new KpiCards({ ...kpis, totalCost: 5432.10 });
+    const lines = cards.render(80);
+    expect(lines.join("\n")).toContain("$5.4k");
+  });
+
+  it("formats very large costs with M notation", () => {
+    const cards = new KpiCards({ ...kpis, totalCost: 2_500_000 });
+    const lines = cards.render(80);
+    expect(lines.join("\n")).toContain("$2.5M");
+  });
+
+  it("keeps exact notation for small costs", () => {
+    const cards = new KpiCards(kpis);
+    const lines = cards.render(80);
+    expect(lines.join("\n")).toContain("$12.34");
+  });
+
   it("invalidates cache", () => {
     const cards = new KpiCards(kpis);
     cards.render(80);

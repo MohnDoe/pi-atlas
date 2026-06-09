@@ -133,7 +133,9 @@ function fmtNum(n: number): string {
   return String(n);
 }
 
-function fmtCost(n: number): string {
+export function formatCost(n: number): string {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "k";
   return "$" + n.toFixed(2);
 }
 
@@ -149,12 +151,12 @@ export class KpiCards {
 
   constructor(kpis: KpiData) {
     this.cards = [
-      { label: "Total Cost", value: fmtCost(kpis.totalCost) },
+      { label: "Total Cost", value: formatCost(kpis.totalCost) },
       { label: "Sessions", value: String(kpis.sessionCount) },
       { label: "Messages", value: fmtNum(kpis.totalMessages) },
       { label: "Total Tokens", value: fmtNum(kpis.totalTokens) },
       { label: "Days Active", value: String(kpis.daysActive) },
-      { label: "Avg Cost/Day", value: fmtCost(kpis.avgCostPerDay) },
+      { label: "Avg Cost/Day", value: formatCost(kpis.avgCostPerDay) },
     ];
   }
 
@@ -519,7 +521,7 @@ export class Dashboard {
           ];
           const modelRows = this.currentSummary.models.map((m) => [
             formatModelName(m.model),
-            `$${m.cost.toFixed(2)}`,
+            formatCost(m.cost),
             String(m.calls),
           ]);
           const tableH = Math.max(5, 15);
@@ -622,7 +624,7 @@ export class ProjectsToolsView {
       ];
       const projRows = projects.map((p) => [
         p.project.slice(0, 8),
-        `$${p.cost.toFixed(2)}`,
+        formatCost(p.cost),
         String(p.sessions),
       ]);
       this.projectsTable = new RankedTable(projCols, projRows, maxHeight);
