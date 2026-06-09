@@ -607,7 +607,11 @@ export class ProjectsToolsView {
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(projects: { project: string; cost: number; sessions: number }[], tools: { tool: string; count: number }[], maxHeight: number) {
+  constructor(
+    projects: { project: string; cost: number; sessions: number }[],
+    tools: { tool: string; count: number }[],
+    maxHeight: number,
+  ) {
     this.maxHeight = maxHeight;
 
     if (projects.length > 0) {
@@ -616,7 +620,11 @@ export class ProjectsToolsView {
         { header: "Cost", width: 6 },
         { header: "Sessions", width: 8 },
       ];
-      const projRows = projects.map((p) => [p.project.slice(0, 8), `$${p.cost.toFixed(2)}`, String(p.sessions)]);
+      const projRows = projects.map((p) => [
+        p.project.slice(0, 8),
+        `$${p.cost.toFixed(2)}`,
+        String(p.sessions),
+      ]);
       this.projectsTable = new RankedTable(projCols, projRows, maxHeight);
     } else {
       this.projectsTable = null;
