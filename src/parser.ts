@@ -1,4 +1,4 @@
-import type { DayAgg } from "./types.js";
+import type { DayAgg, SessionLogEntry, SessionProjectMap } from "./types.js";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
@@ -74,7 +74,7 @@ function projectNameFromCwd(cwd: string): string {
 // ---- Day helpers ----
 
 // Tracks session ID → project name for cost attribution
-const sessionProject = new Map<string, string>();
+const sessionProject: SessionProjectMap = new Map();
 
 function ensureDay(map: Map<string, DayAgg>, date: string): DayAgg {
   let day = map.get(date);
@@ -109,82 +109,56 @@ function dateFromTimestamp(ts: string): string {
 
 // ---- Parse single entry ----
 
-type ToolCallBlock = {
-  type?: string;
-  id?: string;
-  name?: string;
-  arguments?: Record<string, unknown>;
-};
-
-type TextBlock = {
-  type?: string;
-  text?: string;
-};
-
-export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
+export function parseLine(entry: SessionLogEntry, map: Map<string, DayAgg>): void {
+  // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return;
-  const e = entry as Record<string, unknown>;
 
-  const ts = e.timestamp as string | undefined;
-  if (!ts) return;
-
-  const date = dateFromTimestamp(ts);
-
-  if (e.type === "session") {
+  if (entry.type === "session") {
+    const date = dateFromTimestamp(entry.timestamp);
     const day = ensureDay(map, date);
-    const id = e.id as string;
-    if (id) day.sessionIds.add(id);
+    day.sessionIds.add(entry.id);
 
     // project tracking
-    const cwd = e.cwd as string | undefined;
-    if (cwd && id) {
-      const proj = projectNameFromCwd(cwd);
-      sessionProject.set(id, proj);
+    if (entry.cwd) {
+      const proj = projectNameFromCwd(entry.cwd);
+      sessionProject.set(entry.id, proj);
       day.projectCost[proj] = day.projectCost[proj] ?? 0;
       if (!day.projectSessions[proj]) day.projectSessions[proj] = new Set();
-      day.projectSessions[proj].add(id);
+      day.projectSessions[proj].add(entry.id);
     }
     return;
   }
 
-  if (e.type !== "message") return;
-
-  const msg = e.message as Record<string, unknown> | undefined;
-  if (!msg) return;
-
-  const role = msg.role as string | undefined;
-  if (!role) return;
-
+  // entry.type === "message"
+  const { message: msg } = entry;
+  const date = dateFromTimestamp(entry.timestamp);
   const day = ensureDay(map, date);
 
-  if (role === "user") {
+  if (msg.role === "user") {
     day.userMsgs++;
     return;
   }
 
-  if (role === "toolResult") {
+  if (msg.role === "toolResult") {
     day.toolResults++;
-    const toolName = msg.toolName as string | undefined;
-    if (toolName) {
-      day.toolCount[toolName] = (day.toolCount[toolName] ?? 0) + 1;
+    if (msg.toolName) {
+      day.toolCount[msg.toolName] = (day.toolCount[msg.toolName] ?? 0) + 1;
     }
     return;
   }
 
-  if (role === "assistant") {
+  if (msg.role === "assistant") {
     day.asstMsgs++;
 
-    const usage = msg.usage as Record<string, unknown> | undefined;
     let msgCost = 0;
-    if (usage) {
-      day.inTok += (usage.input as number) ?? 0;
-      day.outTok += (usage.output as number) ?? 0;
-      day.crTok += (usage.cacheRead as number) ?? 0;
-      day.cwTok += (usage.cacheWrite as number) ?? 0;
+    if (msg.usage) {
+      day.inTok += msg.usage.input;
+      day.outTok += msg.usage.output;
+      day.crTok += msg.usage.cacheRead;
+      day.cwTok += msg.usage.cacheWrite;
 
-      const cost = usage.cost as Record<string, number> | undefined;
-      if (cost) {
-        msgCost = cost.total ?? 0;
+      if (msg.usage.cost) {
+        msgCost = msg.usage.cost.total;
         day.cost += msgCost;
       }
     }
@@ -197,32 +171,25 @@ export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
     }
 
     // model stats
-    const model = msg.model as string | undefined;
-    if (model && usage?.cost) {
-      const cost = usage.cost as Record<string, number>;
-      const totalCost = cost.total ?? 0;
-      day.modelCost[model] = (day.modelCost[model] ?? 0) + totalCost;
-      day.modelCount[model] = (day.modelCount[model] ?? 0) + 1;
+    if (msg.model && msg.usage?.cost) {
+      const totalCost = msg.usage.cost.total;
+      day.modelCost[msg.model] = (day.modelCost[msg.model] ?? 0) + totalCost;
+      day.modelCount[msg.model] = (day.modelCount[msg.model] ?? 0) + 1;
     }
 
     // tool calls in assistant content
-    const content = msg.content as Array<Record<string, unknown>> | undefined;
-    if (Array.isArray(content)) {
-      for (const block of content) {
+    if (msg.content) {
+      for (const block of msg.content) {
         if (block.type === "toolCall") {
-          const tcName = block.name as string | undefined;
-          if (tcName) {
-            day.toolCount[tcName] = (day.toolCount[tcName] ?? 0) + 1;
-          }
+          day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
 
           // Language detection from edit/write tool calls
-          if (tcName === "edit" || tcName === "write") {
-            const args = block.arguments as Record<string, unknown> | undefined;
-            const path = args?.path as string | undefined;
+          if (block.name === "edit" || block.name === "write") {
+            const path = block.arguments?.path as string | undefined;
             if (path) {
               const lang = langFromPath(path);
-              if (tcName === "edit") {
-                const edits = args?.edits as
+              if (block.name === "edit") {
+                const edits = block.arguments?.edits as
                   | Array<{ newText?: string; oldText?: string }>
                   | undefined;
                 if (Array.isArray(edits)) {
@@ -237,7 +204,7 @@ export function parseLine(entry: unknown, map: Map<string, DayAgg>): void {
                 day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
               } else {
                 // write
-                const contentStr = args?.content as string | undefined;
+                const contentStr = block.arguments?.content as string | undefined;
                 const lines = contentStr?.length ?? 0;
                 if (lines > 0) {
                   day.langLines[lang] = (day.langLines[lang] ?? 0) + lines;
@@ -273,7 +240,7 @@ export function parseFile(
     if (!trimmed) continue;
 
     try {
-      const entry = JSON.parse(trimmed);
+      const entry = JSON.parse(trimmed) as SessionLogEntry;
       parseLine(entry, map);
     } catch {
       corruptCount++;
