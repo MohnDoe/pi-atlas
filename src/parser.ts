@@ -280,14 +280,15 @@ export function parseSessionLogEntry(entry: SessionLogEntry): DayAgg | null {
 
 export function parseFile(
   filePath: string,
-  map: Map<string, DayAgg>,
   onWarning?: (count: number) => void,
-): void {
+): Map<string, DayAgg> {
+  const map = new Map<string, DayAgg>();
+
   let content: string;
   try {
     content = readFileSync(filePath, "utf-8");
   } catch {
-    return;
+    return map;
   }
 
   const lines = content.split("\n");
@@ -313,4 +314,6 @@ export function parseFile(
       if (onWarning) onWarning(corruptCount);
     }
   }
+
+  return map;
 }

@@ -27,10 +27,6 @@ function emptyDay(date: string): DayAgg {
   };
 }
 
-function makeDayMap(): Map<string, DayAgg> {
-  return new Map();
-}
-
 describe("parseSessionLogEntry", () => {
   it("returns a DayAgg for a session entry", () => {
     const entry: SessionEntry = {
@@ -540,9 +536,8 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = makeDayMap();
     let warnings = 0;
-    parseFile(filePath, map, (count) => {
+    const map = parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -557,22 +552,12 @@ describe("parseFile", () => {
   it("returns empty map for empty file", async () => {
     const filePath = join(tmpDir, "empty.jsonl");
     await writeFile(filePath, "");
-    const map = makeDayMap();
-    parseFile(filePath, map);
-    expect(map.size).toBe(0);
-  });
-
-  it("returns empty map for empty file", async () => {
-    const filePath = join(tmpDir, "empty.jsonl");
-    await writeFile(filePath, "");
-    const map = makeDayMap();
-    parseFile(filePath, map);
+    const map = parseFile(filePath);
     expect(map.size).toBe(0);
   });
 
   it("silently returns empty map for non-existent file", async () => {
-    const map = makeDayMap();
-    parseFile("/nonexistent/path/never.jsonl", map);
+    const map = parseFile("/nonexistent/path/never.jsonl");
     expect(map.size).toBe(0);
   });
 
@@ -596,8 +581,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = makeDayMap();
-    parseFile(filePath, map);
+    const map = parseFile(filePath);
 
     expect(map.size).toBe(2);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
@@ -619,8 +603,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = makeDayMap();
-    parseFile(filePath, map);
+    const map = parseFile(filePath);
 
     expect(map.size).toBe(1);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);

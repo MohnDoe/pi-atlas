@@ -13,7 +13,7 @@ import type {
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseFile } from "./parser.js";
+import { mergeDay, parseFile } from "./parser.js";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
@@ -296,7 +296,15 @@ export async function loadAggregate(
   const map = new Map<string, DayAgg>();
 
   for (let i = 0; i < files.length; i++) {
-    parseFile(files[i], map);
+    const fileMap = parseFile(files[i]);
+    for (const [date, day] of fileMap) {
+      const existing = map.get(date);
+      if (existing) {
+        mergeDay(existing, day);
+      } else {
+        map.set(date, day);
+      }
+    }
     if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
   }
 
