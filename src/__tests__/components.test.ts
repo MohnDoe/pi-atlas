@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView } from "./components.js";
+import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView } from "../components";
 
 function visibleLength(s: string): number {
   return s.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -172,13 +172,13 @@ describe("KpiCards", () => {
 
 describe("BarChart", () => {
   const dailySpend = [
-    { date: "2026-06-01", cost: 1.00 },
-    { date: "2026-06-02", cost: 0.00 },
-    { date: "2026-06-03", cost: 2.50 },
-    { date: "2026-06-04", cost: 0.50 },
-    { date: "2026-06-05", cost: 0.00 },
-    { date: "2026-06-06", cost: 1.20 },
-    { date: "2026-06-07", cost: 3.00 },
+    { date: "2026-06-01", cost: 1.0 },
+    { date: "2026-06-02", cost: 0.0 },
+    { date: "2026-06-03", cost: 2.5 },
+    { date: "2026-06-04", cost: 0.5 },
+    { date: "2026-06-05", cost: 0.0 },
+    { date: "2026-06-06", cost: 1.2 },
+    { date: "2026-06-07", cost: 3.0 },
   ];
 
   it("renders bar chart with X-axis labels", () => {
@@ -235,21 +235,21 @@ describe("BarChart", () => {
 
 describe("Dashboard", () => {
   const makeSummary = () => ({
-    totalCost: 5.00,
+    totalCost: 5.0,
     sessionCount: 3,
     totalMessages: 50,
     totalTokens: 10000,
     daysActive: 3,
     avgCostPerDay: 1.67,
-    todayCost: 1.00,
+    todayCost: 1.0,
     languages: [],
     models: [],
     projects: [],
     tools: [],
     dailySpend: [
-      { date: "2026-06-06", cost: 1.00 },
-      { date: "2026-06-07", cost: 2.00 },
-      { date: "2026-06-08", cost: 2.00 },
+      { date: "2026-06-06", cost: 1.0 },
+      { date: "2026-06-07", cost: 2.0 },
+      { date: "2026-06-08", cost: 2.0 },
     ],
   });
 
@@ -269,7 +269,9 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, () => { closed = true; });
+    const dash = new Dashboard(summaries, () => {
+      closed = true;
+    });
     dash.handleInput("\x1b");
     expect(closed).toBe(true);
   });
@@ -277,7 +279,9 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, () => { closed = true; });
+    const dash = new Dashboard(summaries, () => {
+      closed = true;
+    });
     dash.handleInput("q");
     expect(closed).toBe(true);
   });
