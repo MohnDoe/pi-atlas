@@ -2,27 +2,32 @@
   "name": "pi-usage",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
+  "keywords": [],
+  "homepage": "https://github.com/MohnDoe/pi-usage#readme",
+  "bugs": {
+    "url": "https://github.com/MohnDoe/pi-usage/issues"
   },
-  "scripts": {
-    "test": "vitest run"
-  },
+  "license": "ISC",
+  "author": "",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MohnDoe/pi-usage.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/MohnDoe/pi-usage/issues"
+  "directories": {
+    "doc": "docs"
   },
-  "homepage": "https://github.com/MohnDoe/pi-usage#readme",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.74.0 <0.77.0",
+    "@earendil-works/pi-tui": ">=0.74.0 <0.77.0",
     "@vitest/coverage-v8": "^4.1.8",
     "vitest": "^4.1.8"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-tui": ">=0.74.0 <0.77.0"
   }
 }

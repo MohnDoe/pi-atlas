@@ -11,7 +11,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("stats", {
     description: "Show pi usage statistics dashboard",
     handler: async (_args, ctx) => {
-      if (ctx.mode !== "tui") {
+      if (!ctx.hasUI) {
         ctx.ui.notify("Stats dashboard requires interactive mode", "error");
         return;
       }
