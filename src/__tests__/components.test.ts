@@ -266,6 +266,29 @@ describe("Dashboard", () => {
     expect(text).toContain("█");
   });
 
+  it("shows 'No sessions found' when no session data exists", () => {
+    const zeroSummary = { ...makeSummary(), totalCost: 0, sessionCount: 0, totalMessages: 0, totalTokens: 0, dailySpend: [] };
+    const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
+    const dash = new Dashboard(summaries);
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("No sessions found");
+  });
+
+  it("shows 'No data for this time range' when current range is empty", () => {
+    const dataSummary = { ...makeSummary(), totalCost: 5.00, sessionCount: 3 };
+    const zeroSummary = { ...makeSummary(), totalCost: 0, sessionCount: 0, totalMessages: 0, totalTokens: 0, dailySpend: [] };
+    // 1d range (index 0) empty, others have data
+    const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
+    const dash = new Dashboard(summaries);
+    // Default selected range is index 1 (7d), so we see data.
+    // Switch to index 0 (1d) via range selector
+    dash.handleInput("\x1b[A"); // up arrow — should move from index 1 to 0
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("No data for this time range");
+  });
+
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;

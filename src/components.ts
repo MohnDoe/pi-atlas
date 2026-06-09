@@ -306,23 +306,35 @@ export class Dashboard {
     // Separator
     lines.push("─".repeat(Math.min(width, 60)));
 
-    // Content area - KPI cards + bar chart for Overview tab
-    const kpiLines = new KpiCards({
-      totalCost: this.currentSummary.totalCost,
-      sessionCount: this.currentSummary.sessionCount,
-      totalMessages: this.currentSummary.totalMessages,
-      totalTokens: this.currentSummary.totalTokens,
-      daysActive: this.currentSummary.daysActive,
-      avgCostPerDay: this.currentSummary.avgCostPerDay,
-    }).render(width);
-    lines.push(...kpiLines);
+    // Detect empty states
+    const allEmpty = this.summaries.every((s) => s.sessionCount === 0);
+    if (allEmpty) {
+      lines.push("");
+      lines.push("  No sessions found in ~/.pi/agent/sessions");
+      lines.push("");
+    } else if (this.currentSummary.sessionCount === 0) {
+      lines.push("");
+      lines.push("  No data for this time range");
+      lines.push("");
+    } else {
+      // Content area - KPI cards + bar chart for Overview tab
+      const kpiLines = new KpiCards({
+        totalCost: this.currentSummary.totalCost,
+        sessionCount: this.currentSummary.sessionCount,
+        totalMessages: this.currentSummary.totalMessages,
+        totalTokens: this.currentSummary.totalTokens,
+        daysActive: this.currentSummary.daysActive,
+        avgCostPerDay: this.currentSummary.avgCostPerDay,
+      }).render(width);
+      lines.push(...kpiLines);
 
-    lines.push(""); // spacer
+      lines.push(""); // spacer
 
-    // Bar chart fills remaining space
-    const remainingH = Math.max(8, 15);
-    const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
-    lines.push(...chartLines);
+      // Bar chart fills remaining space
+      const remainingH = Math.max(8, 15);
+      const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
+      lines.push(...chartLines);
+    }
 
     // Footer
     lines.push("─".repeat(Math.min(width, 60)));

@@ -38,12 +38,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      if (!Array.isArray(days) || days.length === 0) {
-        ctx.ui.notify("No session logs found in " + SESSIONS_DIR, "warning");
-        return;
-      }
-
-      // Phase 2: Show dashboard
+      // Phase 2: Show dashboard (handles empty state internally)
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 

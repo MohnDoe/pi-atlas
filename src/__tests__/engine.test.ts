@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeSignature, loadAggregate, readCache, summarize, writeCache } from "../engine.js";
 import { emptyDay, mergeDay } from "../parser.js";
 import { DayAgg } from "../types.js";
@@ -369,6 +369,48 @@ describe("loadAggregate", () => {
 
     const days = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(2); // two days now
+  });
+
+  it("logs corrupt line count to stderr", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(
+      join(subDir, "mixed.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+        "not valid json",
+        "also broken {",
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:01:00.000Z",
+          message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        }),
+      ].join("\n"),
+    );
+
+    const errors: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      errors.push(args.join(" "));
+    });
+
+    try {
+      await loadAggregate(cachePath, sessionsDir, true);
+
+      expect(errors.length).toBeGreaterThan(0);
+      const warning = errors.find((e) => e.includes("corrupt"));
+      expect(warning).toBeDefined();
+      expect(warning).toContain("2"); // 2 corrupt lines
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("calls onProgress during parsing", async () => {

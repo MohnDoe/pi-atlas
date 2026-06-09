@@ -294,9 +294,14 @@ export async function loadAggregate(
   // Parse all JSONL files
   const files = await findAllJsonlFiles(sessionsDir);
   const map = new Map<string, DayAgg>();
+  let totalCorrupt = 0;
 
   for (let i = 0; i < files.length; i++) {
-    const fileMap = parseFile(files[i]);
+    let lastCount = 0;
+    const fileMap = parseFile(files[i], (count) => {
+      lastCount = count;
+    });
+    totalCorrupt += lastCount;
     for (const [date, day] of fileMap) {
       const existing = map.get(date);
       if (existing) {
@@ -306,6 +311,10 @@ export async function loadAggregate(
       }
     }
     if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+  }
+
+  if (totalCorrupt > 0) {
+    console.error(`pi-usage: skipped ${totalCorrupt} corrupt JSONL line(s)`);
   }
 
   const days = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
