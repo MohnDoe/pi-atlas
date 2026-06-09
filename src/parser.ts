@@ -166,21 +166,25 @@ function parseSessionEntry(entry: SessionEntry): DayAgg {
 
 // ---- Message entry ----
 
-function parseUserMessage(day: DayAgg): void {
+function parseUserMessage(): DayAgg {
+  const day = emptyDay("");
   day.userMsgs = 1;
+  return day;
 }
 
-function parseToolResultMessage(day: DayAgg, msg: ToolResultMessageBody): void {
+function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
+  const day = emptyDay("");
   day.toolResults = 1;
   if (msg.toolName) {
     day.toolCount[msg.toolName] = 1;
   }
+  return day;
 }
 
-function parseAssistantMessage(day: DayAgg, msg: AssistantMessageBody): void {
+function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
+  const day = emptyDay("");
   day.asstMsgs = 1;
 
-  // usage stats
   if (msg.usage) {
     day.inTok = msg.usage.input;
     day.outTok = msg.usage.output;
@@ -188,44 +192,45 @@ function parseAssistantMessage(day: DayAgg, msg: AssistantMessageBody): void {
     day.cwTok = msg.usage.cacheWrite;
 
     if (msg.usage.cost) {
-      const msgCost = msg.usage.cost.total;
-      day.cost = msgCost;
+      day.cost = msg.usage.cost.total;
 
-      // attribute cost to all known projects
       const activeProjects = new Set(sessionProject.values());
       for (const proj of activeProjects) {
-        day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msgCost;
+        day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msg.usage.cost.total;
       }
     }
   }
 
-  // model stats
   if (msg.model && msg.usage?.cost) {
     day.modelCost[msg.model] = msg.usage.cost.total;
     day.modelCount[msg.model] = 1;
   }
 
-  // tool calls in assistant content
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall") {
         day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
 
         if (block.name === "edit" || block.name === "write") {
-          detectLanguage(day, block.name, block.arguments as Record<string, unknown> | undefined);
+          mergeDay(
+            day,
+            detectLanguage(block.name, block.arguments as Record<string, unknown> | undefined),
+          );
         }
       }
     }
   }
+
+  return day;
 }
 
 function detectLanguage(
-  day: DayAgg,
   toolName: string,
   args: Record<string, unknown> | undefined,
-): void {
+): DayAgg {
+  const day = emptyDay("");
   const path = args?.path as string | undefined;
-  if (!path) return;
+  if (!path) return day;
 
   const lang = langFromPath(path);
 
@@ -242,12 +247,13 @@ function detectLanguage(
     }
     day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
   } else {
-    // write
     const contentStr = args?.content as string | undefined;
     if (contentStr) {
       day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
     }
   }
+
+  return day;
 }
 
 function parseMessageEntry(entry: MessageEntry): DayAgg {
@@ -255,11 +261,11 @@ function parseMessageEntry(entry: MessageEntry): DayAgg {
   const { message: msg } = entry;
 
   if (msg.role === "user") {
-    parseUserMessage(day);
+    mergeDay(day, parseUserMessage());
   } else if (msg.role === "toolResult") {
-    parseToolResultMessage(day, msg);
+    mergeDay(day, parseToolResultMessage(msg));
   } else if (msg.role === "assistant") {
-    parseAssistantMessage(day, msg);
+    mergeDay(day, parseAssistantMessage(msg));
   }
 
   return day;
