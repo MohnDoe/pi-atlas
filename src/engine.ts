@@ -13,12 +13,12 @@ import type {
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { mergeDay, parseFile } from "./parser.js";
+import { dateFromISOString, mergeDay, parseFile } from "./parser.js";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dateFromISOString(new Date().toISOString());
 
   if (range === "1d") {
     return days.filter((d) => d.date === todayStr);
@@ -68,7 +68,7 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
 export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   const filtered = daysInRange(days, range);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dateFromISOString(new Date().toISOString());
   let todayCost = 0;
 
   let totalCost = 0;

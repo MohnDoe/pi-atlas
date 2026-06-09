@@ -84,8 +84,8 @@ export function projectNameFromCwd(cwd: string): string {
 // Tracks session ID → project name for cost attribution
 export const sessionProject: SessionProjectMap = new Map();
 
-export function dateFromTimestamp(ts: string): string {
-  return ts.slice(0, 10);
+export function dateFromISOString(str: string): string {
+  return str.slice(0, 10);
 }
 
 export function emptyDay(date: string): DayAgg {
@@ -151,7 +151,7 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
 // ---- Session entry ----
 
 export function parseSessionEntry(entry: SessionEntry): DayAgg {
-  const day = emptyDay(dateFromTimestamp(entry.timestamp));
+  const day = emptyDay(dateFromISOString(entry.timestamp));
   day.sessionIds.add(entry.id);
 
   if (entry.cwd) {
@@ -224,7 +224,10 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   return day;
 }
 
-export function detectLanguage(toolName: string, args: Record<string, unknown> | undefined): DayAgg {
+export function detectLanguage(
+  toolName: string,
+  args: Record<string, unknown> | undefined,
+): DayAgg {
   const day = emptyDay("");
   const path = args?.path as string | undefined;
   if (!path) return day;
@@ -254,7 +257,7 @@ export function detectLanguage(toolName: string, args: Record<string, unknown> |
 }
 
 export function parseMessageEntry(entry: MessageEntry): DayAgg {
-  const day = emptyDay(dateFromTimestamp(entry.timestamp));
+  const day = emptyDay(dateFromISOString(entry.timestamp));
   const { message: msg } = entry;
 
   if (msg.role === "user") {

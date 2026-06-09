@@ -3,6 +3,7 @@ import { loadAggregate, summarize } from "./engine.js";
 import { Dashboard, LoadingView } from "./components.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { StatsTheme } from "./types.js";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
@@ -43,7 +44,7 @@ export default function (pi: ExtensionAPI) {
       const summaries = ranges.map((r) => summarize(days, r));
 
       await ctx.ui.custom((_tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme, () => done(undefined));
+        const dashboard = new Dashboard(summaries, theme as StatsTheme, () => done(undefined));
         return {
           render: (w: number) => dashboard.render(w),
           handleInput: (d: string) => {

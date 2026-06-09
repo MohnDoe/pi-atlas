@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeSignature, loadAggregate, readCache, summarize, writeCache } from "../engine.js";
-import { emptyDay, mergeDay } from "../parser.js";
+import { dateFromISOString, emptyDay, mergeDay } from "../parser.js";
 import { DayAgg } from "../types.js";
 
 describe("summarize", () => {
@@ -23,7 +23,7 @@ describe("summarize", () => {
   });
 
   it("computes KPIs from a single day", () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = dateFromISOString(new Date().toISOString());
     const d = emptyDay(today);
     mergeDay(d, {
       ...emptyDay(today),

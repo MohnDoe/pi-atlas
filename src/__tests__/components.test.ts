@@ -1,21 +1,20 @@
-import { describe, it, expect } from "vitest";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  TabBar,
-  RangeSelector,
-  KpiCards,
   BarChart,
   Dashboard,
-  LoadingView,
-  RankedTable,
   formatModelName,
+  KpiCards,
+  LoadingView,
   ProjectsToolsView,
+  RangeSelector,
+  RankedTable,
+  TabBar,
 } from "../components";
-import { parseFile } from "../parser";
 import { summarize } from "../engine";
+import { parseFile } from "../parser";
 import type { DayAgg, StatsTheme } from "../types";
 
 /** Test theme that produces readable tags instead of ANSI escape codes */
@@ -215,7 +214,7 @@ describe("KpiCards", () => {
   });
 
   it("formats large costs with compact notation", () => {
-    const cards = new KpiCards({ ...kpis, totalCost: 5432.10 }, testTheme());
+    const cards = new KpiCards({ ...kpis, totalCost: 5432.1 }, testTheme());
     const lines = cards.render(80);
     expect(lines.join("\n")).toContain("$5.4k");
   });
@@ -320,7 +319,9 @@ describe("BarChart", () => {
     const lines = chart.render(80);
     // Last line is the label row
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine
+      .replace(/\x1b\[[0-9;]*m/g, "")
+      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
     // Should contain day numbers like "1", "5", "10", etc.
     expect(visible).toContain("1");
     expect(visible).toContain("5");
@@ -342,7 +343,9 @@ describe("BarChart", () => {
     const chart = new BarChart(spend, "All", 10, testTheme());
     const lines = chart.render(80);
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine
+      .replace(/\x1b\[[0-9;]*m/g, "")
+      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
     // Month changes get labels
@@ -1196,7 +1199,13 @@ describe("integration: JSONL → Dashboard", () => {
             cacheRead: 10,
             cacheWrite: 0,
             totalTokens: 310,
-            cost: { input: 0.001, output: 0.0005, cacheRead: 0.00001, cacheWrite: 0, total: 0.00151 },
+            cost: {
+              input: 0.001,
+              output: 0.0005,
+              cacheRead: 0.00001,
+              cacheWrite: 0,
+              total: 0.00151,
+            },
           },
         },
       }),
@@ -1263,7 +1272,11 @@ describe("integration: JSONL → Dashboard", () => {
           ],
           model: "sonnet",
           usage: {
-            input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
           },
         },

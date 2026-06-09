@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import {
-  dateFromTimestamp,
+  dateFromISOString,
   detectLanguage,
   emptyDay,
   langFromPath,
@@ -85,11 +85,11 @@ describe("projectNameFromCwd", () => {
 
 describe("dateFromTimestamp", () => {
   it("extracts YYYY-MM-DD from ISO timestamp", () => {
-    expect(dateFromTimestamp("2026-06-08T17:37:04.122Z")).toBe("2026-06-08");
+    expect(dateFromISOString("2026-06-08T17:37:04.122Z")).toBe("2026-06-08");
   });
 
   it("works on date-only", () => {
-    expect(dateFromTimestamp("2026-12-31")).toBe("2026-12-31");
+    expect(dateFromISOString("2026-12-31")).toBe("2026-12-31");
   });
 });
 
