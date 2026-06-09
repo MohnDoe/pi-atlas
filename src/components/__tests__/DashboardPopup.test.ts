@@ -77,4 +77,48 @@ describe("DashboardPopup", () => {
     expect(text).toContain("Total Cost");
     expect(text).toContain("Esc/q close");
   });
+
+  // ---- Delegation ----
+
+  it("delegates handleInput to inner Dashboard", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    let closed = false;
+    const dash = new Dashboard(summaries, testTheme(), () => {
+      closed = true;
+    });
+    const popup = new DashboardPopup(dash);
+
+    popup.handleInput("\x1b"); // escape
+    expect(closed).toBe(true);
+  });
+
+  it("delegates invalidate to inner Dashboard", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    // Render once to populate cache
+    popup.render(80);
+
+    // Switch to Languages tab to change state
+    popup.handleInput("\x1b[C"); // right arrow
+    popup.invalidate();
+
+    // Re-render should show Languages tab
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("Languages");
+  });
+
+  it("caches rendered output and invalidates on width change", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    const lines80 = popup.render(80);
+    const lines60 = popup.render(60);
+
+    // Different widths produce different output
+    expect(lines80[0]).not.toBe(lines60[0]);
+  });
 });
