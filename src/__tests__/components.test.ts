@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView, RankedTable } from "../components";
+import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView, RankedTable, formatModelName } from "../components";
 
 function visibleLength(s: string): number {
   return s.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -401,6 +401,36 @@ describe("RankedTable", () => {
   });
 });
 
+describe("formatModelName", () => {
+  it("strips claude- prefix and date suffix", () => {
+    expect(formatModelName("claude-sonnet-4-20250514")).toBe("Sonnet 4");
+  });
+
+  it("strips deepseek- prefix", () => {
+    expect(formatModelName("deepseek-v4-pro")).toBe("V4 Pro");
+  });
+
+  it("strips gemini- prefix", () => {
+    expect(formatModelName("gemini-2.5-pro")).toBe("2.5 Pro");
+  });
+
+  it("handles model name without prefix or suffix", () => {
+    expect(formatModelName("claude-haiku-3.5")).toBe("Haiku 3.5");
+  });
+
+  it("strips 8-digit date suffix", () => {
+    expect(formatModelName("claude-opus-4-20250514")).toBe("Opus 4");
+  });
+
+  it("strips YYYY-MM-DD date suffix", () => {
+    expect(formatModelName("some-model-2025-05-14")).toBe("Some Model");
+  });
+
+  it("handles model with no known prefix", () => {
+    expect(formatModelName("llama-3-70b")).toBe("Llama 3 70b");
+  });
+});
+
 describe("Dashboard", () => {
   const makeSummary = () => ({
     totalCost: 5.0,
@@ -520,20 +550,23 @@ describe("Dashboard", () => {
     const summaries = [summary1d, summary7d, summary7d, summary7d];
     const dash = new Dashboard(summaries);
 
+    // Default range is 7d (index 1). Switch to 1d on Overview tab first
+    dash.handleInput("\x1b[A"); // up to 1d on Overview
     // Switch to Languages tab
-    dash.handleInput("\x1b[C"); // right
+    dash.handleInput("\x1b[C"); // right to Languages
     let lines = dash.render(80);
     let text = lines.join("\n");
-    // Default range is 7d (index 1), should show 2 languages
-    expect(text).toContain("Go");
-
-    // Switch to 1d range
-    dash.handleInput("\x1b[A"); // up to switch to 1d
-    lines = dash.render(80);
-    text = lines.join("\n");
-    // Now 1d, only 1 language
+    // Range 1d, only 1 language
     expect(text).toContain("TypeScript");
     expect(text).not.toContain("Go");
+
+    // Switch back to Overview, change to 7d, then back to Languages
+    dash.handleInput("\x1b[D"); // left to Overview
+    dash.handleInput("\x1b[B"); // down to 7d
+    dash.handleInput("\x1b[C"); // right to Languages
+    lines = dash.render(80);
+    text = lines.join("\n");
+    expect(text).toContain("Go");
   });
 
   it("Languages tab shows empty state when no language data", () => {
@@ -545,6 +578,132 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No language data");
+  });
+
+  // ---- Models tab ----
+
+  it("renders Models tab with header and data rows", () => {
+    const summary = {
+      ...makeSummary(),
+      models: [
+        { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 },
+        { model: "deepseek-v4-pro", cost: 5.67, calls: 80 },
+        { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
+      ],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    // Switch to Models tab (index 2)
+    dash.handleInput("\x1b[C"); // right to Languages
+    dash.handleInput("\x1b[C"); // right to Models
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("#");
+    expect(text).toContain("Model");
+    expect(text).toContain("Cost");
+    expect(text).toContain("Calls");
+    expect(text).toContain("Sonnet 4");
+    expect(text).toContain("12.34");
+    expect(text).toContain("150");
+  });
+
+  it("formats model names in Models tab", () => {
+    const summary = {
+      ...makeSummary(),
+      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    // Navigate to Models tab
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("Sonnet 4");
+    expect(text).not.toContain("claude-sonnet-4-20250514");
+  });
+
+  it("Models tab shows empty state when no model data", () => {
+    const summary = { ...makeSummary(), models: [] };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("No model data");
+  });
+
+  it("Models tab updates when time range changes", () => {
+    const summary1d = {
+      ...makeSummary(),
+      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 5 }],
+    };
+    const summary7d = {
+      ...makeSummary(),
+      models: [
+        { model: "claude-sonnet-4-20250514", cost: 12.0, calls: 150 },
+        { model: "deepseek-v4-pro", cost: 5.0, calls: 80 },
+      ],
+    };
+    const summaries = [summary1d, summary7d, summary7d, summary7d];
+    const dash = new Dashboard(summaries);
+
+    // Change range to 1d on Overview, then navigate to Models
+    dash.handleInput("\x1b[A"); // up to 1d on Overview
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    let lines = dash.render(80);
+    let text = lines.join("\n");
+    // Range 1d, only 1 model
+    expect(text).toContain("Sonnet 4");
+    expect(text).not.toContain("V4 Pro");
+
+    // Switch back to Overview, change to 7d, then back to Models
+    dash.handleInput("\x1b[D"); // left to Languages
+    dash.handleInput("\x1b[D"); // left to Overview
+    dash.handleInput("\x1b[B"); // down to 7d
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    lines = dash.render(80);
+    text = lines.join("\n");
+    expect(text).toContain("V4 Pro");
+  });
+
+  it("Models tab scrolls with up/down", () => {
+    const manyModels = Array.from({ length: 20 }, (_, i) => ({
+      model: `model-${i}`,
+      cost: 20 - i,
+      calls: (20 - i) * 10,
+    }));
+    const summary = { ...makeSummary(), models: manyModels };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries);
+
+    // Navigate to Models tab
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    let lines = dash.render(80);
+    // lines[5] = table header, lines[6] = first data row (rank 1)
+    expect(lines[6]).toContain("1");
+    expect(lines[6]).toContain("Model 0");
+
+    // Scroll down
+    dash.handleInput("\x1b[B");
+    lines = dash.render(80);
+    expect(lines[6]).toContain("2");
+    expect(lines[6]).toContain("Model 1");
+
+    // Scroll back up
+    dash.handleInput("\x1b[A");
+    lines = dash.render(80);
+    expect(lines[6]).toContain("1");
+    expect(lines[6]).toContain("Model 0");
   });
 
   it("switches tabs with left/right arrows", () => {

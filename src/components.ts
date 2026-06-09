@@ -366,8 +366,11 @@ export class Dashboard {
   private rangeSelector: RangeSelector;
   private summaries: StatsSummary[]; // [1d, 7d, 30d, All]
   private onClose: (() => void) | null = null;
+  private activeTable: RankedTable | null = null;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
+  private lastTabIndex = 0;
+  private lastRangeIndex = 1;
 
   constructor(summaries: StatsSummary[], onClose?: () => void) {
     this.summaries = summaries;
@@ -430,32 +433,73 @@ export class Dashboard {
       const remainingH = Math.max(8, 15);
       const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
       lines.push(...chartLines);
-    } else if (this.tabBar.activeIndex === 1) {
-      // Languages tab: ranked table
-      if (this.currentSummary.languages.length === 0) {
-        lines.push("");
-        lines.push("  No language data for this time range");
-        lines.push("");
-      } else {
-        const langColumns: ColumnDef[] = [
-          { header: "Language", width: 20 },
-          { header: "Lines", width: 10 },
-          { header: "Edits", width: 10 },
-        ];
-        const langRows = this.currentSummary.languages.map((l) => [
-          l.language,
-          String(l.lines),
-          String(l.edits),
-        ]);
-        const tableH = Math.max(5, 15);
-        const tableLines = new RankedTable(langColumns, langRows, tableH).render(width);
-        lines.push(...tableLines);
+    } else if (this.tabBar.activeIndex === 1 || this.tabBar.activeIndex === 2 || this.tabBar.activeIndex === 3) {
+      // Table tabs: Languages (1), Models (2), Projects+Tools (3)
+      const tabChanged = this.tabBar.activeIndex !== this.lastTabIndex;
+      const rangeChanged = this.rangeSelector.selectedIndex !== this.lastRangeIndex;
+      if (tabChanged || rangeChanged) {
+        this.activeTable = null;
       }
-    } else {
-      // Models, Projects+Tools tabs: placeholder
-      lines.push("");
-      lines.push("  Coming soon");
-      lines.push("");
+      this.lastTabIndex = this.tabBar.activeIndex;
+      this.lastRangeIndex = this.rangeSelector.selectedIndex;
+
+      if (this.tabBar.activeIndex === 1) {
+        // Languages tab
+        if (this.currentSummary.languages.length === 0) {
+          lines.push("");
+          lines.push("  No language data for this time range");
+          lines.push("");
+          this.activeTable = null;
+        } else if (!this.activeTable) {
+          const langColumns: ColumnDef[] = [
+            { header: "Language", width: 20 },
+            { header: "Lines", width: 10 },
+            { header: "Edits", width: 10 },
+          ];
+          const langRows = this.currentSummary.languages.map((l) => [
+            l.language,
+            String(l.lines),
+            String(l.edits),
+          ]);
+          const tableH = Math.max(5, 15);
+          this.activeTable = new RankedTable(langColumns, langRows, tableH);
+        }
+        if (this.activeTable) {
+          const tableLines = this.activeTable.render(width);
+          lines.push(...tableLines);
+        }
+      } else if (this.tabBar.activeIndex === 2) {
+        // Models tab
+        if (this.currentSummary.models.length === 0) {
+          lines.push("");
+          lines.push("  No model data for this time range");
+          lines.push("");
+          this.activeTable = null;
+        } else if (!this.activeTable) {
+          const modelColumns: ColumnDef[] = [
+            { header: "Model", width: 20 },
+            { header: "Cost", width: 10 },
+            { header: "Calls", width: 10 },
+          ];
+          const modelRows = this.currentSummary.models.map((m) => [
+            formatModelName(m.model),
+            `$${m.cost.toFixed(2)}`,
+            String(m.calls),
+          ]);
+          const tableH = Math.max(5, 15);
+          this.activeTable = new RankedTable(modelColumns, modelRows, tableH);
+        }
+        if (this.activeTable) {
+          const tableLines = this.activeTable.render(width);
+          lines.push(...tableLines);
+        }
+      } else {
+        // Projects + Tools (index 3) — placeholder
+        lines.push("");
+        lines.push("  Coming soon");
+        lines.push("");
+        this.activeTable = null;
+      }
     }
 
     // Footer
@@ -480,11 +524,22 @@ export class Dashboard {
       return true;
     }
 
-    // Range selector input (up/down/enter)
-    if (matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) {
+    // Range selector input (up/down/enter) — only on Overview tab
+    if ((matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) && this.tabBar.activeIndex === 0) {
       this.rangeSelector.handleInput(data);
       this.invalidate();
       return true;
+    }
+
+    // Table scrolling (up/down) — on table tabs
+    if (matchesKey(data, "up") || matchesKey(data, "down")) {
+      if (this.activeTable) {
+        this.activeTable.handleInput(data);
+        this.invalidate();
+        return true;
+      }
+      // Even without a table (empty state), consume the event on table tabs
+      if (this.tabBar.activeIndex >= 1) return true;
     }
 
     return false;
@@ -496,6 +551,21 @@ export class Dashboard {
     this.tabBar.invalidate();
     this.rangeSelector.invalidate();
   }
+}
+
+// ---- Model name formatting ----
+
+export function formatModelName(raw: string): string {
+  // Strip known vendor prefixes
+  let name = raw.replace(/^(claude|deepseek|gemini)-/i, "");
+
+  // Strip date suffix (YYYYMMDD or YYYY-MM-DD)
+  name = name.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+
+  // Replace separators with spaces, title case each word
+  return name
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ---- LoadingView ----
