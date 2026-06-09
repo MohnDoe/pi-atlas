@@ -2,12 +2,17 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { Dashboard } from "./components/Dashboard";
+import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
 import { loadAggregate, summarize } from "./engine";
 import { StatsTheme } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
+
+/** Minimum terminal dimensions for popup mode. Below this, full-screen is used. */
+const MIN_POPUP_WIDTH = 60;
+const MIN_POPUP_HEIGHT = 20;
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("usage", {
@@ -44,16 +49,32 @@ export default function (pi: ExtensionAPI) {
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 
-      await ctx.ui.custom((_tui, theme, _kb, done) => {
+      // Popup mode: floating overlay above pi.dev (terminal ≥ 60×20)
+      // Full-screen mode: same behaviour as before (terminal < 60×20)
+      const termWidth = process.stdout.columns || 80;
+      const termHeight = process.stdout.rows || 24;
+      const usePopup = termWidth >= MIN_POPUP_WIDTH && termHeight >= MIN_POPUP_HEIGHT;
+
+      await ctx.ui.custom((tui, theme, _kb, done) => {
         const dashboard = new Dashboard(summaries, theme as StatsTheme, () => done(undefined));
+        const popup = new DashboardPopup(dashboard);
         return {
-          render: (w: number) => dashboard.render(w),
+          render: (w: number) => popup.render(w),
           handleInput: (d: string) => {
-            dashboard.handleInput(d);
+            popup.handleInput(d);
+            tui.requestRender();
           },
-          invalidate: () => dashboard.invalidate(),
+          invalidate: () => popup.invalidate(),
         };
-      });
+      }, usePopup ? {
+        overlay: true,
+        overlayOptions: {
+          width: "80%",
+          maxHeight: "80%",
+          anchor: "center",
+          margin: 1,
+        },
+      } : {});
     },
   });
 }
