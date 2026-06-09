@@ -166,7 +166,7 @@ function parseSessionEntry(entry: SessionEntry): DayAgg {
 
 // ---- Message entry ----
 
-function parseUserMessage(): DayAgg {
+export function parseUserMessage(): DayAgg {
   const day = emptyDay("");
   day.userMsgs = 1;
   return day;

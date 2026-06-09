@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
+import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseUserMessage, projectNameFromCwd } from "../parser";
 import type { AssistantMessageBody, MessageEntry, SessionEntry } from "../types";
 
 describe("langFromPath", () => {
@@ -100,6 +100,15 @@ describe("emptyDay", () => {
     expect(a).not.toBe(b);
     expect(a.langLines).not.toBe(b.langLines);
     expect(a.toolCount).not.toBe(b.toolCount);
+  });
+});
+
+describe("parseUserMessage", () => {
+  it("returns a DayAgg with userMsgs: 1", () => {
+    const day = parseUserMessage();
+    expect(day.userMsgs).toBe(1);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
   });
 });
 
