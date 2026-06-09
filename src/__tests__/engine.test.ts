@@ -1,22 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { summarize, computeSignature, writeCache, readCache, isCacheValid, loadAggregate } from "./engine.js";
-import type { DayAgg, CachePayload } from "./types.js";
-import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-function day(date: string, overrides: Partial<DayAgg> = {}): DayAgg {
-  return {
-    date,
-    cost: 0, inTok: 0, outTok: 0, crTok: 0, cwTok: 0,
-    userMsgs: 0, asstMsgs: 0, toolResults: 0,
-    sessionIds: new Set(),
-    langLines: {}, langEdits: {}, modelCost: {},
-    modelCount: {}, projectCost: {},
-    projectSessions: {}, toolCount: {},
-    ...overrides,
-  };
-}
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { computeSignature, loadAggregate, readCache, summarize, writeCache } from "../engine.js";
+import { emptyDay, mergeDay } from "../parser.js";
+import { DayAgg } from "../types.js";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {
@@ -35,36 +23,38 @@ describe("summarize", () => {
   });
 
   it("computes KPIs from a single day", () => {
-    const days = [
-      day("2026-06-08", {
-        cost: 1.50,
-        sessionIds: new Set(["s1", "s2"]),
-        userMsgs: 3,
-        asstMsgs: 5,
-        toolResults: 4,
-        inTok: 1000,
-        outTok: 500,
-        crTok: 100,
-        cwTok: 50,
-        modelCost: { "sonnet": 1.00, "haiku": 0.50 },
-        modelCount: { "sonnet": 2, "haiku": 3 },
-        toolCount: { "bash": 2, "read": 2 },
-        langLines: { "typescript": 100 },
-        langEdits: { "typescript": 5 },
-      }),
-    ];
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    mergeDay(d, {
+      ...emptyDay(today),
+      cost: 1.5,
+      sessionIds: new Set(["s1", "s2"]),
+      userMsgs: 3,
+      asstMsgs: 5,
+      toolResults: 4,
+      inTok: 1000,
+      outTok: 500,
+      crTok: 100,
+      cwTok: 50,
+      modelCost: { sonnet: 1.0, haiku: 0.5 },
+      modelCount: { sonnet: 2, haiku: 3 },
+      toolCount: { bash: 2, read: 2 },
+      langLines: { typescript: 100 },
+      langEdits: { typescript: 5 },
+    });
+    const days = [d];
 
     const s = summarize(days, "1d");
-    expect(s.totalCost).toBe(1.50);
+    expect(s.totalCost).toBe(1.5);
     expect(s.sessionCount).toBe(2);
     expect(s.totalMessages).toBe(12); // 3+5+4
     expect(s.totalTokens).toBe(1650); // 1000+500+100+50
     expect(s.daysActive).toBe(1);
-    expect(s.avgCostPerDay).toBe(1.50);
+    expect(s.avgCostPerDay).toBe(1.5);
 
     expect(s.models).toHaveLength(2);
-    expect(s.models[0]).toEqual({ model: "sonnet", cost: 1.00, calls: 2 });
-    expect(s.models[1]).toEqual({ model: "haiku", cost: 0.50, calls: 3 });
+    expect(s.models[0]).toEqual({ model: "sonnet", cost: 1.0, calls: 2 });
+    expect(s.models[1]).toEqual({ model: "haiku", cost: 0.5, calls: 3 });
 
     expect(s.tools).toHaveLength(2);
     expect(s.tools).toContainEqual({ tool: "bash", count: 2 });
@@ -78,11 +68,16 @@ describe("summarize", () => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const eightDaysAgo = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
 
-    const days = [
-      day(today, { cost: 1, sessionIds: new Set(["a"]) }),
-      day(yesterday, { cost: 2, sessionIds: new Set(["b"]) }),
-      day(eightDaysAgo, { cost: 3, sessionIds: new Set(["c"]) }),
-    ];
+    const d1 = emptyDay(today);
+    d1.cost = 1;
+    d1.sessionIds = new Set(["a"]);
+    const d2 = emptyDay(yesterday);
+    d2.cost = 2;
+    d2.sessionIds = new Set(["b"]);
+    const d3 = emptyDay(eightDaysAgo);
+    d3.cost = 3;
+    d3.sessionIds = new Set(["c"]);
+    const days = [d1, d2, d3];
 
     // "1d" - only today
     expect(summarize(days, "1d").totalCost).toBe(1);
@@ -104,10 +99,11 @@ describe("summarize", () => {
   });
 
   it("computes daily spend with zero-fill for gaps", () => {
-    const days = [
-      day("2026-06-05", { cost: 1 }),
-      day("2026-06-08", { cost: 2 }),
-    ];
+    const d1 = emptyDay("2026-06-05");
+    d1.cost = 1;
+    const d2 = emptyDay("2026-06-08");
+    d2.cost = 2;
+    const days = [d1, d2];
 
     const s = summarize(days, "7d");
     expect(s.dailySpend.length).toBeGreaterThanOrEqual(4);
@@ -127,13 +123,14 @@ describe("summarize", () => {
   });
 
   it("sorts models by cost descending, tools by count descending", () => {
-    const days = [
-      day("2026-06-08", {
-        modelCost: { cheap: 0.10, expensive: 5.00, mid: 1.00 },
-        modelCount: { cheap: 10, expensive: 2, mid: 5 },
-        toolCount: { bash: 1, read: 10, edit: 5 },
-      }),
-    ];
+    const d = emptyDay("2026-06-08");
+    mergeDay(d, {
+      ...emptyDay(""),
+      modelCost: { cheap: 0.1, expensive: 5.0, mid: 1.0 },
+      modelCount: { cheap: 10, expensive: 2, mid: 5 },
+      toolCount: { bash: 1, read: 10, edit: 5 },
+    });
+    const days = [d];
 
     const s = summarize(days, "All");
     expect(s.models.map((m) => m.model)).toEqual(["expensive", "mid", "cheap"]);
@@ -142,10 +139,11 @@ describe("summarize", () => {
 
   it("reports todayCost separately", () => {
     const today = new Date().toISOString().slice(0, 10);
-    const days = [
-      day("2026-01-01", { cost: 100 }),
-      day(today, { cost: 5 }),
-    ];
+    const d1 = emptyDay("2026-01-01");
+    d1.cost = 100;
+    const todayAgg = emptyDay(today);
+    todayAgg.cost = 5;
+    const days = [d1, todayAgg];
 
     const s = summarize(days, "All");
     expect(s.todayCost).toBe(5);
@@ -234,9 +232,10 @@ describe("cache read/write", () => {
   });
 
   it("writes and reads cache", async () => {
-    const days: DayAgg[] = [
-      day("2026-06-08", { cost: 1.5, sessionIds: new Set(["s1"]) }),
-    ];
+    const d = emptyDay("2026-06-08");
+    d.cost = 1.5;
+    d.sessionIds = new Set(["s1"]);
+    const days: DayAgg[] = [d];
     await writeCache(cachePath, "sig-abc", days);
 
     const payload = await readCache(cachePath);
@@ -286,10 +285,25 @@ describe("loadAggregate", () => {
   it("parses session files and returns DayAgg array", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await writeFile(join(subDir, "s1.jsonl"), [
-      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
-      JSON.stringify({ type: "message", id: "m1", parentId: "p", timestamp: "2026-06-08T10:01:00.000Z", message: { role: "user", content: [{ type: "text", text: "hi" }] } }),
-    ].join("\n"));
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:01:00.000Z",
+          message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        }),
+      ].join("\n"),
+    );
 
     const days = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(1);
@@ -300,9 +314,18 @@ describe("loadAggregate", () => {
   it("caches results and reuses them", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await writeFile(join(subDir, "s1.jsonl"), [
-      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
-    ].join("\n"));
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+      ].join("\n"),
+    );
 
     const days1 = await loadAggregate(cachePath, sessionsDir);
     expect(days1).toHaveLength(1);
@@ -315,16 +338,34 @@ describe("loadAggregate", () => {
   it("invalidates cache when session files change", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await writeFile(join(subDir, "s1.jsonl"), [
-      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
-    ].join("\n"));
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+      ].join("\n"),
+    );
 
     await loadAggregate(cachePath, sessionsDir);
 
     // Add a new file
-    await writeFile(join(subDir, "s2.jsonl"), [
-      JSON.stringify({ type: "session", version: 3, id: "s2", timestamp: "2026-06-09T10:00:00.000Z", cwd: "/home/doe/proj-b" }),
-    ].join("\n"));
+    await writeFile(
+      join(subDir, "s2.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s2",
+          timestamp: "2026-06-09T10:00:00.000Z",
+          cwd: "/home/doe/proj-b",
+        }),
+      ].join("\n"),
+    );
 
     const days = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(2); // two days now
@@ -333,9 +374,18 @@ describe("loadAggregate", () => {
   it("calls onProgress during parsing", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await writeFile(join(subDir, "s1.jsonl"), [
-      JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-a" }),
-    ].join("\n"));
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+      ].join("\n"),
+    );
 
     const progress: number[] = [];
     await loadAggregate(cachePath, sessionsDir, false, (p) => progress.push(p));
