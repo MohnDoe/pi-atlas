@@ -38,11 +38,17 @@ export class TabBar {
 
   handleInput(data: string): boolean {
     if (matchesKey(data, "left")) {
-      if (this.activeIndex > 0) { this.activeIndex--; this.invalidate(); }
+      if (this.activeIndex > 0) {
+        this.activeIndex--;
+        this.invalidate();
+      }
       return true;
     }
     if (matchesKey(data, "right")) {
-      if (this.activeIndex < this.tabs.length - 1) { this.activeIndex++; this.invalidate(); }
+      if (this.activeIndex < this.tabs.length - 1) {
+        this.activeIndex++;
+        this.invalidate();
+      }
       return true;
     }
     return false;
@@ -87,11 +93,17 @@ export class RangeSelector {
 
   handleInput(data: string): boolean {
     if (matchesKey(data, "up")) {
-      if (this.selectedIndex > 0) { this.selectedIndex--; this.invalidate(); }
+      if (this.selectedIndex > 0) {
+        this.selectedIndex--;
+        this.invalidate();
+      }
       return true;
     }
     if (matchesKey(data, "down")) {
-      if (this.selectedIndex < this.ranges.length - 1) { this.selectedIndex++; this.invalidate(); }
+      if (this.selectedIndex < this.ranges.length - 1) {
+        this.selectedIndex++;
+        this.invalidate();
+      }
       return true;
     }
     if (matchesKey(data, "enter")) return true;
@@ -125,7 +137,10 @@ function fmtCost(n: number): string {
   return "$" + n.toFixed(2);
 }
 
-interface CardDef { label: string; value: string }
+interface CardDef {
+  label: string;
+  value: string;
+}
 
 export class KpiCards {
   private cards: CardDef[];
@@ -176,7 +191,20 @@ export class KpiCards {
 // ---- Bar Chart ----
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 export class BarChart {
   private data: DaySpend[];
@@ -431,9 +459,17 @@ export class Dashboard {
 
       // Bar chart fills remaining space
       const remainingH = Math.max(8, 15);
-      const chartLines = new BarChart(this.currentSummary.dailySpend, ["1d","7d","30d","All"][this.rangeSelector.selectedIndex], remainingH).render(width);
+      const chartLines = new BarChart(
+        this.currentSummary.dailySpend,
+        ["1d", "7d", "30d", "All"][this.rangeSelector.selectedIndex],
+        remainingH,
+      ).render(width);
       lines.push(...chartLines);
-    } else if (this.tabBar.activeIndex === 1 || this.tabBar.activeIndex === 2 || this.tabBar.activeIndex === 3) {
+    } else if (
+      this.tabBar.activeIndex === 1 ||
+      this.tabBar.activeIndex === 2 ||
+      this.tabBar.activeIndex === 3
+    ) {
       // Table tabs: Languages (1), Models (2), Projects+Tools (3)
       const tabChanged = this.tabBar.activeIndex !== this.lastTabIndex;
       const rangeChanged = this.rangeSelector.selectedIndex !== this.lastRangeIndex;
@@ -525,7 +561,10 @@ export class Dashboard {
     }
 
     // Range selector input (up/down/enter) — only on Overview tab
-    if ((matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) && this.tabBar.activeIndex === 0) {
+    if (
+      (matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) &&
+      this.tabBar.activeIndex === 0
+    ) {
       this.rangeSelector.handleInput(data);
       this.invalidate();
       return true;
@@ -556,16 +595,11 @@ export class Dashboard {
 // ---- Model name formatting ----
 
 export function formatModelName(raw: string): string {
-  // Strip known vendor prefixes
-  let name = raw.replace(/^(claude|deepseek|gemini)-/i, "");
-
   // Strip date suffix (YYYYMMDD or YYYY-MM-DD)
-  name = name.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  let name = raw.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
 
   // Replace separators with spaces, title case each word
-  return name
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ---- LoadingView ----
@@ -594,12 +628,7 @@ export class LoadingView {
     const filled = Math.round((this.progress / 100) * barW);
     const bar = "█".repeat(filled) + "░".repeat(barW - filled);
 
-    const lines = [
-      "",
-      `  ${this.message}`,
-      `  [${bar}] ${this.progress}%`,
-      "",
-    ];
+    const lines = ["", `  ${this.message}`, `  [${bar}] ${this.progress}%`, ""];
 
     this.cachedLines = lines;
     this.cachedWidth = width;

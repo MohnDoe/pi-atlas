@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { TabBar, RangeSelector, KpiCards, BarChart, Dashboard, LoadingView, RankedTable, formatModelName } from "../components";
+import {
+  TabBar,
+  RangeSelector,
+  KpiCards,
+  BarChart,
+  Dashboard,
+  LoadingView,
+  RankedTable,
+  formatModelName,
+} from "../components";
 
 function visibleLength(s: string): number {
   return s.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -346,11 +355,7 @@ describe("RankedTable", () => {
   });
 
   it("does not scroll past start", () => {
-    const manyRows = Array.from({ length: 5 }, (_, i) => [
-      `Lang${i}`,
-      "100",
-      "10",
-    ]);
+    const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
     const table = new RankedTable(columns, manyRows, 10);
     // All rows fit, scrolling up should not do anything
     table.handleInput("\x1b[A");
@@ -359,11 +364,7 @@ describe("RankedTable", () => {
   });
 
   it("does not scroll past end", () => {
-    const manyRows = Array.from({ length: 5 }, (_, i) => [
-      `Lang${i}`,
-      "100",
-      "10",
-    ]);
+    const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
     const table = new RankedTable(columns, manyRows, 6); // 5 visible data rows, 5 total
     // Scroll all the way down
     for (let i = 0; i < 10; i++) table.handleInput("\x1b[B");
@@ -383,11 +384,7 @@ describe("RankedTable", () => {
   });
 
   it("renders rank numbers continuously respecting scroll offset", () => {
-    const manyRows = Array.from({ length: 20 }, (_, i) => [
-      `Lang${i}`,
-      "100",
-      "10",
-    ]);
+    const manyRows = Array.from({ length: 20 }, (_, i) => [`Lang${i}`, "100", "10"]);
     const table = new RankedTable(columns, manyRows, 6);
 
     // Scroll down a few times
@@ -402,20 +399,11 @@ describe("RankedTable", () => {
 });
 
 describe("formatModelName", () => {
-  it("strips claude- prefix and date suffix", () => {
-    expect(formatModelName("claude-sonnet-4-20250514")).toBe("Sonnet 4");
-  });
-
-  it("strips deepseek- prefix", () => {
-    expect(formatModelName("deepseek-v4-pro")).toBe("V4 Pro");
-  });
-
-  it("strips gemini- prefix", () => {
-    expect(formatModelName("gemini-2.5-pro")).toBe("2.5 Pro");
-  });
-
-  it("handles model name without prefix or suffix", () => {
-    expect(formatModelName("claude-haiku-3.5")).toBe("Haiku 3.5");
+  it("handles standard model names", () => {
+    expect(formatModelName("deepseek-v4-pro")).toBe("Deepseek V4 Pro");
+    expect(formatModelName("llama-3-70b")).toBe("Llama 3 70b");
+    expect(formatModelName("claude-haiku-3.5")).toBe("Claude Haiku 3.5");
+    expect(formatModelName("gemini-2.5-pro")).toBe("Gemini 2.5 Pro");
   });
 
   it("strips 8-digit date suffix", () => {
@@ -424,10 +412,6 @@ describe("formatModelName", () => {
 
   it("strips YYYY-MM-DD date suffix", () => {
     expect(formatModelName("some-model-2025-05-14")).toBe("Some Model");
-  });
-
-  it("handles model with no known prefix", () => {
-    expect(formatModelName("llama-3-70b")).toBe("Llama 3 70b");
   });
 });
 
@@ -465,7 +449,14 @@ describe("Dashboard", () => {
   });
 
   it("shows 'No sessions found' when no session data exists", () => {
-    const zeroSummary = { ...makeSummary(), totalCost: 0, sessionCount: 0, totalMessages: 0, totalTokens: 0, dailySpend: [] };
+    const zeroSummary = {
+      ...makeSummary(),
+      totalCost: 0,
+      sessionCount: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      dailySpend: [],
+    };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
     const dash = new Dashboard(summaries);
     const lines = dash.render(80);
@@ -474,8 +465,15 @@ describe("Dashboard", () => {
   });
 
   it("shows 'No data for this time range' when current range is empty", () => {
-    const dataSummary = { ...makeSummary(), totalCost: 5.00, sessionCount: 3 };
-    const zeroSummary = { ...makeSummary(), totalCost: 0, sessionCount: 0, totalMessages: 0, totalTokens: 0, dailySpend: [] };
+    const dataSummary = { ...makeSummary(), totalCost: 5.0, sessionCount: 3 };
+    const zeroSummary = {
+      ...makeSummary(),
+      totalCost: 0,
+      sessionCount: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      dailySpend: [],
+    };
     // 1d range (index 0) empty, others have data
     const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
     const dash = new Dashboard(summaries);
