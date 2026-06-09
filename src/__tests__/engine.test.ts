@@ -148,6 +148,99 @@ describe("summarize", () => {
     const s = summarize(days, "All");
     expect(s.todayCost).toBe(5);
   });
+
+  it("returns todayCost 0 when today is not in filtered range", () => {
+    const d1 = emptyDay("2026-06-01");
+    d1.cost = 10;
+    d1.sessionIds = new Set(["s1"]);
+    const days = [d1];
+
+    // 1d range filters to today only, which has no data
+    const s = summarize(days, "1d");
+    expect(s.todayCost).toBe(0);
+    expect(s.totalCost).toBe(0);
+  });
+
+  it("dailySpend for All range is sorted dates without zero-fill", () => {
+    const d1 = emptyDay("2026-06-01");
+    d1.cost = 1;
+    d1.sessionIds = new Set(["a"]);
+    const d2 = emptyDay("2026-06-05");
+    d2.cost = 5;
+    d2.sessionIds = new Set(["b"]);
+    const d3 = emptyDay("2026-06-10");
+    d3.cost = 10;
+    d3.sessionIds = new Set(["c"]);
+    const days = [d3, d1, d2]; // unsorted input
+
+    const s = summarize(days, "All");
+    // All range does NOT zero-fill gaps — returns only days with data
+    expect(s.dailySpend).toHaveLength(3);
+    expect(s.dailySpend[0]).toEqual({ date: "2026-06-01", cost: 1 });
+    expect(s.dailySpend[1]).toEqual({ date: "2026-06-05", cost: 5 });
+    expect(s.dailySpend[2]).toEqual({ date: "2026-06-10", cost: 10 });
+  });
+
+  it("computes all KPIs for multiple-day 7d range", () => {
+    const d1 = emptyDay("2026-06-05");
+    mergeDay(d1, {
+      ...emptyDay(""),
+      cost: 2.5,
+      sessionIds: new Set(["s1"]),
+      userMsgs: 5,
+      asstMsgs: 8,
+      toolResults: 3,
+      inTok: 500,
+      outTok: 200,
+      crTok: 10,
+      cwTok: 5,
+      modelCost: { sonnet: 2.0, haiku: 0.5 },
+      modelCount: { sonnet: 4, haiku: 2 },
+      toolCount: { bash: 3, read: 2 },
+      langLines: { TypeScript: 100, Python: 50 },
+      langEdits: { TypeScript: 3, Python: 1 },
+    });
+    const d2 = emptyDay("2026-06-06");
+    mergeDay(d2, {
+      ...emptyDay(""),
+      cost: 1.5,
+      sessionIds: new Set(["s2"]),
+      userMsgs: 3,
+      asstMsgs: 4,
+      toolResults: 1,
+      inTok: 300,
+      outTok: 100,
+      crTok: 0,
+      cwTok: 0,
+      modelCost: { sonnet: 1.5 },
+      modelCount: { sonnet: 3 },
+      toolCount: { edit: 1, write: 1 },
+      langLines: { Python: 200 },
+      langEdits: { Python: 2 },
+    });
+    // June 05-08 are within 7d range (assuming today is June 08+)
+    const days = [d1, d2];
+
+    const s = summarize(days, "7d");
+    expect(s.totalCost).toBe(4.0);
+    expect(s.sessionCount).toBe(2);
+    expect(s.totalMessages).toBe(24); // 5+8+3 + 3+4+1
+    expect(s.totalTokens).toBe(1115); // 500+200+10+5 + 300+100
+    expect(s.daysActive).toBe(2);
+    expect(s.avgCostPerDay).toBeCloseTo(2.0);
+
+    // Languages sorted by lines descending
+    expect(s.languages).toEqual([
+      { language: "Python", lines: 250, edits: 3 },
+      { language: "TypeScript", lines: 100, edits: 3 },
+    ]);
+
+    // Models sorted by cost
+    expect(s.models).toEqual([
+      { model: "sonnet", cost: 3.5, calls: 7 },
+      { model: "haiku", cost: 0.5, calls: 2 },
+    ]);
+  });
 });
 
 describe("computeSignature", () => {
