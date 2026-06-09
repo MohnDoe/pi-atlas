@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd } from "../parser";
+import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
 import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
 
 describe("langFromPath", () => {
@@ -190,6 +190,153 @@ describe("detectLanguage", () => {
     const day = detectLanguage("edit", undefined);
     expect(day.langLines).toEqual({});
     expect(day.langEdits).toEqual({});
+  });
+});
+
+describe("parseAssistantMessage", () => {
+  it("counts one assistant message and usage tokens", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [{ type: "text", text: "hello" }],
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 10,
+        cacheWrite: 5,
+        totalTokens: 165,
+      },
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.inTok).toBe(100);
+    expect(day.outTok).toBe(50);
+    expect(day.crTok).toBe(10);
+    expect(day.cwTok).toBe(5);
+  });
+
+  it("records model cost and count when both model and cost present", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [{ type: "text", text: "ok" }],
+      model: "deepseek-v4-pro",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+      },
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.cost).toBe(0.003);
+    expect(day.modelCost["deepseek-v4-pro"]).toBe(0.003);
+    expect(day.modelCount["deepseek-v4-pro"]).toBe(1);
+  });
+
+  it("skips model cost when model is missing", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [{ type: "text", text: "ok" }],
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+      },
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.modelCost).toEqual({});
+    expect(day.modelCount).toEqual({});
+  });
+
+  it("counts tool calls from content blocks", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [
+        { type: "toolCall", id: "c1", name: "read", arguments: { path: "/f" } },
+        { type: "toolCall", id: "c2", name: "bash", arguments: { command: "ls" } },
+        { type: "toolCall", id: "c3", name: "read", arguments: { path: "/g" } },
+      ],
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.toolCount["read"]).toBe(2);
+    expect(day.toolCount["bash"]).toBe(1);
+  });
+
+  it("detects language from edit/write tool calls", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [
+        {
+          type: "toolCall",
+          id: "c1",
+          name: "edit",
+          arguments: { path: "/src/foo.ts", edits: [{ newText: "abc" }] },
+        },
+        {
+          type: "toolCall",
+          id: "c2",
+          name: "write",
+          arguments: { path: "/src/bar.rs", content: "fn main() {}" },
+        },
+      ],
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.langLines["TypeScript"]).toBe(3);
+    expect(day.langEdits["TypeScript"]).toBe(1);
+    expect(day.langLines["Rust"]).toBe(12);
+  });
+
+  it("attributes cost to projects in sessionProject", () => {
+    sessionProject.clear();
+    sessionProject.set("s1", "alpha");
+    sessionProject.set("s2", "beta");
+
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [{ type: "text", text: "ok" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
+      },
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.projectCost["alpha"]).toBe(0.05);
+    expect(day.projectCost["beta"]).toBe(0.05);
+  });
+
+  it("handles missing usage gracefully", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [{ type: "text", text: "hi" }],
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.inTok).toBe(0);
+    expect(day.cost).toBe(0);
+  });
+
+  it("handles missing content gracefully", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+      },
+    };
+    const day = parseAssistantMessage(msg);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.toolCount).toEqual({});
   });
 });
 

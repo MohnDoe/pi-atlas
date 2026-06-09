@@ -82,7 +82,7 @@ export function projectNameFromCwd(cwd: string): string {
 // ---- Day helpers ----
 
 // Tracks session ID → project name for cost attribution
-const sessionProject: SessionProjectMap = new Map();
+export const sessionProject: SessionProjectMap = new Map();
 
 export function dateFromTimestamp(ts: string): string {
   return ts.slice(0, 10);
@@ -181,7 +181,7 @@ export function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
   return day;
 }
 
-function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
+export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   const day = emptyDay("");
   day.asstMsgs = 1;
 
