@@ -279,6 +279,48 @@ describe("parseSessionLogEntry", () => {
     expect(session.inTok).toBe(0);
   });
 
+  it("handles session entry without cwd", () => {
+    const day = parseSessionLogEntry({
+      type: "session" as const,
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-08T10:00:00.000Z",
+    })!;
+
+    expect(day.date).toBe("2026-06-08");
+    expect(day.sessionIds.has("s1")).toBe(true);
+    expect(Object.keys(day.projectCost).length).toBe(0);
+    expect(Object.keys(day.projectSessions).length).toBe(0);
+  });
+
+  it("handles assistant message with model but no cost", () => {
+    const day = parseSessionLogEntry({
+      type: "message" as const,
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "hi" }],
+        model: "deepseek-v4",
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+        },
+      },
+    })!;
+
+    expect(day.asstMsgs).toBe(1);
+    expect(day.inTok).toBe(100);
+    expect(day.outTok).toBe(50);
+    expect(day.cost).toBe(0);
+    expect(day.modelCost).toEqual({});
+    expect(day.modelCount).toEqual({});
+  });
+
   it("parses unknown file extensions as 'Other'", () => {
     const session = parseSessionLogEntry({
       type: "session" as const,
@@ -396,6 +438,54 @@ describe("mergeDay", () => {
     expect(a.projectSessions["proj1"]?.has("s1")).toBe(true);
     expect(a.projectSessions["proj1"]?.has("s2")).toBe(true);
   });
+
+  it("sums crTok and cwTok", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      crTok: 100,
+      cwTok: 200,
+    };
+
+    mergeDay(a, b);
+    expect(a.crTok).toBe(100);
+    expect(a.cwTok).toBe(200);
+  });
+
+  it("merges model cost and count records", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      modelCost: { "deepseek-v4": 0.05, "gpt-5": 0.10 },
+      modelCount: { "deepseek-v4": 3, "gpt-5": 1 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      modelCost: { "deepseek-v4": 0.03 },
+      modelCount: { "deepseek-v4": 2 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.modelCost).toEqual({ "deepseek-v4": 0.08, "gpt-5": 0.10 });
+    expect(a.modelCount).toEqual({ "deepseek-v4": 5, "gpt-5": 1 });
+  });
+
+  it("merges projectCost records", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      projectCost: { alpha: 1.5, beta: 2.0 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      projectCost: { alpha: 0.5, gamma: 3.0 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.projectCost).toEqual({ alpha: 2.0, beta: 2.0, gamma: 3.0 });
+  });
 });
 
 describe("parseFile", () => {
@@ -470,5 +560,69 @@ describe("parseFile", () => {
     const map = makeDayMap();
     parseFile(filePath, map);
     expect(map.size).toBe(0);
+  });
+
+  it("returns empty map for empty file", async () => {
+    const filePath = join(tmpDir, "empty.jsonl");
+    await writeFile(filePath, "");
+    const map = makeDayMap();
+    parseFile(filePath, map);
+    expect(map.size).toBe(0);
+  });
+
+  it("silently returns empty map for non-existent file", async () => {
+    const map = makeDayMap();
+    parseFile("/nonexistent/path/never.jsonl", map);
+    expect(map.size).toBe(0);
+  });
+
+  it("splits entries across multiple dates into separate day buckets", async () => {
+    const filePath = join(tmpDir, "multi-date.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: [{ type: "text", text: "hi" }] },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-06-09T10:00:00.000Z",
+        message: { role: "user", content: [{ type: "text", text: "bye" }] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = makeDayMap();
+    parseFile(filePath, map);
+
+    expect(map.size).toBe(2);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
+    expect(map.get("2026-06-09")?.userMsgs).toBe(1);
+  });
+
+  it("handles missing onWarning callback gracefully", async () => {
+    const filePath = join(tmpDir, "corrupt.jsonl");
+    const lines = [
+      "not valid json",
+      "still not json",
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: [{ type: "text", text: "ok" }] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = makeDayMap();
+    parseFile(filePath, map);
+
+    expect(map.size).toBe(1);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
   });
 });
