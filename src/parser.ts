@@ -150,7 +150,7 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
 
 // ---- Session entry ----
 
-function parseSessionEntry(entry: SessionEntry): DayAgg {
+export function parseSessionEntry(entry: SessionEntry): DayAgg {
   const day = emptyDay(dateFromTimestamp(entry.timestamp));
   day.sessionIds.add(entry.id);
 

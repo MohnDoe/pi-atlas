@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
+import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseAssistantMessage, parseFile, parseSessionEntry, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd, sessionProject } from "../parser";
 import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
 
 describe("langFromPath", () => {
@@ -337,6 +337,50 @@ describe("parseAssistantMessage", () => {
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
     expect(day.toolCount).toEqual({});
+  });
+});
+
+describe("parseSessionEntry", () => {
+  it("creates a DayAgg with session id and date", () => {
+    sessionProject.clear();
+    const entry: SessionEntry = {
+      type: "session",
+      version: 3,
+      id: "abc-123",
+      timestamp: "2026-06-09T10:00:00.000Z",
+    };
+    const day = parseSessionEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.sessionIds.has("abc-123")).toBe(true);
+  });
+
+  it("registers project from cwd in sessionProject", () => {
+    sessionProject.clear();
+    const entry: SessionEntry = {
+      type: "session",
+      version: 3,
+      id: "s1",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      cwd: "/home/doe/Work/dev/my-app",
+    };
+    const day = parseSessionEntry(entry);
+    expect(sessionProject.get("s1")).toBe("my-app");
+    expect(day.projectCost["my-app"]).toBe(0);
+    expect(day.projectSessions["my-app"]?.has("s1")).toBe(true);
+  });
+
+  it("skips project setup when cwd is missing", () => {
+    sessionProject.clear();
+    const entry: SessionEntry = {
+      type: "session",
+      version: 3,
+      id: "s2",
+      timestamp: "2026-06-09T10:00:00.000Z",
+    };
+    const day = parseSessionEntry(entry);
+    expect(sessionProject.has("s2")).toBe(false);
+    expect(day.projectCost).toEqual({});
+    expect(day.projectSessions).toEqual({});
   });
 });
 
