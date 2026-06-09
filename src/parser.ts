@@ -224,10 +224,7 @@ function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   return day;
 }
 
-function detectLanguage(
-  toolName: string,
-  args: Record<string, unknown> | undefined,
-): DayAgg {
+function detectLanguage(toolName: string, args: Record<string, unknown> | undefined): DayAgg {
   const day = emptyDay("");
   const path = args?.path as string | undefined;
   if (!path) return day;
@@ -271,9 +268,7 @@ function parseMessageEntry(entry: MessageEntry): DayAgg {
   return day;
 }
 
-// ---- Parse single entry ----
-
-export function parseEntry(entry: SessionLogEntry): DayAgg | null {
+export function parseSessionLogEntry(entry: SessionLogEntry): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
@@ -304,7 +299,7 @@ export function parseFile(
 
     try {
       const entry = JSON.parse(trimmed) as SessionLogEntry;
-      const result = parseEntry(entry);
+      const result = parseSessionLogEntry(entry);
       if (result) {
         const existing = map.get(result.date);
         if (existing) {
