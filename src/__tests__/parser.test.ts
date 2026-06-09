@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd } from "../parser";
+import { dateFromTimestamp, detectLanguage, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, parseToolResultMessage, parseUserMessage, projectNameFromCwd } from "../parser";
 import type { AssistantMessageBody, MessageEntry, SessionEntry, ToolResultMessageBody } from "../types";
 
 describe("langFromPath", () => {
@@ -132,6 +132,64 @@ describe("parseToolResultMessage", () => {
     const day = parseToolResultMessage(msg);
     expect(day.toolResults).toBe(1);
     expect(day.toolCount).toEqual({});
+  });
+});
+
+describe("detectLanguage", () => {
+  it("counts edit newText chars as langLines and increments langEdits", () => {
+    const day = detectLanguage("edit", {
+      path: "/src/foo.ts",
+      edits: [
+        { oldText: "x", newText: "abc" },
+        { oldText: "y", newText: "defg" },
+      ],
+    });
+    expect(day.langLines["TypeScript"]).toBe(7);
+    expect(day.langEdits["TypeScript"]).toBe(1);
+  });
+
+  it("counts write content length as langLines", () => {
+    const day = detectLanguage("write", {
+      path: "/src/lib.rs",
+      content: "fn main() {}",
+    });
+    expect(day.langLines["Rust"]).toBe(12);
+    expect(day.langEdits["Rust"]).toBeUndefined();
+  });
+
+  it("treats edits with no newText as zero chars", () => {
+    const day = detectLanguage("edit", {
+      path: "/src/foo.ts",
+      edits: [{ oldText: "x" }],
+    });
+    expect(day.langLines["TypeScript"]).toBeUndefined();
+    expect(day.langEdits["TypeScript"]).toBe(1);
+  });
+
+  it("handles non-array edits gracefully", () => {
+    const day = detectLanguage("edit", {
+      path: "/src/foo.ts",
+      edits: "not-an-array",
+    });
+    expect(day.langLines["TypeScript"]).toBeUndefined();
+    expect(day.langEdits["TypeScript"]).toBe(1);
+  });
+
+  it("handles missing content in write gracefully", () => {
+    const day = detectLanguage("write", { path: "/src/foo.py" });
+    expect(day.langLines["Python"]).toBeUndefined();
+  });
+
+  it("returns empty day when path is missing", () => {
+    const day = detectLanguage("write", {});
+    expect(day.langLines).toEqual({});
+    expect(day.langEdits).toEqual({});
+  });
+
+  it("returns empty day when args is undefined", () => {
+    const day = detectLanguage("edit", undefined);
+    expect(day.langLines).toEqual({});
+    expect(day.langEdits).toEqual({});
   });
 });
 

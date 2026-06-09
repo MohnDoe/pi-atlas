@@ -224,7 +224,7 @@ function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   return day;
 }
 
-function detectLanguage(toolName: string, args: Record<string, unknown> | undefined): DayAgg {
+export function detectLanguage(toolName: string, args: Record<string, unknown> | undefined): DayAgg {
   const day = emptyDay("");
   const path = args?.path as string | undefined;
   if (!path) return day;
