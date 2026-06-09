@@ -282,6 +282,10 @@ export function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
 ): Map<string, DayAgg> {
+  // Each JSONL file represents one session; reset global session→project
+  // tracking so costs from previous files don't leak across projects.
+  sessionProject.clear();
+
   const map = new Map<string, DayAgg>();
 
   let content: string;

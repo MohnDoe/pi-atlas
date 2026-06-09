@@ -1127,4 +1127,54 @@ describe("parseFile", () => {
     expect(map.size).toBe(1);
     expect(warnings).toBe(0);
   });
+
+  it("does not leak project costs across separate files", async () => {
+    const costMsg = (cost: number) => ({
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "ok" }],
+        model: "m",
+        usage: {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+        },
+      },
+    });
+
+    const fileA = join(tmpDir, "project-a.jsonl");
+    await writeFile(
+      fileA,
+      [
+        JSON.stringify({ type: "session", version: 3, id: "s-a", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-alpha" }),
+        JSON.stringify(costMsg(0.10)),
+      ].join("\n"),
+    );
+
+    const fileB = join(tmpDir, "project-b.jsonl");
+    await writeFile(
+      fileB,
+      [
+        JSON.stringify({ type: "session", version: 3, id: "s-b", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-beta" }),
+        JSON.stringify(costMsg(0.25)),
+      ].join("\n"),
+    );
+
+    // Parse each file separately
+    const mapA = parseFile(fileA);
+    const mapB = parseFile(fileB);
+
+    // File A's day should only have proj-alpha cost
+    const dayA = mapA.get("2026-06-08")!;
+    expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
+    expect(dayA.projectCost["proj-alpha"]).toBe(0.10);
+
+    // File B's day should only have proj-beta cost
+    const dayB = mapB.get("2026-06-08")!;
+    expect(Object.keys(dayB.projectCost)).toEqual(["proj-beta"]);
+    expect(dayB.projectCost["proj-beta"]).toBe(0.25);
+  });
 });
