@@ -68,7 +68,7 @@ const EXT_TO_LANG: Record<string, string> = {
   svelte: "Svelte",
 };
 
-function langFromPath(path: string): string {
+export function langFromPath(path: string): string {
   const ext = basename(path).split(".").pop()?.toLowerCase() ?? "";
   return EXT_TO_LANG[ext] ?? "Other";
 }

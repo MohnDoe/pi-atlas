@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { mergeDay, parseFile, parseSessionLogEntry } from "../parser";
+import { langFromPath, mergeDay, parseFile, parseSessionLogEntry } from "../parser";
 import type { AssistantMessageBody, DayAgg, MessageEntry, SessionEntry } from "../types";
 
 function emptyDay(date: string): DayAgg {
@@ -26,6 +26,49 @@ function emptyDay(date: string): DayAgg {
     toolCount: {},
   };
 }
+
+describe("langFromPath", () => {
+  it("maps .ts to TypeScript", () => {
+    expect(langFromPath("/src/foo.ts")).toBe("TypeScript");
+  });
+
+  it("maps .rs to Rust", () => {
+    expect(langFromPath("/src/lib.rs")).toBe("Rust");
+  });
+
+  it("maps .py to Python", () => {
+    expect(langFromPath("/app/main.py")).toBe("Python");
+  });
+
+  it("maps common web extensions", () => {
+    expect(langFromPath("/src/App.tsx")).toBe("TypeScript");
+    expect(langFromPath("/src/App.jsx")).toBe("JavaScript");
+    expect(langFromPath("/styles.css")).toBe("CSS");
+    expect(langFromPath("/index.html")).toBe("HTML");
+    expect(langFromPath("/data.json")).toBe("JSON");
+    expect(langFromPath("/config.yaml")).toBe("YAML");
+    expect(langFromPath("/README.md")).toBe("Markdown");
+  });
+
+  it("handles files without extension as 'Other'", () => {
+    expect(langFromPath("/src/Makefile")).toBe("Other");
+    expect(langFromPath("/src/justfile")).toBe("Other");
+  });
+
+  it("handles unknown extensions as 'Other'", () => {
+    expect(langFromPath("/data/file.xyz")).toBe("Other");
+    expect(langFromPath("/data/file.abcdef")).toBe("Other");
+  });
+
+  it("handles Dockerfile extension correctly", () => {
+    expect(langFromPath("/app/Dockerfile")).toBe("Dockerfile");
+  });
+
+  it("is case-insensitive for extension lookup", () => {
+    expect(langFromPath("/src/Foo.TS")).toBe("TypeScript");
+    expect(langFromPath("/src/Foo.PY")).toBe("Python");
+  });
+});
 
 describe("parseSessionLogEntry", () => {
   it("returns a DayAgg for a session entry", () => {
