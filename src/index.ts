@@ -1,15 +1,16 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadAggregate, summarize } from "./engine.js";
-import { Dashboard, LoadingView } from "./components.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { StatsTheme } from "./types.js";
+import { Dashboard } from "./components/Dashboard";
+import { LoadingView } from "./components/LoadingView";
+import { loadAggregate, summarize } from "./engine";
+import { StatsTheme } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("stats", {
+  pi.registerCommand("usage", {
     description: "Show pi usage statistics dashboard",
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) {

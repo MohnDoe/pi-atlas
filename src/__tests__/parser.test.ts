@@ -16,7 +16,7 @@ import {
   parseToolResultMessage,
   parseUserMessage,
   projectNameFromCwd,
-  sessionProject,
+  sessionProjectMap,
 } from "../parser";
 import type {
   AssistantMessageBody,
@@ -312,9 +312,9 @@ describe("parseAssistantMessage", () => {
   });
 
   it("attributes cost to projects in sessionProject", () => {
-    sessionProject.clear();
-    sessionProject.set("s1", "alpha");
-    sessionProject.set("s2", "beta");
+    sessionProjectMap.clear();
+    sessionProjectMap.set("s1", "alpha");
+    sessionProjectMap.set("s2", "beta");
 
     const msg: AssistantMessageBody = {
       role: "assistant",
@@ -363,7 +363,7 @@ describe("parseAssistantMessage", () => {
 
 describe("parseSessionEntry", () => {
   it("creates a DayAgg with session id and date", () => {
-    sessionProject.clear();
+    sessionProjectMap.clear();
     const entry: SessionEntry = {
       type: "session",
       version: 3,
@@ -376,7 +376,7 @@ describe("parseSessionEntry", () => {
   });
 
   it("registers project from cwd in sessionProject", () => {
-    sessionProject.clear();
+    sessionProjectMap.clear();
     const entry: SessionEntry = {
       type: "session",
       version: 3,
@@ -385,13 +385,13 @@ describe("parseSessionEntry", () => {
       cwd: "/home/doe/Work/dev/my-app",
     };
     const day = parseSessionEntry(entry);
-    expect(sessionProject.get("s1")).toBe("my-app");
+    expect(sessionProjectMap.get("s1")).toBe("my-app");
     expect(day.projectCost["my-app"]).toBe(0);
     expect(day.projectSessions["my-app"]?.has("s1")).toBe(true);
   });
 
   it("skips project setup when cwd is missing", () => {
-    sessionProject.clear();
+    sessionProjectMap.clear();
     const entry: SessionEntry = {
       type: "session",
       version: 3,
@@ -399,7 +399,7 @@ describe("parseSessionEntry", () => {
       timestamp: "2026-06-09T10:00:00.000Z",
     };
     const day = parseSessionEntry(entry);
-    expect(sessionProject.has("s2")).toBe(false);
+    expect(sessionProjectMap.has("s2")).toBe(false);
     expect(day.projectCost).toEqual({});
     expect(day.projectSessions).toEqual({});
   });
@@ -1087,11 +1087,7 @@ describe("parseFile", () => {
 
   it("returns empty map for file with only corrupt lines", async () => {
     const filePath = join(tmpDir, "all-corrupt.jsonl");
-    const lines = [
-      "not json at all",
-      "{also broken",
-      "still broken]",
-    ];
+    const lines = ["not json at all", "{also broken", "still broken]"];
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
@@ -1139,7 +1135,11 @@ describe("parseFile", () => {
         content: [{ type: "text", text: "ok" }],
         model: "m",
         usage: {
-          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
         },
       },
@@ -1149,8 +1149,14 @@ describe("parseFile", () => {
     await writeFile(
       fileA,
       [
-        JSON.stringify({ type: "session", version: 3, id: "s-a", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-alpha" }),
-        JSON.stringify(costMsg(0.10)),
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s-a",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-alpha",
+        }),
+        JSON.stringify(costMsg(0.1)),
       ].join("\n"),
     );
 
@@ -1158,7 +1164,13 @@ describe("parseFile", () => {
     await writeFile(
       fileB,
       [
-        JSON.stringify({ type: "session", version: 3, id: "s-b", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/home/doe/proj-beta" }),
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s-b",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-beta",
+        }),
         JSON.stringify(costMsg(0.25)),
       ].join("\n"),
     );
@@ -1170,7 +1182,7 @@ describe("parseFile", () => {
     // File A's day should only have proj-alpha cost
     const dayA = mapA.get("2026-06-08")!;
     expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
-    expect(dayA.projectCost["proj-alpha"]).toBe(0.10);
+    expect(dayA.projectCost["proj-alpha"]).toBe(0.1);
 
     // File B's day should only have proj-beta cost
     const dayB = mapB.get("2026-06-08")!;

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import type {
   AssistantMessageBody,
   DayAgg,
@@ -6,11 +8,7 @@ import type {
   SessionLogEntry,
   SessionProjectMap,
   ToolResultMessageBody,
-} from "./types.js";
-import { readFileSync } from "node:fs";
-import { basename } from "node:path";
-
-// ---- Language detection ----
+} from "./types";
 
 const EXT_TO_LANG: Record<string, string> = {
   ts: "TypeScript",
@@ -79,13 +77,30 @@ export function projectNameFromCwd(cwd: string): string {
   return basename(cwd);
 }
 
-// ---- Day helpers ----
-
 // Tracks session ID → project name for cost attribution
-export const sessionProject: SessionProjectMap = new Map();
+export const sessionProjectMap: SessionProjectMap = new Map();
 
 export function dateFromISOString(str: string): string {
   return str.slice(0, 10);
+}
+
+export function formatNumber(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
+}
+
+export function formatCost(n: number): string {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "k";
+  return "$" + n.toFixed(2);
+}
+
+export function formatModelName(raw: string): string {
+  // Strip date suffix (YYYYMMDD or YYYY-MM-DD)
+  let name = raw.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  // Replace separators with spaces, title case each word
+  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function emptyDay(date: string): DayAgg {
@@ -109,8 +124,6 @@ export function emptyDay(date: string): DayAgg {
     toolCount: {},
   };
 }
-
-// ---- Merge two DayAggs ----
 
 export function mergeDay(base: DayAgg, update: DayAgg): void {
   base.cost += update.cost;
@@ -148,23 +161,19 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   }
 }
 
-// ---- Session entry ----
-
 export function parseSessionEntry(entry: SessionEntry): DayAgg {
   const day = emptyDay(dateFromISOString(entry.timestamp));
   day.sessionIds.add(entry.id);
 
   if (entry.cwd) {
     const proj = projectNameFromCwd(entry.cwd);
-    sessionProject.set(entry.id, proj);
+    sessionProjectMap.set(entry.id, proj);
     day.projectCost[proj] = 0;
     day.projectSessions[proj] = new Set([entry.id]);
   }
 
   return day;
 }
-
-// ---- Message entry ----
 
 export function parseUserMessage(): DayAgg {
   const day = emptyDay("");
@@ -194,7 +203,7 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
     if (msg.usage.cost) {
       day.cost = msg.usage.cost.total;
 
-      const activeProjects = new Set(sessionProject.values());
+      const activeProjects = new Set(sessionProjectMap.values());
       for (const proj of activeProjects) {
         day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msg.usage.cost.total;
       }
@@ -287,7 +296,7 @@ export function parseFile(
 ): Map<string, DayAgg> {
   // Each JSONL file represents one session; reset global session→project
   // tracking so costs from previous files don't leak across projects.
-  sessionProject.clear();
+  sessionProjectMap.clear();
 
   const map = new Map<string, DayAgg>();
 

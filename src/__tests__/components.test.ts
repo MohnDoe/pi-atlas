@@ -2,19 +2,16 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  BarChart,
-  Dashboard,
-  formatModelName,
-  KpiCards,
-  LoadingView,
-  ProjectsToolsView,
-  RangeSelector,
-  RankedTable,
-  TabBar,
-} from "../components";
+import { BarChart } from "../components/BarChart";
+import { Dashboard } from "../components/Dashboard";
+import { KpiCards } from "../components/KpiCards";
+import { LoadingView } from "../components/LoadingView";
+import { ProjectsToolsView } from "../components/ProjectToolsView";
+import { RangeSelector } from "../components/RangeSelector";
+import { RankedTable } from "../components/RankedTable";
+import { TabBar } from "../components/TabBar";
 import { summarize } from "../engine";
-import { parseFile } from "../parser";
+import { formatModelName, parseFile } from "../parser";
 import type { DayAgg, StatsTheme } from "../types";
 
 /** Test theme that produces readable tags instead of ANSI escape codes */

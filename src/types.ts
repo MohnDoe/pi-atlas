@@ -1,12 +1,8 @@
-// ---- Theme ----
-
 export interface StatsTheme {
   fg: (color: string, text: string) => string;
   bg: (color: string, text: string) => string;
   bold: (text: string) => string;
 }
-
-// ---- Core data model ----
 
 export interface DayAgg {
   date: string; // "YYYY-MM-DD"
@@ -83,8 +79,6 @@ export interface SerializedDayAgg extends Omit<DayAgg, "sessionIds" | "projectSe
   sessionIds: string[];
   projectSessions: Record<string, string[]>;
 }
-
-// ---- Session log entry types ----
 
 export interface TextBlock {
   readonly type: "text";
