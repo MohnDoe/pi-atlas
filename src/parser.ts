@@ -88,7 +88,7 @@ export function dateFromTimestamp(ts: string): string {
   return ts.slice(0, 10);
 }
 
-function emptyDay(date: string): DayAgg {
+export function emptyDay(date: string): DayAgg {
   return {
     date,
     cost: 0,

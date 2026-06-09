@@ -2,30 +2,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { dateFromTimestamp, langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
-import type { AssistantMessageBody, DayAgg, MessageEntry, SessionEntry } from "../types";
-
-function emptyDay(date: string): DayAgg {
-  return {
-    date,
-    cost: 0,
-    inTok: 0,
-    outTok: 0,
-    crTok: 0,
-    cwTok: 0,
-    userMsgs: 0,
-    asstMsgs: 0,
-    toolResults: 0,
-    sessionIds: new Set(),
-    langLines: {},
-    langEdits: {},
-    modelCost: {},
-    modelCount: {},
-    projectCost: {},
-    projectSessions: {},
-    toolCount: {},
-  };
-}
+import { dateFromTimestamp, emptyDay, langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
+import type { AssistantMessageBody, MessageEntry, SessionEntry } from "../types";
 
 describe("langFromPath", () => {
   it("maps .ts to TypeScript", () => {
@@ -91,6 +69,37 @@ describe("dateFromTimestamp", () => {
 
   it("works on date-only", () => {
     expect(dateFromTimestamp("2026-12-31")).toBe("2026-12-31");
+  });
+});
+
+describe("emptyDay", () => {
+  it("creates a zeroed DayAgg with the given date", () => {
+    const day = emptyDay("2026-06-09");
+    expect(day.date).toBe("2026-06-09");
+    expect(day.cost).toBe(0);
+    expect(day.inTok).toBe(0);
+    expect(day.outTok).toBe(0);
+    expect(day.crTok).toBe(0);
+    expect(day.cwTok).toBe(0);
+    expect(day.userMsgs).toBe(0);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
+    expect(day.sessionIds.size).toBe(0);
+    expect(day.langLines).toEqual({});
+    expect(day.langEdits).toEqual({});
+    expect(day.modelCost).toEqual({});
+    expect(day.modelCount).toEqual({});
+    expect(day.projectCost).toEqual({});
+    expect(day.projectSessions).toEqual({});
+    expect(day.toolCount).toEqual({});
+  });
+
+  it("returns a new empty object each call", () => {
+    const a = emptyDay("2026-06-09");
+    const b = emptyDay("2026-06-09");
+    expect(a).not.toBe(b);
+    expect(a.langLines).not.toBe(b.langLines);
+    expect(a.toolCount).not.toBe(b.toolCount);
   });
 });
 
