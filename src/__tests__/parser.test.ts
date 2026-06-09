@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
+import { dateFromTimestamp, langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
 import type { AssistantMessageBody, DayAgg, MessageEntry, SessionEntry } from "../types";
 
 function emptyDay(date: string): DayAgg {
@@ -81,6 +81,16 @@ describe("projectNameFromCwd", () => {
 
   it("strips trailing slash like basename", () => {
     expect(projectNameFromCwd("/home/doe/proj/")).toBe("proj");
+  });
+});
+
+describe("dateFromTimestamp", () => {
+  it("extracts YYYY-MM-DD from ISO timestamp", () => {
+    expect(dateFromTimestamp("2026-06-08T17:37:04.122Z")).toBe("2026-06-08");
+  });
+
+  it("works on date-only", () => {
+    expect(dateFromTimestamp("2026-12-31")).toBe("2026-12-31");
   });
 });
 

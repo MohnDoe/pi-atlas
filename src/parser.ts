@@ -84,7 +84,7 @@ export function projectNameFromCwd(cwd: string): string {
 // Tracks session ID → project name for cost attribution
 const sessionProject: SessionProjectMap = new Map();
 
-function dateFromTimestamp(ts: string): string {
+export function dateFromTimestamp(ts: string): string {
   return ts.slice(0, 10);
 }
 
