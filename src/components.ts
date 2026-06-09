@@ -394,7 +394,7 @@ export class Dashboard {
   private rangeSelector: RangeSelector;
   private summaries: StatsSummary[]; // [1d, 7d, 30d, All]
   private onClose: (() => void) | null = null;
-  private activeTable: RankedTable | null = null;
+  private activeTable: RankedTable | ProjectsToolsView | null = null;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
   private lastTabIndex = 0;
@@ -530,11 +530,17 @@ export class Dashboard {
           lines.push(...tableLines);
         }
       } else {
-        // Projects + Tools (index 3) — placeholder
-        lines.push("");
-        lines.push("  Coming soon");
-        lines.push("");
-        this.activeTable = null;
+        // Projects + Tools tab (index 3)
+        if (!this.activeTable) {
+          const tableH = Math.max(5, 15);
+          this.activeTable = new ProjectsToolsView(
+            this.currentSummary.projects,
+            this.currentSummary.tools,
+            tableH,
+          );
+        }
+        const viewLines = this.activeTable.render(width);
+        lines.push(...viewLines);
       }
     }
 
@@ -589,6 +595,88 @@ export class Dashboard {
     this.cachedWidth = -1;
     this.tabBar.invalidate();
     this.rangeSelector.invalidate();
+  }
+}
+
+// ---- Projects + Tools View ----
+
+export class ProjectsToolsView {
+  private projectsTable: RankedTable | null;
+  private toolsTable: RankedTable | null;
+  private maxHeight: number;
+  private cachedLines: string[] | null = null;
+  private cachedWidth = -1;
+
+  constructor(projects: { project: string; cost: number; sessions: number }[], tools: { tool: string; count: number }[], maxHeight: number) {
+    this.maxHeight = maxHeight;
+
+    if (projects.length > 0) {
+      const projCols: ColumnDef[] = [
+        { header: "Project", width: 8 },
+        { header: "Cost", width: 6 },
+        { header: "Sessions", width: 8 },
+      ];
+      const projRows = projects.map((p) => [p.project.slice(0, 8), `$${p.cost.toFixed(2)}`, String(p.sessions)]);
+      this.projectsTable = new RankedTable(projCols, projRows, maxHeight);
+    } else {
+      this.projectsTable = null;
+    }
+
+    if (tools.length > 0) {
+      const toolCols: ColumnDef[] = [
+        { header: "Tool", width: 10 },
+        { header: "Count", width: 8 },
+      ];
+      const toolRows = tools.map((t) => [t.tool.slice(0, 10), String(t.count)]);
+      this.toolsTable = new RankedTable(toolCols, toolRows, maxHeight);
+    } else {
+      this.toolsTable = null;
+    }
+  }
+
+  render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+
+    const gap = 3;
+    const halfW = Math.floor((width - gap) / 2);
+
+    const leftLines = this.projectsTable ? this.projectsTable.render(halfW) : ["  No project data"];
+    const rightLines = this.toolsTable ? this.toolsTable.render(halfW) : ["  No tool data"];
+
+    const maxLen = Math.max(leftLines.length, rightLines.length);
+    const lines: string[] = [];
+
+    for (let i = 0; i < maxLen; i++) {
+      const left = (leftLines[i] ?? "").padEnd(halfW);
+      const right = rightLines[i] ?? "";
+      let row = left;
+      if (right) row += " │ " + right;
+      const visLen = row.replace(/\x1b\[[0-9;]*m/g, "").length;
+      if (visLen > width) row = row.slice(0, width);
+      lines.push(row);
+    }
+
+    this.cachedLines = lines;
+    this.cachedWidth = width;
+    return lines;
+  }
+
+  handleInput(data: string): boolean {
+    // Up/down scroll both tables together
+    if (data === "\x1b[A" || data === "\x1b[B") {
+      if (this.projectsTable) this.projectsTable.handleInput(data);
+      if (this.toolsTable) this.toolsTable.handleInput(data);
+      this.invalidate();
+      return true;
+    }
+    return false;
+  }
+
+  invalidate(): void {
+    this.cachedLines = null;
+    this.cachedWidth = -1;
+    if (this.projectsTable) this.projectsTable.invalidate();
+    if (this.toolsTable) this.toolsTable.invalidate();
   }
 }
 
