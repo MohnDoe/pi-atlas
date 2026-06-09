@@ -23,6 +23,21 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
+      // Determine terminal size for popup vs full-screen mode
+      const termWidth = process.stdout.columns || 80;
+      const termHeight = process.stdout.rows || 24;
+      const usePopup = termWidth >= MIN_POPUP_WIDTH && termHeight >= MIN_POPUP_HEIGHT;
+
+      const overlayOpts = usePopup ? {
+        overlay: true as const,
+        overlayOptions: {
+          width: "80%" as const,
+          maxHeight: "80%" as const,
+          anchor: "center" as const,
+          margin: 1,
+        },
+      } : {};
+
       // Phase 1: Show loading, parse session logs
       let days: Awaited<ReturnType<typeof loadAggregate>>;
       try {
@@ -39,6 +54,7 @@ export default function (pi: ExtensionAPI) {
 
             return loadingView;
           },
+          overlayOpts,
         );
       } catch {
         ctx.ui.notify("Failed to parse session logs", "error");
@@ -48,12 +64,6 @@ export default function (pi: ExtensionAPI) {
       // Phase 2: Show dashboard (handles empty state internally)
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
-
-      // Popup mode: floating overlay above pi.dev (terminal ≥ 60×20)
-      // Full-screen mode: same behaviour as before (terminal < 60×20)
-      const termWidth = process.stdout.columns || 80;
-      const termHeight = process.stdout.rows || 24;
-      const usePopup = termWidth >= MIN_POPUP_WIDTH && termHeight >= MIN_POPUP_HEIGHT;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const dashboard = new Dashboard(summaries, theme as StatsTheme, () => done(undefined));
@@ -66,15 +76,7 @@ export default function (pi: ExtensionAPI) {
           },
           invalidate: () => popup.invalidate(),
         };
-      }, usePopup ? {
-        overlay: true,
-        overlayOptions: {
-          width: "80%",
-          maxHeight: "80%",
-          anchor: "center",
-          margin: 1,
-        },
-      } : {});
+      }, overlayOpts);
     },
   });
 }
