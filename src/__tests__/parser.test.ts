@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
-import { langFromPath, mergeDay, parseFile, parseSessionLogEntry } from "../parser";
+import { langFromPath, mergeDay, parseFile, parseSessionLogEntry, projectNameFromCwd } from "../parser";
 import type { AssistantMessageBody, DayAgg, MessageEntry, SessionEntry } from "../types";
 
 function emptyDay(date: string): DayAgg {
@@ -67,6 +67,20 @@ describe("langFromPath", () => {
   it("is case-insensitive for extension lookup", () => {
     expect(langFromPath("/src/Foo.TS")).toBe("TypeScript");
     expect(langFromPath("/src/Foo.PY")).toBe("Python");
+  });
+});
+
+describe("projectNameFromCwd", () => {
+  it("extracts basename from Unix path", () => {
+    expect(projectNameFromCwd("/home/doe/Work/dev/pi-usage")).toBe("pi-usage");
+  });
+
+  it("handles single-level path", () => {
+    expect(projectNameFromCwd("/my-project")).toBe("my-project");
+  });
+
+  it("strips trailing slash like basename", () => {
+    expect(projectNameFromCwd("/home/doe/proj/")).toBe("proj");
   });
 });
 

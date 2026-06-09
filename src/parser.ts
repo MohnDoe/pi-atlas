@@ -75,7 +75,7 @@ export function langFromPath(path: string): string {
 
 // ---- Project name extraction ----
 
-function projectNameFromCwd(cwd: string): string {
+export function projectNameFromCwd(cwd: string): string {
   return basename(cwd);
 }
 
