@@ -92,6 +92,25 @@ describe("DashboardPopup", () => {
     expect(closed).toBe(true);
   });
 
+  it("re-renders after handleInput changes state (cache invalidation)", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    // Render once to populate caches
+    popup.render(80);
+
+    // Switch to Languages tab via handleInput
+    popup.handleInput("\x1b[C"); // right arrow
+
+    // Re-render should show the new tab (not cached Overview)
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+    // Languages tab shows column headers, not the Overview's "Total Cost"
+    expect(text).toContain("Language");
+    expect(text).not.toContain("Total Cost");
+  });
+
   it("delegates invalidate to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, testTheme());

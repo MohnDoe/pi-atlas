@@ -45,7 +45,9 @@ export class DashboardPopup {
   }
 
   handleInput(data: string): boolean {
-    return this.dashboard.handleInput(data);
+    const handled = this.dashboard.handleInput(data);
+    this.invalidate();
+    return handled;
   }
 
   invalidate(): void {
