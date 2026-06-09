@@ -1,4 +1,12 @@
-import type { DayAgg, SessionLogEntry, SessionProjectMap } from "./types.js";
+import type {
+  AssistantMessageBody,
+  DayAgg,
+  MessageEntry,
+  SessionEntry,
+  SessionLogEntry,
+  SessionProjectMap,
+  ToolResultMessageBody,
+} from "./types.js";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
@@ -140,112 +148,131 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   }
 }
 
+// ---- Session entry ----
+
+function parseSessionEntry(entry: SessionEntry): DayAgg {
+  const day = emptyDay(dateFromTimestamp(entry.timestamp));
+  day.sessionIds.add(entry.id);
+
+  if (entry.cwd) {
+    const proj = projectNameFromCwd(entry.cwd);
+    sessionProject.set(entry.id, proj);
+    day.projectCost[proj] = 0;
+    day.projectSessions[proj] = new Set([entry.id]);
+  }
+
+  return day;
+}
+
+// ---- Message entry ----
+
+function parseUserMessage(day: DayAgg): void {
+  day.userMsgs = 1;
+}
+
+function parseToolResultMessage(day: DayAgg, msg: ToolResultMessageBody): void {
+  day.toolResults = 1;
+  if (msg.toolName) {
+    day.toolCount[msg.toolName] = 1;
+  }
+}
+
+function parseAssistantMessage(day: DayAgg, msg: AssistantMessageBody): void {
+  day.asstMsgs = 1;
+
+  // usage stats
+  if (msg.usage) {
+    day.inTok = msg.usage.input;
+    day.outTok = msg.usage.output;
+    day.crTok = msg.usage.cacheRead;
+    day.cwTok = msg.usage.cacheWrite;
+
+    if (msg.usage.cost) {
+      const msgCost = msg.usage.cost.total;
+      day.cost = msgCost;
+
+      // attribute cost to all known projects
+      const activeProjects = new Set(sessionProject.values());
+      for (const proj of activeProjects) {
+        day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msgCost;
+      }
+    }
+  }
+
+  // model stats
+  if (msg.model && msg.usage?.cost) {
+    day.modelCost[msg.model] = msg.usage.cost.total;
+    day.modelCount[msg.model] = 1;
+  }
+
+  // tool calls in assistant content
+  if (msg.content) {
+    for (const block of msg.content) {
+      if (block.type === "toolCall") {
+        day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
+
+        if (block.name === "edit" || block.name === "write") {
+          detectLanguage(day, block.name, block.arguments as Record<string, unknown> | undefined);
+        }
+      }
+    }
+  }
+}
+
+function detectLanguage(
+  day: DayAgg,
+  toolName: string,
+  args: Record<string, unknown> | undefined,
+): void {
+  const path = args?.path as string | undefined;
+  if (!path) return;
+
+  const lang = langFromPath(path);
+
+  if (toolName === "edit") {
+    const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
+    if (Array.isArray(edits)) {
+      let totalNewChars = 0;
+      for (const edit of edits) {
+        totalNewChars += edit.newText?.length ?? 0;
+      }
+      if (totalNewChars > 0) {
+        day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewChars;
+      }
+    }
+    day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
+  } else {
+    // write
+    const contentStr = args?.content as string | undefined;
+    if (contentStr) {
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
+    }
+  }
+}
+
+function parseMessageEntry(entry: MessageEntry): DayAgg {
+  const day = emptyDay(dateFromTimestamp(entry.timestamp));
+  const { message: msg } = entry;
+
+  if (msg.role === "user") {
+    parseUserMessage(day);
+  } else if (msg.role === "toolResult") {
+    parseToolResultMessage(day, msg);
+  } else if (msg.role === "assistant") {
+    parseAssistantMessage(day, msg);
+  }
+
+  return day;
+}
+
 // ---- Parse single entry ----
 
 export function parseEntry(entry: SessionLogEntry): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
-  const day = emptyDay(dateFromTimestamp(entry.timestamp));
-
-  if (entry.type === "session") {
-    day.sessionIds.add(entry.id);
-
-    // project tracking
-    if (entry.cwd) {
-      const proj = projectNameFromCwd(entry.cwd);
-      sessionProject.set(entry.id, proj);
-      day.projectCost[proj] = 0;
-      day.projectSessions[proj] = new Set([entry.id]);
-    }
-    return day;
-  }
-
-  // entry.type === "message"
-  const { message: msg } = entry;
-
-  if (msg.role === "user") {
-    day.userMsgs = 1;
-    return day;
-  }
-
-  if (msg.role === "toolResult") {
-    day.toolResults = 1;
-    if (msg.toolName) {
-      day.toolCount[msg.toolName] = 1;
-    }
-    return day;
-  }
-
-  if (msg.role === "assistant") {
-    day.asstMsgs = 1;
-
-    if (msg.usage) {
-      day.inTok += msg.usage.input;
-      day.outTok += msg.usage.output;
-      day.crTok += msg.usage.cacheRead;
-      day.cwTok += msg.usage.cacheWrite;
-
-      if (msg.usage.cost) {
-        const msgCost = msg.usage.cost.total;
-        day.cost += msgCost;
-
-        // attribute cost to all known projects
-        const activeProjects = new Set(sessionProject.values());
-        for (const proj of activeProjects) {
-          day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msgCost;
-        }
-      }
-    }
-
-    // model stats
-    if (msg.model && msg.usage?.cost) {
-      const totalCost = msg.usage.cost.total;
-      day.modelCost[msg.model] = totalCost;
-      day.modelCount[msg.model] = 1;
-    }
-
-    // tool calls in assistant content
-    if (msg.content) {
-      for (const block of msg.content) {
-        if (block.type === "toolCall") {
-          day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
-
-          // Language detection from edit/write tool calls
-          if (block.name === "edit" || block.name === "write") {
-            const path = block.arguments?.path as string | undefined;
-            if (path) {
-              const lang = langFromPath(path);
-              if (block.name === "edit") {
-                const edits = block.arguments?.edits as
-                  | Array<{ newText?: string; oldText?: string }>
-                  | undefined;
-                if (Array.isArray(edits)) {
-                  let totalNewChars = 0;
-                  for (const edit of edits) {
-                    totalNewChars += edit.newText?.length ?? 0;
-                  }
-                  if (totalNewChars > 0) {
-                    day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewChars;
-                  }
-                }
-                day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
-              } else {
-                // write
-                const contentStr = block.arguments?.content as string | undefined;
-                if (contentStr) {
-                  day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return day;
-  }
-
-  return day;
+  if (entry.type === "session") return parseSessionEntry(entry);
+  return parseMessageEntry(entry);
 }
 
 // ---- Parse a full JSONL file ----
