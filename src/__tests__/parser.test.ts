@@ -1060,4 +1060,71 @@ describe("parseFile", () => {
     expect(map.size).toBe(1);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
   });
+
+  it("handles sessions with no messages", async () => {
+    const filePath = join(tmpDir, "session-only.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/home/doe/proj",
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = parseFile(filePath);
+
+    expect(map.size).toBe(1);
+    const day = map.get("2026-06-08")!;
+    expect(day.sessionIds.has("s1")).toBe(true);
+    expect(day.userMsgs).toBe(0);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
+    expect(day.cost).toBe(0);
+  });
+
+  it("returns empty map for file with only corrupt lines", async () => {
+    const filePath = join(tmpDir, "all-corrupt.jsonl");
+    const lines = [
+      "not json at all",
+      "{also broken",
+      "still broken]",
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (count) => {
+      warnings = count;
+    });
+
+    expect(map.size).toBe(0);
+    expect(warnings).toBe(3);
+  });
+
+  it("skips whitespace-only lines without counting them as corrupt", async () => {
+    const filePath = join(tmpDir, "with-blanks.jsonl");
+    const lines = [
+      "",
+      "   ",
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: [{ type: "text", text: "hi" }] },
+      }),
+      "\t",
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (count) => {
+      warnings = count;
+    });
+
+    expect(map.size).toBe(1);
+    expect(warnings).toBe(0);
+  });
 });
