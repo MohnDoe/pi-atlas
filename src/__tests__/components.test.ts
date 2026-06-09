@@ -16,17 +16,27 @@ import {
 } from "../components";
 import { parseFile } from "../parser";
 import { summarize } from "../engine";
-import type { DayAgg } from "../types";
+import type { DayAgg, StatsTheme } from "../types";
+
+/** Test theme that produces readable tags instead of ANSI escape codes */
+function testTheme(): StatsTheme {
+  return {
+    fg: (color, text) => `<fg:${color}>${text}</fg:${color}>`,
+    bg: (color, text) => `<bg:${color}>${text}</bg:${color}>`,
+    bold: (text) => `<b>${text}</b>`,
+  };
+}
 
 function visibleLength(s: string): number {
-  return s.replace(/\x1b\[[0-9;]*m/g, "").length;
+  // Strip both real ANSI and test theme tags
+  return s.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "").length;
 }
 
 describe("TabBar", () => {
   const tabs = ["Overview", "Languages", "Models", "Projects + Tools"];
 
   it("renders all tab names", () => {
-    const tb = new TabBar(tabs, 0);
+    const tb = new TabBar(tabs, testTheme(), 0);
     const lines = tb.render(80);
     expect(lines).toHaveLength(1);
     const line = lines[0];
@@ -36,21 +46,21 @@ describe("TabBar", () => {
   });
 
   it("renders within width", () => {
-    const tb = new TabBar(tabs, 0);
+    const tb = new TabBar(tabs, testTheme(), 0);
     const lines = tb.render(40);
     expect(lines).toHaveLength(1);
     expect(visibleLength(lines[0])).toBeLessThanOrEqual(40);
   });
 
   it("highlights the active tab", () => {
-    const tb = new TabBar(tabs, 2);
+    const tb = new TabBar(tabs, testTheme(), 2);
     const lines = tb.render(80);
     // Models tab (index 2) should stand out from the others
     expect(lines[0]).toContain("Models");
   });
 
   it("moves active tab left with handleInput", () => {
-    const tb = new TabBar(tabs, 2);
+    const tb = new TabBar(tabs, testTheme(), 2);
     tb.handleInput("\x1b[D"); // left arrow
     expect((tb as { activeIndex: number }).activeIndex).toBe(1);
 
@@ -63,7 +73,7 @@ describe("TabBar", () => {
   });
 
   it("moves active tab right with handleInput", () => {
-    const tb = new TabBar(tabs, 2);
+    const tb = new TabBar(tabs, testTheme(), 2);
     tb.handleInput("\x1b[C"); // right arrow
     expect((tb as { activeIndex: number }).activeIndex).toBe(3);
 
@@ -72,18 +82,33 @@ describe("TabBar", () => {
   });
 
   it("invalidates render cache", () => {
-    const tb = new TabBar(tabs, 0);
+    const tb = new TabBar(tabs, testTheme(), 0);
     tb.render(80);
     tb.invalidate();
     // After invalidate, next render should recompute
     const lines = tb.render(60); // different width → should still work
     expect(visibleLength(lines[0])).toBeLessThanOrEqual(60);
   });
+
+  it("uses theme.bg('selectedBg') and theme.fg('accent') for active tab", () => {
+    const tb = new TabBar(tabs, testTheme(), 0);
+    const lines = tb.render(80);
+    // Active tab (Overview at index 0) should have selectedBg + accent
+    expect(lines[0]).toContain("<bg:selectedBg>");
+    expect(lines[0]).toContain("<fg:accent>");
+  });
+
+  it("uses theme.fg('muted') for inactive tabs", () => {
+    const tb = new TabBar(tabs, testTheme(), 0);
+    const lines = tb.render(80);
+    // Inactive tabs should use muted
+    expect(lines[0]).toContain("<fg:muted>");
+  });
 });
 
 describe("RangeSelector", () => {
   it("renders all range options", () => {
-    const rs = new RangeSelector(["1d", "7d", "30d", "All"], 0);
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
     const lines = rs.render(80);
     expect(lines).toHaveLength(1);
     const line = lines[0];
@@ -94,13 +119,13 @@ describe("RangeSelector", () => {
   });
 
   it("highlights selected range", () => {
-    const rs = new RangeSelector(["1d", "7d", "30d", "All"], 2);
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 2);
     const lines = rs.render(80);
     expect(lines[0]).toContain("30d");
   });
 
   it("moves selection up/down", () => {
-    const rs = new RangeSelector(["1d", "7d", "30d", "All"], 0);
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
     rs.handleInput("\x1b[B"); // down
     expect(rs.selectedIndex).toBe(1);
     rs.handleInput("\x1b[B"); // down
@@ -110,7 +135,7 @@ describe("RangeSelector", () => {
   });
 
   it("doesn't move past boundaries", () => {
-    const rs = new RangeSelector(["1d", "7d"], 0);
+    const rs = new RangeSelector(testTheme(), ["1d", "7d"], 0);
     rs.handleInput("\x1b[A"); // up at top
     expect(rs.selectedIndex).toBe(0);
     rs.handleInput("\x1b[B"); // down
@@ -119,9 +144,22 @@ describe("RangeSelector", () => {
   });
 
   it("renders within width", () => {
-    const rs = new RangeSelector(["1d", "7d", "30d", "All"], 0);
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
     const lines = rs.render(40);
     expect(visibleLength(lines[0])).toBeLessThanOrEqual(40);
+  });
+
+  it("uses theme.bg('selectedBg') and theme.fg('accent') for selected range", () => {
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
+    const lines = rs.render(80);
+    expect(lines[0]).toContain("<bg:selectedBg>");
+    expect(lines[0]).toContain("<fg:accent>");
+  });
+
+  it("uses theme.fg('muted') for unselected ranges", () => {
+    const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
+    const lines = rs.render(80);
+    expect(lines[0]).toContain("<fg:muted>");
   });
 });
 
@@ -136,7 +174,7 @@ describe("KpiCards", () => {
   };
 
   it("renders 6 KPIs in a grid", () => {
-    const cards = new KpiCards(kpis);
+    const cards = new KpiCards(kpis, testTheme());
     const lines = cards.render(80);
     // Should have multiple lines (2 rows of 3 cards each)
     expect(lines.length).toBeGreaterThanOrEqual(2);
@@ -151,7 +189,7 @@ describe("KpiCards", () => {
   });
 
   it("renders label for each card", () => {
-    const cards = new KpiCards(kpis);
+    const cards = new KpiCards(kpis, testTheme());
     const lines = cards.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Total Cost");
@@ -163,7 +201,7 @@ describe("KpiCards", () => {
   });
 
   it("renders within width", () => {
-    const cards = new KpiCards(kpis);
+    const cards = new KpiCards(kpis, testTheme());
     const lines = cards.render(50);
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(50);
@@ -171,31 +209,31 @@ describe("KpiCards", () => {
   });
 
   it("formats large token numbers", () => {
-    const cards = new KpiCards({ ...kpis, totalTokens: 1500000 });
+    const cards = new KpiCards({ ...kpis, totalTokens: 1500000 }, testTheme());
     const lines = cards.render(80);
     expect(lines.join("\n")).toContain("1.5M");
   });
 
   it("formats large costs with compact notation", () => {
-    const cards = new KpiCards({ ...kpis, totalCost: 5432.10 });
+    const cards = new KpiCards({ ...kpis, totalCost: 5432.10 }, testTheme());
     const lines = cards.render(80);
     expect(lines.join("\n")).toContain("$5.4k");
   });
 
   it("formats very large costs with M notation", () => {
-    const cards = new KpiCards({ ...kpis, totalCost: 2_500_000 });
+    const cards = new KpiCards({ ...kpis, totalCost: 2_500_000 }, testTheme());
     const lines = cards.render(80);
     expect(lines.join("\n")).toContain("$2.5M");
   });
 
   it("keeps exact notation for small costs", () => {
-    const cards = new KpiCards(kpis);
+    const cards = new KpiCards(kpis, testTheme());
     const lines = cards.render(80);
     expect(lines.join("\n")).toContain("$12.34");
   });
 
   it("invalidates cache", () => {
-    const cards = new KpiCards(kpis);
+    const cards = new KpiCards(kpis, testTheme());
     cards.render(80);
     cards.invalidate();
     const lines = cards.render(60);
@@ -217,7 +255,7 @@ describe("BarChart", () => {
   ];
 
   it("renders bar chart with X-axis labels", () => {
-    const chart = new BarChart(dailySpend, "7d", 15);
+    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
     const lines = chart.render(80);
     // Should have some visual output (bars)
     expect(lines.length).toBeGreaterThan(0);
@@ -227,7 +265,7 @@ describe("BarChart", () => {
   });
 
   it("renders within width", () => {
-    const chart = new BarChart(dailySpend, "7d", 15);
+    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
     const lines = chart.render(50);
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(50);
@@ -235,7 +273,7 @@ describe("BarChart", () => {
   });
 
   it("handles empty daily spend", () => {
-    const chart = new BarChart([], "7d", 15);
+    const chart = new BarChart([], "7d", 15, testTheme());
     const lines = chart.render(80);
     expect(lines.length).toBeGreaterThan(0);
     // Should show empty state or just labels
@@ -244,17 +282,32 @@ describe("BarChart", () => {
   });
 
   it("auto-scales bars to available height", () => {
-    const chart = new BarChart(dailySpend, "7d", 10);
+    const chart = new BarChart(dailySpend, "7d", 10, testTheme());
     const lines = chart.render(80);
     // Should have at most maxHeight rows of bar content
     expect(lines.length).toBeLessThanOrEqual(12); // 10 bars + 2 labels
   });
 
   it("uses block characters for bars", () => {
-    const chart = new BarChart(dailySpend, "7d", 15);
+    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
     const lines = chart.render(80);
     const text = lines.join("\n");
     expect(text).toContain("█");
+  });
+
+  it("uses theme.fg('accent') for bar blocks", () => {
+    const spend = [{ date: "2026-06-08", cost: 5.0 }];
+    const chart = new BarChart(spend, "7d", 5, testTheme());
+    const lines = chart.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("<fg:accent>█");
+  });
+
+  it("uses theme.fg('dim') for X-axis labels", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
+    const lines = chart.render(80);
+    const labelLine = lines[lines.length - 1];
+    expect(labelLine).toContain("<fg:dim>");
   });
 
   it("30d range labels show day numbers every 5th and first/last", () => {
@@ -263,11 +316,11 @@ describe("BarChart", () => {
     for (let i = 1; i <= 30; i++) {
       spend.push({ date: `2026-06-${String(i).padStart(2, "0")}`, cost: i });
     }
-    const chart = new BarChart(spend, "30d", 10);
+    const chart = new BarChart(spend, "30d", 10, testTheme());
     const lines = chart.render(80);
     // Last line is the label row
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
     // Should contain day numbers like "1", "5", "10", etc.
     expect(visible).toContain("1");
     expect(visible).toContain("5");
@@ -286,10 +339,10 @@ describe("BarChart", () => {
       { date: "2026-03-25", cost: 4 },
       { date: "2026-04-05", cost: 5 },
     ];
-    const chart = new BarChart(spend, "All", 10);
+    const chart = new BarChart(spend, "All", 10, testTheme());
     const lines = chart.render(80);
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
     // Month changes get labels
@@ -299,7 +352,7 @@ describe("BarChart", () => {
   });
 
   it("invalidates cache", () => {
-    const chart = new BarChart(dailySpend, "7d", 15);
+    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
     chart.render(80);
     chart.invalidate();
     const lines = chart.render(60);
@@ -323,7 +376,7 @@ describe("RankedTable", () => {
   ];
 
   it("renders header row with column names and # rank column", () => {
-    const table = new RankedTable(columns, rows, 10);
+    const table = new RankedTable(columns, rows, 10, testTheme());
     const lines = table.render(80);
     expect(lines.length).toBeGreaterThanOrEqual(1);
     const header = lines[0];
@@ -334,7 +387,7 @@ describe("RankedTable", () => {
   });
 
   it("renders data rows with rank numbers", () => {
-    const table = new RankedTable(columns, rows, 10);
+    const table = new RankedTable(columns, rows, 10, testTheme());
     const lines = table.render(80);
     // Skip header (index 0), check first two data rows
     expect(lines.length).toBeGreaterThanOrEqual(3);
@@ -347,7 +400,7 @@ describe("RankedTable", () => {
   });
 
   it("renders within width", () => {
-    const table = new RankedTable(columns, rows, 10);
+    const table = new RankedTable(columns, rows, 10, testTheme());
     const lines = table.render(50);
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(50);
@@ -355,7 +408,7 @@ describe("RankedTable", () => {
   });
 
   it("shows all rows when they fit within maxHeight", () => {
-    const table = new RankedTable(columns, rows, 10);
+    const table = new RankedTable(columns, rows, 10, testTheme());
     const lines = table.render(80);
     // 1 header + 3 data rows = 4 lines (all fit in 10)
     expect(lines.length).toBe(4);
@@ -367,18 +420,26 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6); // 1 header + 5 data
+    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 1 header + 5 data
     const lines = table.render(80);
     expect(lines.length).toBe(6);
   });
 
   it("handles empty rows", () => {
-    const table = new RankedTable(columns, [], 10);
+    const table = new RankedTable(columns, [], 10, testTheme());
     const lines = table.render(80);
     // Should have at least a header, maybe an empty message
     expect(lines.length).toBeGreaterThanOrEqual(1);
     expect(lines[0]).toContain("#");
     expect(lines[0]).toContain("Language");
+  });
+
+  it("uses theme.bg('selectedBg') and theme.bold for header row", () => {
+    const table = new RankedTable(columns, rows, 10, testTheme());
+    const lines = table.render(80);
+    const headerLine = lines[0];
+    expect(headerLine).toContain("<bg:selectedBg>");
+    expect(headerLine).toContain("<b>");
   });
 
   it("scrolls down with handleInput", () => {
@@ -387,7 +448,7 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6); // 5 data rows visible
+    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 5 data rows visible
 
     // Initial: rows 0-4
     let lines = table.render(80);
@@ -407,7 +468,7 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6);
+    const table = new RankedTable(columns, manyRows, 6, testTheme());
 
     // Scroll down first
     table.handleInput("\x1b[B");
@@ -423,7 +484,7 @@ describe("RankedTable", () => {
 
   it("does not scroll past start", () => {
     const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 10);
+    const table = new RankedTable(columns, manyRows, 10, testTheme());
     // All rows fit, scrolling up should not do anything
     table.handleInput("\x1b[A");
     const lines = table.render(80);
@@ -432,7 +493,7 @@ describe("RankedTable", () => {
 
   it("does not scroll past end", () => {
     const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 6); // 5 visible data rows, 5 total
+    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 5 visible data rows, 5 total
     // Scroll all the way down
     for (let i = 0; i < 10; i++) table.handleInput("\x1b[B");
     const lines = table.render(80);
@@ -441,7 +502,7 @@ describe("RankedTable", () => {
   });
 
   it("invalidates render cache", () => {
-    const table = new RankedTable(columns, rows, 10);
+    const table = new RankedTable(columns, rows, 10, testTheme());
     table.render(80);
     table.invalidate();
     const lines = table.render(60);
@@ -452,7 +513,7 @@ describe("RankedTable", () => {
 
   it("renders rank numbers continuously respecting scroll offset", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 6);
+    const table = new RankedTable(columns, manyRows, 6, testTheme());
 
     // Scroll down a few times
     table.handleInput("\x1b[B");
@@ -504,7 +565,7 @@ describe("Dashboard", () => {
 
   it("renders all sections", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
@@ -513,6 +574,26 @@ describe("Dashboard", () => {
     expect(text).toContain("Total Cost");
     expect(text).toContain("Esc/q close");
     expect(text).toContain("█");
+  });
+
+  it("uses theme.fg('borderMuted') for separators", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries, testTheme());
+    const lines = dash.render(80);
+    // Separator lines are "─" repeated
+    const sepLines = lines.filter((l) => l.includes("─"));
+    expect(sepLines.length).toBeGreaterThan(0);
+    for (const line of sepLines) {
+      expect(line).toContain("<fg:borderMuted>");
+    }
+  });
+
+  it("uses theme.fg('dim') for footer", () => {
+    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const dash = new Dashboard(summaries, testTheme());
+    const lines = dash.render(80);
+    const footer = lines[lines.length - 1];
+    expect(footer).toContain("<fg:dim>");
   });
 
   it("shows 'No sessions found' when no session data exists", () => {
@@ -525,7 +606,7 @@ describe("Dashboard", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No sessions found");
@@ -543,7 +624,7 @@ describe("Dashboard", () => {
     };
     // 1d range (index 0) empty, others have data
     const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     // Default selected range is index 1 (7d), so we see data.
     // Switch to index 0 (1d) via range selector
     dash.handleInput("\x1b[A"); // up arrow — should move from index 1 to 0
@@ -555,7 +636,7 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, () => {
+    const dash = new Dashboard(summaries, testTheme(), () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -565,7 +646,7 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, () => {
+    const dash = new Dashboard(summaries, testTheme(), () => {
       closed = true;
     });
     dash.handleInput("q");
@@ -582,7 +663,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Switch to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
@@ -613,7 +694,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Default range is 7d (index 1). Switch to 1d on Overview tab first
     dash.handleInput("\x1b[A"); // up to 1d on Overview
@@ -637,7 +718,7 @@ describe("Dashboard", () => {
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     dash.handleInput("\x1b[C"); // right to Languages
     const lines = dash.render(80);
@@ -657,7 +738,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Switch to Models tab (index 2)
     dash.handleInput("\x1b[C"); // right to Languages
@@ -680,7 +761,7 @@ describe("Dashboard", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -695,7 +776,7 @@ describe("Dashboard", () => {
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -717,7 +798,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Change range to 1d on Overview, then navigate to Models
     dash.handleInput("\x1b[A"); // up to 1d on Overview
@@ -748,7 +829,7 @@ describe("Dashboard", () => {
     }));
     const summary = { ...makeSummary(), models: manyModels };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -773,7 +854,7 @@ describe("Dashboard", () => {
 
   it("switches tabs with left/right arrows", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
@@ -794,7 +875,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Navigate to Projects+Tools tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
@@ -815,7 +896,7 @@ describe("Dashboard", () => {
   it("Projects+Tools tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -845,7 +926,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Change to 1d range on Overview, then navigate to Projects+Tools
     dash.handleInput("\x1b[A"); // up to 1d
@@ -886,7 +967,7 @@ describe("Dashboard", () => {
     }));
     const summary = { ...makeSummary(), projects: manyProjects, tools: manyTools };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
 
     // Navigate to Projects+Tools
     dash.handleInput("\x1b[C"); // → Languages
@@ -947,7 +1028,7 @@ describe("ProjectsToolsView", () => {
   ];
 
   it("renders two tables side-by-side within width", () => {
-    const view = new ProjectsToolsView(projects, tools, 15);
+    const view = new ProjectsToolsView(projects, tools, 15, testTheme());
     const lines = view.render(80);
 
     expect(lines.length).toBeGreaterThan(0);
@@ -966,7 +1047,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("each row stays within width", () => {
-    const view = new ProjectsToolsView(projects, tools, 15);
+    const view = new ProjectsToolsView(projects, tools, 15, testTheme());
     const lines = view.render(60);
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(60);
@@ -974,7 +1055,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("sorts projects by cost descending and tools by count descending", () => {
-    const view = new ProjectsToolsView(projects, tools, 15);
+    const view = new ProjectsToolsView(projects, tools, 15, testTheme());
     const lines = view.render(80);
     const text = lines.join("\n");
 
@@ -999,7 +1080,7 @@ describe("ProjectsToolsView", () => {
       tool: `tool-${i}`,
       count: 30 - i,
     }));
-    const view = new ProjectsToolsView(manyProjects, manyTools, 6); // 5 visible data rows
+    const view = new ProjectsToolsView(manyProjects, manyTools, 6, testTheme()); // 5 visible data rows
 
     let lines = view.render(80);
     let text = lines.join("\n");
@@ -1021,7 +1102,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("shows empty state when no projects data", () => {
-    const view = new ProjectsToolsView([], tools, 10);
+    const view = new ProjectsToolsView([], tools, 10, testTheme());
     const lines = view.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No project data");
@@ -1030,7 +1111,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("shows empty state when no tools data", () => {
-    const view = new ProjectsToolsView(projects, [], 10);
+    const view = new ProjectsToolsView(projects, [], 10, testTheme());
     const lines = view.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No tool data");
@@ -1039,7 +1120,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("shows empty state when both are empty", () => {
-    const view = new ProjectsToolsView([], [], 10);
+    const view = new ProjectsToolsView([], [], 10, testTheme());
     const lines = view.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No project data");
@@ -1047,7 +1128,7 @@ describe("ProjectsToolsView", () => {
   });
 
   it("invalidates render cache", () => {
-    const view = new ProjectsToolsView(projects, tools, 10);
+    const view = new ProjectsToolsView(projects, tools, 10, testTheme());
     view.render(80);
     view.invalidate();
     const lines = view.render(60);
@@ -1132,7 +1213,7 @@ describe("integration: JSONL → Dashboard", () => {
     const summaries = ranges.map((r) => summarize(days, r));
 
     // Render dashboard
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -1195,7 +1276,7 @@ describe("integration: JSONL → Dashboard", () => {
     const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
     const summaries = ranges.map((r) => summarize(days, r));
 
-    const dash = new Dashboard(summaries);
+    const dash = new Dashboard(summaries, testTheme());
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 

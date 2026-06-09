@@ -1,3 +1,11 @@
+// ---- Theme ----
+
+export interface StatsTheme {
+  fg: (color: string, text: string) => string;
+  bg: (color: string, text: string) => string;
+  bold: (text: string) => string;
+}
+
 // ---- Core data model ----
 
 export interface DayAgg {

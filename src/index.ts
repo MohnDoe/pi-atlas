@@ -42,8 +42,8 @@ export default function (pi: ExtensionAPI) {
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 
-      await ctx.ui.custom((_tui, _theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, () => done(undefined));
+      await ctx.ui.custom((_tui, theme, _kb, done) => {
+        const dashboard = new Dashboard(summaries, theme, () => done(undefined));
         return {
           render: (w: number) => dashboard.render(w),
           handleInput: (d: string) => {

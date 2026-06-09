@@ -1,16 +1,18 @@
 import { matchesKey } from "@earendil-works/pi-tui";
-import type { DaySpend, StatsSummary } from "./types.js";
+import type { DaySpend, StatsSummary, StatsTheme } from "./types.js";
 
 // ---- TabBar ----
 
 export class TabBar {
   private tabs: string[];
+  private theme: StatsTheme;
   activeIndex: number;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(tabs: string[], activeIndex = 0) {
+  constructor(tabs: string[], theme: StatsTheme, activeIndex = 0) {
     this.tabs = tabs;
+    this.theme = theme;
     this.activeIndex = activeIndex;
   }
 
@@ -21,14 +23,14 @@ export class TabBar {
     for (let i = 0; i < this.tabs.length; i++) {
       const label = this.tabs[i];
       if (i === this.activeIndex) {
-        parts.push(`\x1b[7m ${label} \x1b[27m`);
+        parts.push(this.theme.bg("selectedBg", this.theme.fg("accent", ` ${label} `)));
       } else {
-        parts.push(`\x1b[2m ${label} \x1b[22m`);
+        parts.push(this.theme.fg("muted", ` ${label} `));
       }
     }
 
     let line = parts.join(" ");
-    const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+    const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
     if (visLen > width) line = line.slice(0, width);
 
     this.cachedLines = [line];
@@ -64,11 +66,17 @@ export class TabBar {
 
 export class RangeSelector {
   private ranges: string[];
+  private theme: StatsTheme;
   selectedIndex: number;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(ranges: string[] = ["1d", "7d", "30d", "All"], selectedIndex = 0) {
+  constructor(
+    theme: StatsTheme,
+    ranges: string[] = ["1d", "7d", "30d", "All"],
+    selectedIndex = 0,
+  ) {
+    this.theme = theme;
     this.ranges = ranges;
     this.selectedIndex = selectedIndex;
   }
@@ -80,9 +88,9 @@ export class RangeSelector {
     for (let i = 0; i < this.ranges.length; i++) {
       const label = this.ranges[i];
       if (i === this.selectedIndex) {
-        parts.push(`\x1b[7m[${label}]\x1b[27m`);
+        parts.push(this.theme.bg("selectedBg", this.theme.fg("accent", `[${label}]`)));
       } else {
-        parts.push(` [${label}] `);
+        parts.push(this.theme.fg("muted", ` [${label}] `));
       }
     }
 
@@ -146,10 +154,12 @@ interface CardDef {
 
 export class KpiCards {
   private cards: CardDef[];
+  private theme: StatsTheme;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(kpis: KpiData) {
+  constructor(kpis: KpiData, theme: StatsTheme) {
+    this.theme = theme;
     this.cards = [
       { label: "Total Cost", value: formatCost(kpis.totalCost) },
       { label: "Sessions", value: String(kpis.sessionCount) },
@@ -172,7 +182,9 @@ export class KpiCards {
       for (let col = 0; col < 3; col++) {
         const idx = row * 3 + col;
         const c = this.cards[idx];
-        const cell = (c.label + ": " + c.value).slice(0, cardW).padEnd(cardW);
+        // Build plain cell first, pad, then style — avoids style tags being sliced
+        const plain = (c.label + ": " + c.value).slice(0, cardW).padEnd(cardW);
+        const cell = this.theme.fg("text", plain);
         line += cell;
         if (col < 2) line += " ".repeat(gap);
       }
@@ -212,20 +224,22 @@ export class BarChart {
   private data: DaySpend[];
   private range: string;
   private maxHeight: number;
+  private theme: StatsTheme;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(data: DaySpend[], range: string, maxHeight: number) {
+  constructor(data: DaySpend[], range: string, maxHeight: number, theme: StatsTheme) {
     this.data = data;
     this.range = range;
     this.maxHeight = maxHeight;
+    this.theme = theme;
   }
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
     if (this.data.length === 0) {
-      this.cachedLines = ["No data"];
+      this.cachedLines = [this.theme.fg("muted", "No data")];
       this.cachedWidth = width;
       return this.cachedLines;
     }
@@ -241,9 +255,9 @@ export class BarChart {
       for (const d of this.data) {
         const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
         if (barH > row + 0.5) {
-          line += "█".repeat(colW);
+          line += this.theme.fg("accent", "█".repeat(colW));
         } else if (barH > row) {
-          line += "▌".repeat(colW);
+          line += this.theme.fg("accent", "▌".repeat(colW));
         } else {
           line += " ".repeat(colW);
         }
@@ -257,7 +271,7 @@ export class BarChart {
     for (let i = 0; i < this.data.length; i++) {
       const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
       const cellW = colW + 1;
-      labelLine += lbl.padEnd(cellW).slice(0, cellW);
+      labelLine += this.theme.fg("dim", lbl.padEnd(cellW).slice(0, cellW));
     }
     lines.push(labelLine);
 
@@ -304,14 +318,16 @@ export class RankedTable {
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
+  private theme: StatsTheme;
   private scrollOffset = 0;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: StatsTheme) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
+    this.theme = theme;
   }
 
   private get visibleRows(): number {
@@ -338,11 +354,10 @@ export class RankedTable {
     for (const col of this.columns) {
       header += col.header.slice(0, col.width).padEnd(col.width) + gap;
     }
-    // Trim trailing gap, apply inverse video
     header = header.trimEnd();
-    const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").length;
+    const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
     if (visLen > width) header = header.slice(0, width);
-    lines.push(`\x1b[7m${header}\x1b[27m`);
+    lines.push(this.theme.bg("selectedBg", this.theme.bold(this.theme.fg("accent", header))));
 
     // Data rows
     const end = Math.min(this.scrollOffset + this.visibleRows, this.rows.length);
@@ -355,7 +370,7 @@ export class RankedTable {
         row += val.padEnd(this.columns[j].width) + gap;
       }
       row = row.trimEnd();
-      const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").length;
+      const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
       lines.push(row);
     }
@@ -401,12 +416,14 @@ export class Dashboard {
   private cachedWidth = -1;
   private lastTabIndex = 0;
   private lastRangeIndex = 1;
+  private theme: StatsTheme;
 
-  constructor(summaries: StatsSummary[], onClose?: () => void) {
+  constructor(summaries: StatsSummary[], theme: StatsTheme, onClose?: () => void) {
     this.summaries = summaries;
+    this.theme = theme;
     this.onClose = onClose ?? null;
-    this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects + Tools"], 0);
-    this.rangeSelector = new RangeSelector(["1d", "7d", "30d", "All"], 1); // default 7d
+    this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects + Tools"], theme, 0);
+    this.rangeSelector = new RangeSelector(theme, ["1d", "7d", "30d", "All"], 1); // default 7d
   }
 
   private get currentSummary(): StatsSummary {
@@ -417,44 +434,48 @@ export class Dashboard {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
     const lines: string[] = [];
+    const sep = "─".repeat(Math.min(width, 60));
 
     // Top border
-    lines.push("─".repeat(Math.min(width, 60)));
+    lines.push(this.theme.fg("borderMuted", sep));
 
     // Tab bar
     const tabLines = this.tabBar.render(width);
     lines.push(...tabLines);
 
     // Separator
-    lines.push("─".repeat(Math.min(width, 60)));
+    lines.push(this.theme.fg("borderMuted", sep));
 
     // Range selector
     const rangeLines = this.rangeSelector.render(width);
     lines.push(...rangeLines);
 
     // Separator
-    lines.push("─".repeat(Math.min(width, 60)));
+    lines.push(this.theme.fg("borderMuted", sep));
 
     // Detect empty states
     const allEmpty = this.summaries.every((s) => s.sessionCount === 0);
     if (allEmpty) {
       lines.push("");
-      lines.push("  No sessions found in ~/.pi/agent/sessions");
+      lines.push(this.theme.fg("muted", "  No sessions found in ~/.pi/agent/sessions"));
       lines.push("");
     } else if (this.currentSummary.sessionCount === 0) {
       lines.push("");
-      lines.push("  No data for this time range");
+      lines.push(this.theme.fg("muted", "  No data for this time range"));
       lines.push("");
     } else if (this.tabBar.activeIndex === 0) {
       // Overview tab: KPI cards + bar chart
-      const kpiLines = new KpiCards({
-        totalCost: this.currentSummary.totalCost,
-        sessionCount: this.currentSummary.sessionCount,
-        totalMessages: this.currentSummary.totalMessages,
-        totalTokens: this.currentSummary.totalTokens,
-        daysActive: this.currentSummary.daysActive,
-        avgCostPerDay: this.currentSummary.avgCostPerDay,
-      }).render(width);
+      const kpiLines = new KpiCards(
+        {
+          totalCost: this.currentSummary.totalCost,
+          sessionCount: this.currentSummary.sessionCount,
+          totalMessages: this.currentSummary.totalMessages,
+          totalTokens: this.currentSummary.totalTokens,
+          daysActive: this.currentSummary.daysActive,
+          avgCostPerDay: this.currentSummary.avgCostPerDay,
+        },
+        this.theme,
+      ).render(width);
       lines.push(...kpiLines);
 
       lines.push(""); // spacer
@@ -465,6 +486,7 @@ export class Dashboard {
         this.currentSummary.dailySpend,
         ["1d", "7d", "30d", "All"][this.rangeSelector.selectedIndex],
         remainingH,
+        this.theme,
       ).render(width);
       lines.push(...chartLines);
     } else if (
@@ -485,7 +507,7 @@ export class Dashboard {
         // Languages tab
         if (this.currentSummary.languages.length === 0) {
           lines.push("");
-          lines.push("  No language data for this time range");
+          lines.push(this.theme.fg("muted", "  No language data for this time range"));
           lines.push("");
           this.activeTable = null;
         } else if (!this.activeTable) {
@@ -500,7 +522,7 @@ export class Dashboard {
             String(l.edits),
           ]);
           const tableH = Math.max(5, 15);
-          this.activeTable = new RankedTable(langColumns, langRows, tableH);
+          this.activeTable = new RankedTable(langColumns, langRows, tableH, this.theme);
         }
         if (this.activeTable) {
           const tableLines = this.activeTable.render(width);
@@ -510,7 +532,7 @@ export class Dashboard {
         // Models tab
         if (this.currentSummary.models.length === 0) {
           lines.push("");
-          lines.push("  No model data for this time range");
+          lines.push(this.theme.fg("muted", "  No model data for this time range"));
           lines.push("");
           this.activeTable = null;
         } else if (!this.activeTable) {
@@ -525,7 +547,7 @@ export class Dashboard {
             String(m.calls),
           ]);
           const tableH = Math.max(5, 15);
-          this.activeTable = new RankedTable(modelColumns, modelRows, tableH);
+          this.activeTable = new RankedTable(modelColumns, modelRows, tableH, this.theme);
         }
         if (this.activeTable) {
           const tableLines = this.activeTable.render(width);
@@ -539,6 +561,7 @@ export class Dashboard {
             this.currentSummary.projects,
             this.currentSummary.tools,
             tableH,
+            this.theme,
           );
         }
         const viewLines = this.activeTable.render(width);
@@ -547,8 +570,8 @@ export class Dashboard {
     }
 
     // Footer
-    lines.push("─".repeat(Math.min(width, 60)));
-    lines.push("Esc/q close  ←→ tabs  ↑↓ range  Enter select");
+    lines.push(this.theme.fg("borderMuted", sep));
+    lines.push(this.theme.fg("dim", "Esc/q close  ←→ tabs  ↑↓ range  Enter select"));
 
     this.cachedLines = lines;
     this.cachedWidth = width;
@@ -606,6 +629,7 @@ export class ProjectsToolsView {
   private projectsTable: RankedTable | null;
   private toolsTable: RankedTable | null;
   private maxHeight: number;
+  private theme: StatsTheme;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
@@ -613,8 +637,10 @@ export class ProjectsToolsView {
     projects: { project: string; cost: number; sessions: number }[],
     tools: { tool: string; count: number }[],
     maxHeight: number,
+    theme: StatsTheme,
   ) {
     this.maxHeight = maxHeight;
+    this.theme = theme;
 
     if (projects.length > 0) {
       const projCols: ColumnDef[] = [
@@ -627,7 +653,7 @@ export class ProjectsToolsView {
         formatCost(p.cost),
         String(p.sessions),
       ]);
-      this.projectsTable = new RankedTable(projCols, projRows, maxHeight);
+      this.projectsTable = new RankedTable(projCols, projRows, maxHeight, theme);
     } else {
       this.projectsTable = null;
     }
@@ -638,7 +664,7 @@ export class ProjectsToolsView {
         { header: "Count", width: 8 },
       ];
       const toolRows = tools.map((t) => [t.tool.slice(0, 10), String(t.count)]);
-      this.toolsTable = new RankedTable(toolCols, toolRows, maxHeight);
+      this.toolsTable = new RankedTable(toolCols, toolRows, maxHeight, theme);
     } else {
       this.toolsTable = null;
     }
@@ -650,8 +676,12 @@ export class ProjectsToolsView {
     const gap = 3;
     const halfW = Math.floor((width - gap) / 2);
 
-    const leftLines = this.projectsTable ? this.projectsTable.render(halfW) : ["  No project data"];
-    const rightLines = this.toolsTable ? this.toolsTable.render(halfW) : ["  No tool data"];
+    const leftLines = this.projectsTable
+      ? this.projectsTable.render(halfW)
+      : [this.theme.fg("muted", "  No project data")];
+    const rightLines = this.toolsTable
+      ? this.toolsTable.render(halfW)
+      : [this.theme.fg("muted", "  No tool data")];
 
     const maxLen = Math.max(leftLines.length, rightLines.length);
     const lines: string[] = [];
@@ -661,7 +691,7 @@ export class ProjectsToolsView {
       const right = rightLines[i] ?? "";
       let row = left;
       if (right) row += " │ " + right;
-      const visLen = row.replace(/\x1b\[[0-9;]*m/g, "").length;
+      const visLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (visLen > width) row = row.slice(0, width);
       lines.push(row);
     }
