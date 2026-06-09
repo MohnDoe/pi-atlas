@@ -121,4 +121,95 @@ describe("DashboardPopup", () => {
     // Different widths produce different output
     expect(lines80[0]).not.toBe(lines60[0]);
   });
+
+  // ---- Tab content pass-through ----
+
+  it("renders Languages tab content through popup", () => {
+    const summary = {
+      ...makeSummary(),
+      languages: [
+        { language: "TypeScript", lines: 1500, edits: 45 },
+        { language: "Python", lines: 800, edits: 20 },
+      ],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    // Navigate to Languages tab
+    popup.handleInput("\x1b[C"); // right arrow
+
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("TypeScript");
+    expect(text).toContain("Python");
+    expect(text).toContain("1500");
+    expect(text).toContain("Language");
+    expect(text).toContain("Lines");
+    expect(text).toContain("Edits");
+  });
+
+  it("renders Models tab content through popup", () => {
+    const summary = {
+      ...makeSummary(),
+      models: [{ model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 }],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    // Navigate to Models tab
+    popup.handleInput("\x1b[C"); // → Languages
+    popup.handleInput("\x1b[C"); // → Models
+
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("Sonnet 4");
+    expect(text).toContain("12.34");
+    expect(text).toContain("150");
+  });
+
+  it("renders Projects+Tools tab content through popup", () => {
+    const summary = {
+      ...makeSummary(),
+      projects: [{ project: "pi-usage", cost: 15.5, sessions: 42 }],
+      tools: [{ tool: "bash", count: 150 }],
+    };
+    const summaries = [summary, summary, summary, summary];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    // Navigate to Projects+Tools tab
+    popup.handleInput("\x1b[C"); // → Languages
+    popup.handleInput("\x1b[C"); // → Models
+    popup.handleInput("\x1b[C"); // → Projects + Tools
+
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("Project");
+    expect(text).toContain("Tool");
+    expect(text).toContain("pi-usage");
+    expect(text).toContain("bash");
+  });
+
+  it("shows empty state through popup when no session data", () => {
+    const zeroSummary = {
+      ...makeSummary(),
+      totalCost: 0,
+      sessionCount: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      dailySpend: [],
+    };
+    const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
+    const dash = new Dashboard(summaries, testTheme());
+    const popup = new DashboardPopup(dash);
+
+    const lines = popup.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("No sessions found");
+  });
 });
