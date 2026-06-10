@@ -1,11 +1,15 @@
+import { type Component } from "@earendil-works/pi-tui";
 import { Dashboard } from "./Dashboard";
 
 /**
  * Wraps Dashboard in a box-drawing border for popup/overlay display.
  * Renders content at width-2 to account for │ side borders.
  * All lines are padded to full width for solid-background effect.
+ *
+ * The unicode box corners (╭╮╰╯) are not provided by any pi-tui component,
+ * so this class draws them manually while conforming to the Component interface.
  */
-export class DashboardPopup {
+export class DashboardPopup implements Component {
   private dashboard: Dashboard;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
@@ -44,10 +48,9 @@ export class DashboardPopup {
     return lines;
   }
 
-  handleInput(data: string): boolean {
-    const handled = this.dashboard.handleInput(data);
+  handleInput(data: string): void {
+    this.dashboard.handleInput(data);
     this.invalidate();
-    return handled;
   }
 
   invalidate(): void {

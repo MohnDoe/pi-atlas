@@ -1,7 +1,7 @@
-import { matchesKey } from "@earendil-works/pi-tui";
+import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import { StatsTheme } from "../types";
 
-export class RangeSelector {
+export class RangeSelector implements Component {
   private ranges: string[];
   private theme: StatsTheme;
   selectedIndex: number;
@@ -32,23 +32,22 @@ export class RangeSelector {
     return this.cachedLines;
   }
 
-  handleInput(data: string): boolean {
+  handleInput(data: string): void {
     if (matchesKey(data, "up")) {
       if (this.selectedIndex > 0) {
         this.selectedIndex--;
         this.invalidate();
       }
-      return true;
+      return;
     }
     if (matchesKey(data, "down")) {
       if (this.selectedIndex < this.ranges.length - 1) {
         this.selectedIndex++;
         this.invalidate();
       }
-      return true;
     }
-    if (matchesKey(data, "enter")) return true;
-    return false;
+    // enter is a no-op (selection is consumed) but must not propagate farther
+    if (matchesKey(data, "enter")) return;
   }
 
   invalidate(): void {

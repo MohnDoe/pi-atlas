@@ -1,4 +1,4 @@
-import { matchesKey } from "@earendil-works/pi-tui";
+import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import { StatsTheme } from "../types";
 
 export interface ColumnDef {
@@ -6,7 +6,7 @@ export interface ColumnDef {
   width: number;
 }
 
-export class RankedTable {
+export class RankedTable implements Component {
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
@@ -72,22 +72,20 @@ export class RankedTable {
     return lines;
   }
 
-  handleInput(data: string): boolean {
+  handleInput(data: string): void {
     if (matchesKey(data, "up")) {
       if (this.scrollOffset > 0) {
         this.scrollOffset--;
         this.invalidate();
       }
-      return true;
+      return;
     }
     if (matchesKey(data, "down")) {
       if (this.scrollOffset < this.maxScroll) {
         this.scrollOffset++;
         this.invalidate();
       }
-      return true;
     }
-    return false;
   }
 
   invalidate(): void {

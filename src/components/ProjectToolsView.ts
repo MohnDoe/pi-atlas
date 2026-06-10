@@ -1,8 +1,9 @@
+import { type Component } from "@earendil-works/pi-tui";
 import { formatCost } from "../parser";
 import { StatsTheme } from "../types";
 import { RankedTable, ColumnDef } from "./RankedTable";
 
-export class ProjectsToolsView {
+export class ProjectsToolsView implements Component {
   private projectsTable: RankedTable | null;
   private toolsTable: RankedTable | null;
   private maxHeight: number;
@@ -78,15 +79,13 @@ export class ProjectsToolsView {
     return lines;
   }
 
-  handleInput(data: string): boolean {
+  handleInput(data: string): void {
     // Up/down scroll both tables together
     if (data === "\x1b[A" || data === "\x1b[B") {
       if (this.projectsTable) this.projectsTable.handleInput(data);
       if (this.toolsTable) this.toolsTable.handleInput(data);
       this.invalidate();
-      return true;
     }
-    return false;
   }
 
   invalidate(): void {

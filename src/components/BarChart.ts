@@ -1,3 +1,4 @@
+import { type Component } from "@earendil-works/pi-tui";
 import { DaySpend, StatsTheme } from "../types";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -16,7 +17,7 @@ const MONTH_NAMES = [
   "Dec",
 ];
 
-export class BarChart {
+export class BarChart implements Component {
   private data: DaySpend[];
   private range: string;
   private maxHeight: number;

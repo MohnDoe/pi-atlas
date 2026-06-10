@@ -1,5 +1,6 @@
 import { formatCost, formatNumber } from "../parser";
 import { StatsTheme } from "../types";
+import { type Component } from "@earendil-works/pi-tui";
 
 interface CardDef {
   label: string;
@@ -15,7 +16,7 @@ export interface KpiData {
   avgCostPerDay: number;
 }
 
-export class KpiCards {
+export class KpiCards implements Component {
   private cards: CardDef[];
   private theme: StatsTheme;
   private cachedLines: string[] | null = null;

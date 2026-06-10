@@ -1,7 +1,7 @@
-import { matchesKey } from "@earendil-works/pi-tui";
+import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import { StatsTheme } from "../types";
 
-export class TabBar {
+export class TabBar implements Component {
   private tabs: string[];
   private theme: StatsTheme;
   activeIndex: number;
@@ -36,22 +36,20 @@ export class TabBar {
     return this.cachedLines;
   }
 
-  handleInput(data: string): boolean {
+  handleInput(data: string): void {
     if (matchesKey(data, "left")) {
       if (this.activeIndex > 0) {
         this.activeIndex--;
         this.invalidate();
       }
-      return true;
+      return;
     }
     if (matchesKey(data, "right")) {
       if (this.activeIndex < this.tabs.length - 1) {
         this.activeIndex++;
         this.invalidate();
       }
-      return true;
     }
-    return false;
   }
 
   invalidate(): void {

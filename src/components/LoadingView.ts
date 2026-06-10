@@ -1,4 +1,6 @@
-export class LoadingView {
+import { type Component } from "@earendil-works/pi-tui";
+
+export class LoadingView implements Component {
   private progress = 0;
   private message: string;
   private cachedLines: string[] | null = null;
