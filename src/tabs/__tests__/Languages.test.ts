@@ -38,6 +38,67 @@ describe("Languages", () => {
     }
   });
 
+  it("scrolls down with handleInput", () => {
+    const manyLanguages = Array.from({ length: 20 }, (_, i) => ({
+      language: `Lang${i}`,
+      lines: (20 - i) * 100,
+      edits: (20 - i) * 10,
+    }));
+    const tab = new Languages(manyLanguages, testTheme(), 6); // 5 data rows visible
+
+    // Render to create the table
+    let lines = tab.render(80);
+    // First data row (index 1 after header) should be Lang0
+    expect(lines[1]).toContain("Lang0");
+    expect(lines[1]).toContain("1"); // rank 1
+
+    // Scroll down
+    tab.handleInput("\x1b[B");
+    lines = tab.render(80);
+    expect(lines[1]).toContain("Lang1");
+    expect(lines[1]).toContain("2"); // rank 2, scrolled past Lang0
+  });
+
+  it("scrolls back up with handleInput", () => {
+    const manyLanguages = Array.from({ length: 20 }, (_, i) => ({
+      language: `Lang${i}`,
+      lines: (20 - i) * 100,
+      edits: (20 - i) * 10,
+    }));
+    const tab = new Languages(manyLanguages, testTheme(), 6);
+
+    // Scroll down twice, then back up
+    tab.render(80); // create table
+    tab.handleInput("\x1b[B");
+    tab.handleInput("\x1b[B");
+    let lines = tab.render(80);
+    expect(lines[1]).toContain("Lang2");
+
+    tab.handleInput("\x1b[A");
+    lines = tab.render(80);
+    expect(lines[1]).toContain("Lang1");
+  });
+
+  it("ignores non-scroll keys in handleInput", () => {
+    const manyLanguages = Array.from({ length: 20 }, (_, i) => ({
+      language: `Lang${i}`,
+      lines: (20 - i) * 100,
+      edits: (20 - i) * 10,
+    }));
+    const tab = new Languages(manyLanguages, testTheme(), 6);
+
+    tab.render(80); // create table
+    let before = tab.render(80);
+
+    // Non-arrow keys should not change the view
+    tab.handleInput("q");
+    tab.handleInput("enter");
+    tab.handleInput(" ");
+    let after = tab.render(80);
+
+    expect(after).toEqual(before);
+  });
+
   it("renders empty state message when languages is empty", () => {
     const tab = new Languages([], testTheme(), 10);
     const lines = tab.render(80);
