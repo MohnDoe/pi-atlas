@@ -24,14 +24,6 @@ export class Header implements Component {
     return [line1, line2];
   }
 
-  handleInput(data: string): void {
-    if (matchesKey(data, "up") || matchesKey(data, "down")) {
-      this.rangeSelector.handleInput(data);
-      this.invalidate();
-      return;
-    }
-  }
-
   invalidate(): void {
     this.rangeSelector.invalidate();
   }
