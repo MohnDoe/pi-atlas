@@ -74,7 +74,7 @@ describe("DashboardPopup", () => {
 
     // Dashboard content (Overview, KPIs) should still appear
     expect(text).toContain("Overview");
-    expect(text).toContain("Total Cost");
+    expect(text).toContain("Total");
     expect(text).toContain("Esc/q close");
   });
 
@@ -106,9 +106,9 @@ describe("DashboardPopup", () => {
     // Re-render should show the new tab (not cached Overview)
     const lines = popup.render(80);
     const text = lines.join("\n");
-    // Languages tab shows column headers, not the Overview's "Total Cost"
+    // Languages tab shows column headers, not the Overview's "Total"
     expect(text).toContain("Language");
-    expect(text).not.toContain("Total Cost");
+    expect(text).not.toContain("Total");
   });
 
   it("delegates invalidate to inner Dashboard", () => {

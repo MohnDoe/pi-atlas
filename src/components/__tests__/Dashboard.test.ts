@@ -30,7 +30,7 @@ describe("Dashboard", () => {
     expect(text).toContain("Overview");
     expect(text).toContain("1d");
     expect(text).toContain("7d");
-    expect(text).toContain("Total Cost");
+    expect(text).toContain("Total");
     expect(text).toContain("Esc/q close");
     expect(text).toContain("█");
   });

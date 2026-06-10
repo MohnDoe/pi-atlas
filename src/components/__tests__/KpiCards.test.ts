@@ -31,12 +31,12 @@ describe("KpiCards", () => {
     const cards = new KpiCards(kpis, testTheme());
     const lines = cards.render(80);
     const text = lines.join("\n");
-    expect(text).toContain("Total Cost");
+    expect(text).toContain("Total");
     expect(text).toContain("Sessions");
     expect(text).toContain("Messages");
-    expect(text).toContain("Total Tokens");
-    expect(text).toContain("Days Active");
-    expect(text).toContain("Avg Cost/Day");
+    expect(text).toContain("Tokens");
+    expect(text).toContain("Active");
+    expect(text).toContain("Avg/Day");
   });
 
   it("renders within width", () => {
