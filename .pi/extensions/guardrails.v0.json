@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/@aliou/pi-guardrails@0.13.2/schema.json",
+  "pathAccess": {
+    "allowedPaths": [
+      "/dev/"
+    ]
+  }
+}
