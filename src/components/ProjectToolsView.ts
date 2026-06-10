@@ -1,5 +1,5 @@
 import { type Component } from "@earendil-works/pi-tui";
-import { formatCost } from "../parser";
+import { formatCost, formatNumber } from "../parser";
 import { StatsTheme } from "../types";
 import { RankedTable, ColumnDef } from "./RankedTable";
 
@@ -29,7 +29,7 @@ export class ProjectsToolsView implements Component {
       const projRows = projects.map((p) => [
         p.project.slice(0, 8),
         formatCost(p.cost),
-        String(p.sessions),
+        formatNumber(p.sessions),
       ]);
       this.projectsTable = new RankedTable(projCols, projRows, maxHeight, theme);
     } else {
@@ -41,7 +41,7 @@ export class ProjectsToolsView implements Component {
         { header: "Tool", width: 10 },
         { header: "Count", width: 8 },
       ];
-      const toolRows = tools.map((t) => [t.tool.slice(0, 10), String(t.count)]);
+      const toolRows = tools.map((t) => [t.tool.slice(0, 10), formatNumber(t.count)]);
       this.toolsTable = new RankedTable(toolCols, toolRows, maxHeight, theme);
     } else {
       this.toolsTable = null;

@@ -1,5 +1,5 @@
 import { Container, matchesKey, type Component, Spacer, Box, Text } from "@earendil-works/pi-tui";
-import { formatCost, formatModelName } from "../parser";
+import { formatCost, formatModelName, formatNumber } from "../parser";
 import { StatsSummary, StatsTheme } from "../types";
 import { BarChart } from "./BarChart";
 import { KpiCards } from "./KpiCards";
@@ -138,8 +138,8 @@ export class Dashboard extends Container {
           ];
           const langRows = this.currentSummary.languages.map((l) => [
             l.language,
-            String(l.lines),
-            String(l.edits),
+            formatNumber(l.lines),
+            formatNumber(l.edits),
           ]);
           const tableH = Math.max(5, 15);
           this.activeTable = new RankedTable(langColumns, langRows, tableH, this.theme);
@@ -163,7 +163,7 @@ export class Dashboard extends Container {
           const modelRows = this.currentSummary.models.map((m) => [
             formatModelName(m.model),
             formatCost(m.cost),
-            String(m.calls),
+            formatNumber(m.calls),
           ]);
           const tableH = Math.max(5, 15);
           this.activeTable = new RankedTable(modelColumns, modelRows, tableH, this.theme);
