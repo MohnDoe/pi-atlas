@@ -23,11 +23,11 @@ export class RangeSelector implements Component {
       if (i === this.selectedIndex) {
         parts.push(this.theme.bg("selectedBg", this.theme.fg("accent", `[${label}]`)));
       } else {
-        parts.push(this.theme.fg("muted", ` [${label}] `));
+        parts.push(this.theme.fg("muted", `${label}`));
       }
     }
 
-    this.cachedLines = [parts.join("")];
+    this.cachedLines = [parts.join(" ")];
     this.cachedWidth = width;
     return this.cachedLines;
   }

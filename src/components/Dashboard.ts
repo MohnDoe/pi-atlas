@@ -7,6 +7,7 @@ import { ProjectsToolsView } from "./ProjectToolsView";
 import { RangeSelector } from "./RangeSelector";
 import { ColumnDef, RankedTable } from "./RankedTable";
 import { TabBar } from "./TabBar";
+import { Header } from "./Header";
 
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
@@ -24,6 +25,7 @@ class RawLine implements Component {
 
 export class Dashboard extends Container {
   private tabBar: TabBar;
+  private header: Header;
   private rangeSelector: RangeSelector;
   private summaries: StatsSummary[]; // [1d, 7d, 30d, All]
   private onClose: (() => void) | null = null;
@@ -40,7 +42,8 @@ export class Dashboard extends Container {
     this.onClose = onClose ?? null;
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects + Tools"], theme, 0);
     this.rangeLabels = ["1d", "7d", "30d", "All"];
-    this.rangeSelector = new RangeSelector(theme, this.rangeLabels, 1); // default 7d
+    this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
+    this.header = new Header(this.rangeSelector);
   }
 
   private get currentSummary(): StatsSummary {
@@ -52,22 +55,14 @@ export class Dashboard extends Container {
   render(width: number): string[] {
     // Rebuild children list based on current state
     this.clear();
+    this.addChild(this.header);
 
-    const header = new Box(1, 0);
-    header.addChild(new Text("Pi Usage", 1, 0));
-    header.addChild(new Text("v0.1", 1, 0));
-
-    this.addChild(header);
     this.addChild(new Spacer(1));
     // Tab bar
     this.addChild(this.tabBar);
 
     // Separator
     this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.min(width, 60)))));
-
-    // Range selector
-    this.addChild(this.rangeSelector);
-
     // Separator
     this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.min(width, 60)))));
 
@@ -215,11 +210,8 @@ export class Dashboard extends Container {
       return;
     }
 
-    // Range selector input (up/down/enter) — only on Overview tab
-    if (
-      (matchesKey(data, "up") || matchesKey(data, "down") || matchesKey(data, "enter")) &&
-      this.tabBar.activeIndex === 0
-    ) {
+    // Range selector input (up/down/enter)
+    if (matchesKey(data, "up") || matchesKey(data, "down")) {
       this.rangeSelector.handleInput(data);
       this.invalidate();
       return;
