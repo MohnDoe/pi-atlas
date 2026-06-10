@@ -7,6 +7,8 @@ export class Languages implements Component {
   private theme: StatsTheme;
   private maxHeight: number;
   private table: RankedTable | null = null;
+  private cachedLines: string[] | null = null;
+  private cachedWidth = -1;
 
   constructor(languages: LangStat[], theme: StatsTheme, maxHeight: number) {
     this.theme = theme;
@@ -24,15 +26,27 @@ export class Languages implements Component {
   }
 
   render(width: number): string[] {
-    if (this.table) return this.table.render(width);
-    return [this.theme.fg("muted", "No language data for this time range")];
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+
+    if (this.table) {
+      this.cachedLines = this.table.render(width);
+    } else {
+      this.cachedLines = [this.theme.fg("muted", "No language data for this time range")];
+    }
+    this.cachedWidth = width;
+    return this.cachedLines;
   }
 
   handleInput(data: string): void {
-    if (this.table) this.table.handleInput(data);
+    if (this.table) {
+      this.table.handleInput(data);
+      this.invalidate();
+    }
   }
 
   invalidate(): void {
+    this.cachedLines = null;
+    this.cachedWidth = -1;
     if (this.table) this.table.invalidate();
   }
 }

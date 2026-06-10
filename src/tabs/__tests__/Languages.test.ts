@@ -99,6 +99,34 @@ describe("Languages", () => {
     expect(after).toEqual(before);
   });
 
+  it("caches render output and invalidate clears cache", () => {
+    const tab = new Languages(languages, testTheme(), 10);
+
+    // Render at width 80
+    const first = tab.render(80);
+    // Same width should return cached (same identity)
+    const second = tab.render(80);
+    expect(second).toBe(first);
+
+    // Invalidate + re-render at same width should produce fresh output
+    tab.invalidate();
+    const afterInvalidate = tab.render(80);
+    // Should still contain data
+    expect(afterInvalidate.length).toBe(first.length);
+    expect(afterInvalidate.join("\n")).toContain("TypeScript");
+  });
+
+  it("re-renders at new width after invalidate", () => {
+    const tab = new Languages(languages, testTheme(), 10);
+
+    tab.render(80);
+    tab.invalidate();
+    const lines = tab.render(50);
+    for (const line of lines) {
+      expect(visibleLength(line)).toBeLessThanOrEqual(50);
+    }
+  });
+
   it("renders empty state message when languages is empty", () => {
     const tab = new Languages([], testTheme(), 10);
     const lines = tab.render(80);
