@@ -132,7 +132,7 @@ describe("Dashboard", () => {
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
-    expect(text).toContain("1500");
+    expect(text).toContain("1.5k");
     expect(text).toContain("800");
     expect(text).toContain("#");
     expect(text).toContain("Language");

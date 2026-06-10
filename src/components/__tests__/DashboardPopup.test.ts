@@ -163,7 +163,7 @@ describe("DashboardPopup", () => {
 
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
-    expect(text).toContain("1500");
+    expect(text).toContain("1.5k");
     expect(text).toContain("Language");
     expect(text).toContain("Lines");
     expect(text).toContain("Edits");
