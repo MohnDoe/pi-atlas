@@ -1,4 +1,4 @@
-import { Component, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RangeSelector } from "./RangeSelector";
 
