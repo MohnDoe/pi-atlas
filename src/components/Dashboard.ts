@@ -149,7 +149,7 @@ export class Dashboard extends Container {
     if (matchesKey(data, "up") || matchesKey(data, "down")) {
       const tabIndex = this.tabBar.activeIndex;
       if (tabIndex >= 1) {
-        this.tabs[tabIndex]?.handleInput(data);
+        this.tabs[tabIndex]?.handleInput?.(data);
         this.invalidate();
       }
     }
