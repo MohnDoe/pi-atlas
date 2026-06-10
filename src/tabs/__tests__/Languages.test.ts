@@ -37,4 +37,13 @@ describe("Languages", () => {
       expect(visibleLength(line)).toBeLessThanOrEqual(80);
     }
   });
+
+  it("renders empty state message when languages is empty", () => {
+    const tab = new Languages([], testTheme(), 10);
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("No language data for this time range");
+    expect(text).toContain("<fg:muted>");
+  });
 });

@@ -25,7 +25,7 @@ export class Languages implements Component {
 
   render(width: number): string[] {
     if (this.table) return this.table.render(width);
-    return [];
+    return [this.theme.fg("muted", "No language data for this time range")];
   }
 
   handleInput(data: string): void {
