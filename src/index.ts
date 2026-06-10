@@ -66,7 +66,9 @@ export default function (pi: ExtensionAPI) {
       const summaries = ranges.map((r) => summarize(days, r));
 
       // Effective rows for the Dashboard: popup mode uses 80% maxHeight minus
-      // the 2 border lines added by DashboardPopup; full-screen uses full terminal.
+      // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
+      // full terminal. Dashboard internally subtracts its own chrome (CHROME_ROWS)
+      // from this value to compute content height.
       const dashRows = usePopup
         ? Math.floor(termHeight * 0.8) - 2
         : termHeight;

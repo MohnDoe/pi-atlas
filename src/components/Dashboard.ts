@@ -23,6 +23,9 @@ class RawLine implements Component {
 }
 
 export class Dashboard extends Container {
+  /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
+  private static readonly CHROME_ROWS = 8;
+
   private tabBar: TabBar;
   private header: Header;
   private rangeSelector: RangeSelector;
@@ -58,7 +61,7 @@ export class Dashboard extends Container {
   }
 
   private buildTabs(): void {
-    const contentHeight = Math.max(5, this.terminalRows - 8);
+    const contentHeight = Math.max(5, this.terminalRows - Dashboard.CHROME_ROWS);
     const summary = this.currentSummary;
 
     this.tabs = [
