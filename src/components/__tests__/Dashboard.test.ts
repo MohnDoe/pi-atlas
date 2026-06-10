@@ -24,20 +24,20 @@ describe("Dashboard", () => {
 
   it("renders all sections", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
     expect(text).toContain("1d");
     expect(text).toContain("7d");
-    expect(text).toContain("Total Cost");
+    expect(text).toContain("Total");
     expect(text).toContain("Esc/q close");
     expect(text).toContain("█");
   });
 
   it("uses theme.fg('borderMuted') for separators", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
     // Separator lines are "─" repeated
     const sepLines = lines.filter((l) => l.includes("─"));
@@ -49,7 +49,7 @@ describe("Dashboard", () => {
 
   it("uses theme.fg('dim') for footer", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
     const footer = lines[lines.length - 1];
     expect(footer).toContain("<fg:dim>");
@@ -65,7 +65,7 @@ describe("Dashboard", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No sessions found");
@@ -83,10 +83,9 @@ describe("Dashboard", () => {
     };
     // 1d range (index 0) empty, others have data
     const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
-    const dash = new Dashboard(summaries, testTheme());
-    // Default selected range is index 1 (7d), so we see data.
-    // Switch to index 0 (1d) via range selector
-    dash.handleInput("\x1b[A"); // up arrow — should move from index 1 to 0
+    const dash = new Dashboard(summaries, testTheme(), 24);
+    // Default range is All (index 3). r key cycles: All→1d
+    dash.handleInput("r");
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No data for this time range");
@@ -95,7 +94,7 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -105,7 +104,7 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, () => {
       closed = true;
     });
     dash.handleInput("q");
@@ -122,7 +121,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Switch to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
@@ -132,7 +131,7 @@ describe("Dashboard", () => {
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
-    expect(text).toContain("1500");
+    expect(text).toContain("1.5k");
     expect(text).toContain("800");
     expect(text).toContain("#");
     expect(text).toContain("Language");
@@ -153,10 +152,10 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
-    // Default range is 7d (index 1). Switch to 1d on Overview tab first
-    dash.handleInput("\x1b[A"); // up to 1d on Overview
+    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    dash.handleInput("r"); // All → 1d
     // Switch to Languages tab
     dash.handleInput("\x1b[C"); // right to Languages
     let lines = dash.render(80);
@@ -165,9 +164,9 @@ describe("Dashboard", () => {
     expect(text).toContain("TypeScript");
     expect(text).not.toContain("Go");
 
-    // Switch back to Overview, change to 7d, then back to Languages
+    // Switch back to Overview, r to 7d, then back to Languages
     dash.handleInput("\x1b[D"); // left to Overview
-    dash.handleInput("\x1b[B"); // down to 7d
+    dash.handleInput("r"); // 1d → 7d
     dash.handleInput("\x1b[C"); // right to Languages
     lines = dash.render(80);
     text = lines.join("\n");
@@ -177,7 +176,7 @@ describe("Dashboard", () => {
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     dash.handleInput("\x1b[C"); // right to Languages
     const lines = dash.render(80);
@@ -197,7 +196,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Switch to Models tab (index 2)
     dash.handleInput("\x1b[C"); // right to Languages
@@ -220,7 +219,7 @@ describe("Dashboard", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -235,7 +234,7 @@ describe("Dashboard", () => {
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -257,10 +256,10 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
-    // Change range to 1d on Overview, then navigate to Models
-    dash.handleInput("\x1b[A"); // up to 1d on Overview
+    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     let lines = dash.render(80);
@@ -269,10 +268,10 @@ describe("Dashboard", () => {
     expect(text).toContain("Sonnet 4");
     expect(text).not.toContain("V4 Pro");
 
-    // Switch back to Overview, change to 7d, then back to Models
+    // Switch back to Overview, r to 7d, then back to Models
     dash.handleInput("\x1b[D"); // left to Languages
     dash.handleInput("\x1b[D"); // left to Overview
-    dash.handleInput("\x1b[B"); // down to 7d
+    dash.handleInput("r"); // 1d → 7d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     lines = dash.render(80);
@@ -288,32 +287,33 @@ describe("Dashboard", () => {
     }));
     const summary = { ...makeSummary(), models: manyModels };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     let lines = dash.render(80);
-    // lines[5] = table header, lines[6] = first data row (rank 1)
-    expect(lines[6]).toContain("1");
-    expect(lines[6]).toContain("Model 0");
+    // With new tab architecture: header(2) + spacer + sep + tabbar + sep = 6
+    // lines[6] = table header, lines[7] = first data row (rank 1)
+    expect(lines[7]).toContain("1");
+    expect(lines[7]).toContain("Model 0");
 
     // Scroll down
     dash.handleInput("\x1b[B");
     lines = dash.render(80);
-    expect(lines[6]).toContain("2");
-    expect(lines[6]).toContain("Model 1");
+    expect(lines[7]).toContain("2");
+    expect(lines[7]).toContain("Model 1");
 
     // Scroll back up
     dash.handleInput("\x1b[A");
     lines = dash.render(80);
-    expect(lines[6]).toContain("1");
-    expect(lines[6]).toContain("Model 0");
+    expect(lines[7]).toContain("1");
+    expect(lines[7]).toContain("Model 0");
   });
 
   it("switches tabs with left/right arrows", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
@@ -334,7 +334,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Navigate to Projects+Tools tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
@@ -355,7 +355,7 @@ describe("Dashboard", () => {
   it("Projects+Tools tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -385,10 +385,10 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
-    // Change to 1d range on Overview, then navigate to Projects+Tools
-    dash.handleInput("\x1b[A"); // up to 1d
+    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     dash.handleInput("\x1b[C"); // → Projects + Tools
@@ -400,11 +400,11 @@ describe("Dashboard", () => {
     expect(text).not.toContain("dotfiles");
     expect(text).not.toContain("read");
 
-    // Switch back to Overview, change to 7d, then back to Projects+Tools
+    // Switch back to Overview, r to 7d, then back to Projects+Tools
     dash.handleInput("\x1b[D"); // ← Models
     dash.handleInput("\x1b[D"); // ← Languages
     dash.handleInput("\x1b[D"); // ← Overview
-    dash.handleInput("\x1b[B"); // down to 7d
+    dash.handleInput("r"); // 1d → 7d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     dash.handleInput("\x1b[C"); // → Projects + Tools
@@ -426,7 +426,7 @@ describe("Dashboard", () => {
     }));
     const summary = { ...makeSummary(), projects: manyProjects, tools: manyTools };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
 
     // Navigate to Projects+Tools
     dash.handleInput("\x1b[C"); // → Languages

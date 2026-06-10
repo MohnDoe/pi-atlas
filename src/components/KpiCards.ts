@@ -22,23 +22,24 @@ export class KpiCards implements Component {
   constructor(kpis: KpiData, theme: StatsTheme) {
     this.theme = theme;
 
+    const colPcts = [33, 33, 34];
+
     this.topRow = new GridRow(
       [
         new StatCard("Total", formatCost(kpis.totalCost), this.theme, chalk.green),
         new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, chalk.blue),
         new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, chalk.magenta),
       ],
-      [33, 33, 34],
+      colPcts,
     );
 
     this.bottomRow = new GridRow(
       [
-        new StatCard("Active Days", formatNumber(kpis.daysActive), this.theme, chalk.yellow),
+        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, chalk.yellow),
         new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, chalk.cyan),
-        //TODO:
-        new StatCard("Today", "todo", this.theme, chalk.red),
+        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, chalk.red),
       ],
-      [33, 33, 34],
+      colPcts,
     );
   }
 
