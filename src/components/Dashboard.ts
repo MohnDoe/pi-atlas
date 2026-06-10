@@ -58,13 +58,11 @@ export class Dashboard extends Container {
     this.addChild(this.header);
 
     this.addChild(new Spacer(1));
+    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
     // Tab bar
     this.addChild(this.tabBar);
-
     // Separator
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.min(width, 60)))));
-    // Separator
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.min(width, 60)))));
+    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
 
     // Detect empty states
     const allEmpty = this.summaries.every((s) => s.sessionCount === 0);
@@ -189,7 +187,7 @@ export class Dashboard extends Container {
     }
 
     // Footer
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.min(width, 60)))));
+    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
     this.addChild(
       new RawLine(this.theme.fg("dim", "Esc/q close  ←→ tabs  ↑↓ range  Enter select")),
     );
