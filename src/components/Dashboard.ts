@@ -44,7 +44,9 @@ export class Dashboard extends Container {
   }
 
   private get currentSummary(): StatsSummary {
-    return this.summaries[this.rangeSelector.selectedIndex] ?? this.summaries[1];
+    return (
+      this.summaries[this.rangeSelector.selectedIndex] ?? this.summaries[this.summaries.length - 1]
+    );
   }
 
   render(width: number): string[] {
@@ -52,10 +54,11 @@ export class Dashboard extends Container {
     this.clear();
 
     const header = new Box(1, 0);
-    header.addChild(new Text("Pi Usage"));
-    header.addChild(new Text("v0.1"));
+    header.addChild(new Text("Pi Usage", 1, 0));
+    header.addChild(new Text("v0.1", 1, 0));
 
     this.addChild(header);
+    this.addChild(new Spacer(1));
     // Tab bar
     this.addChild(this.tabBar);
 
@@ -88,6 +91,7 @@ export class Dashboard extends Container {
     } else if (this.tabBar.activeIndex === 0) {
       // Overview tab: KPI cards + bar chart
       this.activeTable = null;
+
       this.addChild(
         new KpiCards(
           {

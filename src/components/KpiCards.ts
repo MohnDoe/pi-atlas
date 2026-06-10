@@ -1,11 +1,9 @@
-import { formatCost, formatNumber } from "../parser";
+import chalk from "chalk";
 import { StatsTheme } from "../types";
 import { type Component } from "@earendil-works/pi-tui";
-
-interface CardDef {
-  label: string;
-  value: string;
-}
+import { GridRow } from "./shared/GridRow";
+import { StatCard } from "./StatCard";
+import { formatCost, formatNumber } from "../parser";
 
 export interface KpiData {
   totalCost: number;
@@ -17,51 +15,39 @@ export interface KpiData {
 }
 
 export class KpiCards implements Component {
-  private cards: CardDef[];
   private theme: StatsTheme;
-  private cachedLines: string[] | null = null;
-  private cachedWidth = -1;
+  private topRow: GridRow;
+  private bottomRow: GridRow;
 
   constructor(kpis: KpiData, theme: StatsTheme) {
     this.theme = theme;
-    this.cards = [
-      { label: "Total Cost", value: formatCost(kpis.totalCost) },
-      { label: "Sessions", value: String(kpis.sessionCount) },
-      { label: "Messages", value: formatNumber(kpis.totalMessages) },
-      { label: "Total Tokens", value: formatNumber(kpis.totalTokens) },
-      { label: "Days Active", value: String(kpis.daysActive) },
-      { label: "Avg Cost/Day", value: formatCost(kpis.avgCostPerDay) },
-    ];
+
+    this.topRow = new GridRow(
+      [
+        new StatCard("Total", formatCost(kpis.totalCost), this.theme, chalk.green),
+        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, chalk.blue),
+        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, chalk.magenta),
+      ],
+      [33, 33, 34],
+    );
+
+    this.bottomRow = new GridRow(
+      [
+        new StatCard("Active Days", formatNumber(kpis.daysActive), this.theme, chalk.yellow),
+        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, chalk.cyan),
+        //TODO:
+        new StatCard("Today", "todo", this.theme, chalk.red),
+      ],
+      [33, 33, 34],
+    );
   }
 
   render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
-
-    const gap = 2;
-    const cardW = Math.max(12, Math.floor((width - gap * 2) / 3));
-    const lines: string[] = [];
-
-    for (let row = 0; row < 2; row++) {
-      let line = "";
-      for (let col = 0; col < 3; col++) {
-        const idx = row * 3 + col;
-        const c = this.cards[idx];
-        // Build plain cell first, pad, then style — avoids style tags being sliced
-        const plain = (c.label + ": " + c.value).slice(0, cardW).padEnd(cardW);
-        const cell = this.theme.fg("text", plain);
-        line += cell;
-        if (col < 2) line += " ".repeat(gap);
-      }
-      lines.push(line);
-    }
-
-    this.cachedLines = lines;
-    this.cachedWidth = width;
-    return lines;
+    return [...this.topRow.render(width), ...this.bottomRow.render(width)];
   }
 
   invalidate(): void {
-    this.cachedLines = null;
-    this.cachedWidth = -1;
+    this.topRow.invalidate();
+    this.bottomRow.invalidate();
   }
 }
