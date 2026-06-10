@@ -5,14 +5,12 @@ import { RankedTable } from "../components/RankedTable";
 
 export class Languages implements Component {
   private theme: StatsTheme;
-  private maxHeight: number;
   private table: RankedTable | null = null;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
   constructor(languages: LangStat[], theme: StatsTheme, maxHeight: number) {
     this.theme = theme;
-    this.maxHeight = maxHeight;
 
     if (languages.length > 0) {
       const columns = [
@@ -21,7 +19,7 @@ export class Languages implements Component {
         { header: "Edits", width: 10 },
       ];
       const rows = languages.map((l) => [l.language, formatNumber(l.lines), formatNumber(l.edits)]);
-      this.table = new RankedTable(columns, rows, this.maxHeight, this.theme);
+      this.table = new RankedTable(columns, rows, maxHeight, this.theme);
     }
   }
 
