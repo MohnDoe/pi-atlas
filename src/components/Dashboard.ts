@@ -130,7 +130,7 @@ export class Dashboard extends Container {
     // Tab bar input (left/right)
     if (matchesKey(data, "left") || matchesKey(data, "right")) {
       this.tabBar.handleInput(data);
-      this.invalidate();
+      this.tabBar.invalidate();
       return;
     }
 
@@ -153,7 +153,7 @@ export class Dashboard extends Container {
       const tabIndex = this.tabBar.activeIndex;
       if (tabIndex >= 1) {
         this.tabs[tabIndex]?.handleInput?.(data);
-        this.invalidate();
+        this.tabs[tabIndex]?.invalidate?.();
       }
     }
   }
