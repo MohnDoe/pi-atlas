@@ -1,4 +1,4 @@
-import { Component, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RangeSelector } from "./RangeSelector";
 
@@ -22,14 +22,6 @@ export class Header implements Component {
     const line2 = truncateToWidth(subtitle, width, "...");
 
     return [line1, line2];
-  }
-
-  handleInput(data: string): void {
-    if (matchesKey(data, "up") || matchesKey(data, "down")) {
-      this.rangeSelector.handleInput(data);
-      this.invalidate();
-      return;
-    }
   }
 
   invalidate(): void {

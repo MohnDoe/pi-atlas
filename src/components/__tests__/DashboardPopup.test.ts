@@ -25,7 +25,7 @@ describe("DashboardPopup", () => {
 
   it("renders box-drawing border around content", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);
@@ -50,7 +50,7 @@ describe("DashboardPopup", () => {
 
   it("all lines have same width", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);
@@ -65,7 +65,7 @@ describe("DashboardPopup", () => {
 
   it("renders content at inner width (width - 2)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render at 60: inner content gets 58
@@ -74,7 +74,7 @@ describe("DashboardPopup", () => {
 
     // Dashboard content (Overview, KPIs) should still appear
     expect(text).toContain("Overview");
-    expect(text).toContain("Total Cost");
+    expect(text).toContain("Total");
     expect(text).toContain("Esc/q close");
   });
 
@@ -83,7 +83,7 @@ describe("DashboardPopup", () => {
   it("delegates handleInput to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, () => {
       closed = true;
     });
     const popup = new DashboardPopup(dash);
@@ -94,7 +94,7 @@ describe("DashboardPopup", () => {
 
   it("re-renders after handleInput changes state (cache invalidation)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render once to populate caches
@@ -106,14 +106,14 @@ describe("DashboardPopup", () => {
     // Re-render should show the new tab (not cached Overview)
     const lines = popup.render(80);
     const text = lines.join("\n");
-    // Languages tab shows column headers, not the Overview's "Total Cost"
+    // Languages tab shows column headers, not the Overview's "Total"
     expect(text).toContain("Language");
-    expect(text).not.toContain("Total Cost");
+    expect(text).not.toContain("Total");
   });
 
   it("delegates invalidate to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render once to populate cache
@@ -131,7 +131,7 @@ describe("DashboardPopup", () => {
 
   it("caches rendered output and invalidates on width change", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines80 = popup.render(80);
@@ -152,7 +152,7 @@ describe("DashboardPopup", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Languages tab
@@ -163,7 +163,7 @@ describe("DashboardPopup", () => {
 
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
-    expect(text).toContain("1500");
+    expect(text).toContain("1.5k");
     expect(text).toContain("Language");
     expect(text).toContain("Lines");
     expect(text).toContain("Edits");
@@ -175,7 +175,7 @@ describe("DashboardPopup", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Models tab
@@ -197,7 +197,7 @@ describe("DashboardPopup", () => {
       tools: [{ tool: "bash", count: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Projects+Tools tab
@@ -224,7 +224,7 @@ describe("DashboardPopup", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, testTheme());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);

@@ -20,23 +20,21 @@ describe("RangeSelector", () => {
     expect(lines[0]).toContain("30d");
   });
 
-  it("moves selection up/down", () => {
+  it("ignores up/down (range now cycled via Dashboard r key)", () => {
     const rs = new RangeSelector(testTheme(), ["1d", "7d", "30d", "All"], 0);
-    rs.handleInput("\x1b[B"); // down
-    expect(rs.selectedIndex).toBe(1);
-    rs.handleInput("\x1b[B"); // down
+    rs.handleInput("\x1b[B"); // down — no effect
+    expect(rs.selectedIndex).toBe(0);
+    rs.handleInput("\x1b[A"); // up — no effect
+    expect(rs.selectedIndex).toBe(0);
+    // selectedIndex is public, Dashboard sets it directly via r key
+    rs.selectedIndex = 2;
     expect(rs.selectedIndex).toBe(2);
-    rs.handleInput("\x1b[A"); // up
-    expect(rs.selectedIndex).toBe(1);
   });
 
-  it("doesn't move past boundaries", () => {
+  it("consumes enter without changing selection", () => {
     const rs = new RangeSelector(testTheme(), ["1d", "7d"], 0);
-    rs.handleInput("\x1b[A"); // up at top
+    rs.handleInput("\r"); // enter — consumed, no-op
     expect(rs.selectedIndex).toBe(0);
-    rs.handleInput("\x1b[B"); // down
-    rs.handleInput("\x1b[B"); // down at bottom
-    expect(rs.selectedIndex).toBe(1);
   });
 
   it("renders within width", () => {

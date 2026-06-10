@@ -65,8 +65,16 @@ export default function (pi: ExtensionAPI) {
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 
+      // Effective rows for the Dashboard: popup mode uses 80% maxHeight minus
+      // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
+      // full terminal. Dashboard internally subtracts its own chrome (CHROME_ROWS)
+      // from this value to compute content height.
+      const dashRows = usePopup
+        ? Math.floor(termHeight * 0.8) - 2
+        : termHeight;
+
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme as StatsTheme, () => done(undefined));
+        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () => done(undefined));
         // Wrap in popup border only when using overlay mode
         const component = usePopup ? new DashboardPopup(dashboard) : dashboard;
         return {
