@@ -75,6 +75,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   let sessionCount = 0;
   let totalMessages = 0;
   let totalTokens = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCacheReadTokens = 0;
+  let totalCacheWriteTokens = 0;
   const allSessions = new Set<string>();
 
   // accumulators
@@ -90,6 +94,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     totalCost += day.cost;
     totalMessages += day.userMsgs + day.asstMsgs + day.toolResults;
     totalTokens += day.inTok + day.outTok + day.crTok + day.cwTok;
+    totalInputTokens += day.inTok;
+    totalOutputTokens += day.outTok;
+    totalCacheReadTokens += day.crTok;
+    totalCacheWriteTokens += day.cwTok;
 
     if (day.date === todayStr) todayCost += day.cost;
 
@@ -154,6 +162,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     sessionCount,
     totalMessages,
     totalTokens,
+    totalInputTokens,
+    totalOutputTokens,
+    totalCacheReadTokens,
+    totalCacheWriteTokens,
     daysActive,
     avgCostPerDay,
     todayCost,

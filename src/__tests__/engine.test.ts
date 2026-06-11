@@ -12,6 +12,10 @@ describe("summarize", () => {
     expect(s.totalCost).toBe(0);
     expect(s.sessionCount).toBe(0);
     expect(s.totalMessages).toBe(0);
+    expect(s.totalOutputTokens).toBe(0);
+    expect(s.totalInputTokens).toBe(0);
+    expect(s.totalCacheWriteTokens).toBe(0);
+    expect(s.totalCacheReadTokens).toBe(0);
     expect(s.totalTokens).toBe(0);
     expect(s.daysActive).toBe(0);
     expect(s.avgCostPerDay).toBe(0);
@@ -48,6 +52,10 @@ describe("summarize", () => {
     expect(s.totalCost).toBe(1.5);
     expect(s.sessionCount).toBe(2);
     expect(s.totalMessages).toBe(12); // 3+5+4
+    expect(s.totalInputTokens).toBe(1000);
+    expect(s.totalOutputTokens).toBe(500);
+    expect(s.totalCacheReadTokens).toBe(100);
+    expect(s.totalCacheWriteTokens).toBe(50);
     expect(s.totalTokens).toBe(1650); // 1000+500+100+50
     expect(s.daysActive).toBe(1);
     expect(s.avgCostPerDay).toBe(1.5);
@@ -239,6 +247,10 @@ describe("summarize", () => {
     expect(s.totalCost).toBe(4.0);
     expect(s.sessionCount).toBe(2);
     expect(s.totalMessages).toBe(24); // 5+8+3 + 3+4+1
+    expect(s.totalInputTokens).toBe(800); // 500 + 300
+    expect(s.totalOutputTokens).toBe(300); // 200 + 100
+    expect(s.totalCacheReadTokens).toBe(10); // 10 + 0
+    expect(s.totalCacheWriteTokens).toBe(5); // 5 + 0
     expect(s.totalTokens).toBe(1115); // 500+200+10+5 + 300+100
     expect(s.daysActive).toBe(2);
     expect(s.avgCostPerDay).toBeCloseTo(2.0);

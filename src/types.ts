@@ -59,6 +59,10 @@ export interface StatsSummary {
   sessionCount: number;
   totalMessages: number;
   totalTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
   daysActive: number;
   avgCostPerDay: number;
   todayCost: number;
