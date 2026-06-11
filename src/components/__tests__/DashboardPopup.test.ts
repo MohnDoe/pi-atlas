@@ -1,28 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { testPalette, testTheme } from "../../__tests__/components.fixtures";
+import { testTheme } from "../../__tests__/components.fixtures";
 import { Dashboard } from "../Dashboard";
 import { DashboardPopup } from "../DashboardPopup";
+import { makeSummary } from "../../__tests__/compute.fixtures";
 
 describe("DashboardPopup", () => {
-  const makeSummary = () => ({
-    totalCost: 5.0,
-    sessionCount: 3,
-    totalMessages: 50,
-    totalTokens: 10000,
-    daysActive: 3,
-    avgCostPerDay: 1.67,
-    todayCost: 1.0,
-    languages: [],
-    models: [],
-    projects: [],
-    tools: [],
-    dailySpend: [
-      { date: "2026-06-06", cost: 1.0 },
-      { date: "2026-06-07", cost: 2.0 },
-      { date: "2026-06-08", cost: 2.0 },
-    ],
-  });
-
   it("renders box-drawing border around content", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, testTheme(), 24);

@@ -10,7 +10,6 @@ import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
 
-
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
  * the caller is responsible for fitting the content to width.
@@ -32,29 +31,20 @@ export class Dashboard extends Container {
   private tabBar: TabBar;
   private header: Header;
   private rangeSelector: RangeSelector;
-  private summaries: StatsSummary[];
   private onClose: (() => void) | null = null;
   private tabs: Component[] = [];
   private rangeLabels: string[];
-  private theme: StatsTheme;
-  private terminalRows: number;
   private langPalette: ColorPalette;
   private modelPalette: ColorPalette;
 
-  private updateLabel: string | null;
-
   constructor(
-    summaries: StatsSummary[],
-    theme: StatsTheme,
-    terminalRows: number,
-    updateLabel: string | null,
+    private summaries: StatsSummary[],
+    private theme: StatsTheme,
+    private terminalRows: number,
+    private updateLabel?: string | null,
     onClose?: () => void,
   ) {
     super();
-    this.summaries = summaries;
-    this.theme = theme;
-    this.terminalRows = terminalRows;
-    this.updateLabel = updateLabel;
     this.onClose = onClose ?? null;
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
@@ -135,9 +125,7 @@ export class Dashboard extends Container {
     }
 
     this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
-    const updateText = this.updateLabel
-      ? this.theme.fg("dim", this.updateLabel)
-      : "";
+    const updateText = this.updateLabel ? this.theme.fg("dim", this.updateLabel) : "";
     const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
     this.addChild(new RawLine(`${updateText}${updateText ? "  ·  " : ""}${controls}`));
 
