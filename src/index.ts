@@ -7,7 +7,7 @@ import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
 import { getCacheTimestamp, loadAggregate } from "./cache.js";
 import { summarize } from "./compute.js";
-import { formatCacheTimestamp } from "./parser";
+import { formatCacheTimestamp } from "./format";
 import { StatsTheme } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");

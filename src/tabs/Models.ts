@@ -1,6 +1,6 @@
 import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
-import { formatCost, formatNumber, formatModelName } from "../parser";
+import { formatCost, formatNumber, formatModelName } from "../format";
 import { ModelStat, StatsTheme } from "../types";
 import { RankedBarList } from "../components/RankedBarList";
 

@@ -1,7 +1,7 @@
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RankedBarList } from "../components/RankedBarList";
-import { formatNumber } from "../parser";
+import { formatNumber } from "../format";
 import type { StatsSummary, StatsTheme, ToolStat } from "../types";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";

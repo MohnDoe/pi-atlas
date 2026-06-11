@@ -2,7 +2,7 @@ import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
 import { LangStat, StatsTheme } from "../types";
 import { RankedBarList } from "../components/RankedBarList";
 import { ColorPalette } from "../colorPalette.js";
-import { formatNumber } from "../parser";
+import { formatNumber } from "../format";
 
 export class Languages extends Container {
   private theme: StatsTheme;

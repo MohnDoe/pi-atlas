@@ -3,7 +3,7 @@ import { StatsTheme } from "../types";
 import { type Component } from "@earendil-works/pi-tui";
 import { GridRow } from "./shared/GridRow";
 import { StatCard } from "./StatCard";
-import { formatCost, formatNumber } from "../parser";
+import { formatCost, formatNumber } from "../format";
 
 export interface KpiData {
   totalCost: number;

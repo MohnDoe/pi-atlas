@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { summarize } from "../compute.js";
-import { dateFromISOString, emptyDay, mergeDay } from "../parser.js";
+import { dateFromISOString } from "../format.js";
+import { emptyDay, mergeDay } from "../parser.js";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {

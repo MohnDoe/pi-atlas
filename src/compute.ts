@@ -1,4 +1,4 @@
-import { dateFromISOString } from "./parser.js";
+import { dateFromISOString } from "./format.js";
 import type {
   DayAgg,
   DaySpend,
