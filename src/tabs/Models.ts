@@ -1,6 +1,6 @@
 import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
-import { formatCost, formatNumber } from "../parser";
+import { formatCost, formatNumber, formatModelName } from "../parser";
 import { ModelStat, StatsTheme } from "../types";
 import { UsageRow } from "../components/UsageRow.js";
 
@@ -36,7 +36,7 @@ export class Models extends Container {
         const barPct = (pct * 100) / highestPct;
         const row = new UsageRow(
           {
-            name: modelStat.model,
+            name: formatModelName(modelStat.model),
             mainValueText: formatCost(modelStat.cost),
             secondaryValueText: formatNumber(modelStat.calls) + " calls",
             pct,
