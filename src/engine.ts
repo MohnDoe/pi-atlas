@@ -137,6 +137,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
 
   const models: ModelStat[] = Object.entries(modelCost)
     .map(([model, cost]) => ({ model, cost, calls: modelCount[model] ?? 0 }))
+    .sort((a, b) => b.calls - a.calls)
     .sort((a, b) => b.cost - a.cost);
 
   const projects: ProjectStat[] = Object.entries(projectCost)

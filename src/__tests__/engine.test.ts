@@ -122,18 +122,32 @@ describe("summarize", () => {
     expect(spendByDate["2026-06-08"]).toBe(2);
   });
 
-  it("sorts models by cost descending, tools by count descending", () => {
+  it("sorts models by cost descending (then calls descending), tools by count descending", () => {
     const d = emptyDay("2026-06-08");
     mergeDay(d, {
       ...emptyDay(""),
-      modelCost: { cheap: 0.1, expensive: 5.0, mid: 1.0 },
-      modelCount: { cheap: 10, expensive: 2, mid: 5 },
+      modelCost: {
+        free: 0,
+        secondFree: 0,
+        cheap: 0.1,
+        duplicatedCheap: 0.1,
+        expensive: 5.0,
+        mid: 1.0,
+      },
+      modelCount: { free: 12, secondFree: 15, cheap: 10, duplicatedCheap: 8, expensive: 2, mid: 5 },
       toolCount: { bash: 1, read: 10, edit: 5 },
     });
     const days = [d];
 
     const s = summarize(days, "All");
-    expect(s.models.map((m) => m.model)).toEqual(["expensive", "mid", "cheap"]);
+    expect(s.models.map((m) => m.model)).toEqual([
+      "expensive",
+      "mid",
+      "cheap",
+      "duplicatedCheap",
+      "secondFree",
+      "free",
+    ]);
     expect(s.tools.map((t) => t.tool)).toEqual(["read", "edit", "bash"]);
   });
 
