@@ -76,13 +76,8 @@ export default function (pi: ExtensionAPI) {
       const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(
-          summaries,
-          theme as StatsTheme,
-          dashRows,
-          langPalette,
-          modelPalette,
-          () => done(undefined),
+        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () =>
+          done(undefined),
         );
         // Wrap in popup border only when using overlay mode
         const component = usePopup ? new DashboardPopup(dashboard) : dashboard;

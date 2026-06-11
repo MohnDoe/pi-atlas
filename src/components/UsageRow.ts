@@ -1,6 +1,5 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import { ColorPalette } from "../colorPalette.js";
+import chalk, { ChalkInstance } from "chalk";
 
 export class UsageRow implements Component {
   constructor(
@@ -11,7 +10,7 @@ export class UsageRow implements Component {
       barPct: number;
       pct: number;
     },
-    private palette: ColorPalette,
+    private color: ChalkInstance,
   ) {}
 
   render(width: number): string[] {
@@ -33,8 +32,7 @@ export class UsageRow implements Component {
     const barWidth = width - pctStringWidth - visibleWidth(secondLineGap);
 
     const filled = Math.round((barPct / 100) * barWidth);
-    const color = this.palette.getColor(this.lang.name);
-    const bar = color("█".repeat(filled)) + chalk.dim("░".repeat(barWidth - filled));
+    const bar = this.color("█".repeat(filled)) + chalk.dim("░".repeat(barWidth - filled));
 
     return [
       nameStr + firstLineGap + valueStr,

@@ -7,7 +7,7 @@ import { Overview } from "../tabs/Overview";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
 import { ProjectsTools } from "../tabs/ProjectsTools";
-import { ColorPalette } from "../colorPalette.js";
+import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
 
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
@@ -43,8 +43,6 @@ export class Dashboard extends Container {
     summaries: StatsSummary[],
     theme: StatsTheme,
     terminalRows: number,
-    langPalette: ColorPalette,
-    modelPalette: ColorPalette,
     onClose?: () => void,
   ) {
     super();

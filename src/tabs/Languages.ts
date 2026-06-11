@@ -38,7 +38,7 @@ export class Languages extends Container {
             pct,
             barPct,
           },
-          this.palette,
+          this.palette.getColor(langStat.language),
         );
         this.addChild(row);
       }
