@@ -1,8 +1,8 @@
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
-import type { ProjectStat, StatsTheme } from "../types";
-import { UsageRow } from "../components/UsageRow";
-import { formatModelName, formatCost, formatNumber } from "../parser";
 import chalk from "chalk";
+import { UsageRow } from "../components/UsageRow";
+import { formatCost, formatNumber } from "../parser";
+import type { ProjectStat, StatsTheme } from "../types";
 
 export class Projects extends Container {
   constructor(
