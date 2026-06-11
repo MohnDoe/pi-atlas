@@ -2,7 +2,7 @@ import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
 import { formatCost, formatNumber, formatModelName } from "../parser";
 import { ModelStat, StatsTheme } from "../types";
-import { UsageRow } from "../components/UsageRow.js";
+import { RankedBarList } from "../components/RankedBarList";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
@@ -29,29 +29,15 @@ export class Models extends Container {
       this.addChild(new Text(title + gap + subtitle, 0, 0));
       this.addChild(new Spacer(1));
 
-      const totalCost = this.models.reduce((prev, curr) => prev + curr.cost, 0);
-      const highestPct = (this.models[0]!.cost * 100) / totalCost;
-      for (const modelStat of this.models) {
-        let pct = 0;
-        let barPct = 0;
-
-        if (totalCost > 0) {
-          pct = (modelStat.cost * 100) / totalCost;
-          barPct = (pct * 100) / highestPct;
-        }
-
-        const row = new UsageRow(
-          {
-            name: formatModelName(modelStat.model),
-            mainValueText: formatCost(modelStat.cost),
-            secondaryValueText: formatNumber(modelStat.calls) + " calls",
-            pct,
-            barPct,
-          },
-          this.palette.getColor(modelStat.model),
-        );
-        this.addChild(row);
-      }
+      this.addChild(new RankedBarList(
+        this.models.map((m) => ({
+          name: formatModelName(m.model),
+          primaryValue: m.cost,
+          mainValueText: formatCost(m.cost),
+          secondaryValueText: formatNumber(m.calls) + " calls",
+          color: this.palette.getColor(m.model),
+        })),
+      ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }

@@ -1,6 +1,6 @@
 import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
 import { LangStat, StatsTheme } from "../types";
-import { UsageRow } from "../components/UsageRow";
+import { RankedBarList } from "../components/RankedBarList";
 import { ColorPalette } from "../colorPalette.js";
 import { formatNumber } from "../parser";
 
@@ -25,23 +25,15 @@ export class Languages extends Container {
       this.addChild(new Text(title + gap + subtitle, 0, 0));
       this.addChild(new Spacer(1));
 
-      const totalLines = this.languages.reduce((prev, curr) => prev + curr.lines, 0);
-      const highestPct = (this.languages[0].lines * 100) / totalLines;
-      for (const langStat of this.languages) {
-        const pct = (langStat.lines * 100) / totalLines;
-        const barPct = (pct * 100) / highestPct;
-        const row = new UsageRow(
-          {
-            name: langStat.language,
-            secondaryValueText: formatNumber(langStat.edits) + " edits",
-            mainValueText: formatNumber(langStat.lines) + " ln",
-            pct,
-            barPct,
-          },
-          this.palette.getColor(langStat.language),
-        );
-        this.addChild(row);
-      }
+      this.addChild(new RankedBarList(
+        this.languages.map((l) => ({
+          name: l.language,
+          primaryValue: l.lines,
+          mainValueText: formatNumber(l.lines) + " ln",
+          secondaryValueText: formatNumber(l.edits) + " edits",
+          color: this.palette.getColor(l.language),
+        })),
+      ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No language data for this time range.")));
     }
