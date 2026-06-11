@@ -5,7 +5,8 @@ import { langPalette, modelPalette } from "./colorPalette";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
-import { getCacheTimestamp, loadAggregate, summarize } from "./engine";
+import { getCacheTimestamp, loadAggregate } from "./cache.js";
+import { summarize } from "./compute.js";
 import { formatCacheTimestamp } from "./parser";
 import { StatsTheme } from "./types";
 

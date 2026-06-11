@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Dashboard } from "../components/Dashboard";
-import { summarize } from "../engine";
+import { summarize } from "../compute.js";
 import { parseFile } from "../parser";
 import { DayAgg } from "../types";
 import { testPalette, testTheme } from "./components.fixtures";
