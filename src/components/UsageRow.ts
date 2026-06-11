@@ -5,8 +5,8 @@ export class UsageRow implements Component {
   constructor(
     private lang: {
       name: string;
-      lineCount: string;
-      editCount: string;
+      mainValueText: string;
+      secondaryValueText: string;
       barPct: number;
       pct: number;
     },
@@ -14,11 +14,17 @@ export class UsageRow implements Component {
   ) {}
 
   render(width: number): string[] {
-    const { name, lineCount: lines, editCount: edits, barPct, pct } = this.lang;
+    const {
+      name,
+      mainValueText: mainCountText,
+      secondaryValueText: secondCountText,
+      barPct,
+      pct,
+    } = this.lang;
 
     // Line 1: name (left) + [edits - ln ] (right)
     const nameStr = chalk.bold(name);
-    const valueStr = chalk.dim(`${edits} edits`) + " · " + chalk.bold(`${lines} ln`);
+    const valueStr = chalk.dim(secondCountText) + " · " + chalk.bold(mainCountText);
     const firstLineGap = " ".repeat(
       Math.max(0, width - visibleWidth(nameStr) - visibleWidth(valueStr)),
     );

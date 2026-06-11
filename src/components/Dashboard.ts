@@ -85,7 +85,7 @@ export class Dashboard extends Container {
         contentHeight,
       ),
       new Languages(summary.languages, this.theme, this.langPalette),
-      new Models(summary.models, this.theme, contentHeight, this.modelPalette),
+      new Models(summary.models, this.theme, this.modelPalette),
       new ProjectsTools(summary.projects, summary.tools, this.theme, contentHeight),
     ];
   }

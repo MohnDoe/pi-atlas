@@ -20,7 +20,7 @@ export class Languages extends Container {
     this.clear();
     if (this.languages.length > 0) {
       const title = this.theme.bold("Languages");
-      const subtitle = this.theme.fg("dim", "by lines written");
+      const subtitle = this.theme.fg("muted", "by lines written");
       const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
       this.addChild(new Text(title + gap + subtitle, 0, 0));
       this.addChild(new Spacer(1));
@@ -33,8 +33,8 @@ export class Languages extends Container {
         const row = new UsageRow(
           {
             name: langStat.language,
-            editCount: formatNumber(langStat.edits),
-            lineCount: formatNumber(langStat.lines),
+            secondaryValueText: formatNumber(langStat.edits) + " edits",
+            mainValueText: formatNumber(langStat.lines) + " ln",
             pct,
             barPct,
           },
