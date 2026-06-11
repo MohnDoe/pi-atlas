@@ -14,7 +14,11 @@ export class UsageRow implements Component {
   ) {}
 
   render(width: number): string[] {
-    const { name, mainValueText, secondaryValueText, barPct, pct } = this.lang;
+    const { name, mainValueText, secondaryValueText } = this.lang;
+    let { barPct, pct } = this.lang;
+
+    barPct = Math.max(0, barPct);
+    pct = Math.max(0, pct);
 
     // Line 1: name (left) + [secondary(?) - mainStr ] (right)
     const nameStr = chalk.bold(name);

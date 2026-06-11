@@ -24,8 +24,13 @@ export class Projects extends Container {
       const totalCost = this.projects.reduce((prev, curr) => prev + curr.cost, 0);
       const highestPct = (this.projects[0]!.cost * 100) / totalCost;
       for (const projectStat of this.projects) {
-        const pct = (projectStat.cost * 100) / totalCost;
-        const barPct = (pct * 100) / highestPct;
+        let pct = 0;
+        let barPct = 0;
+
+        if (totalCost > 0) {
+          pct = (projectStat.cost * 100) / totalCost;
+          barPct = (pct * 100) / highestPct;
+        }
         const row = new UsageRow(
           {
             name: projectStat.project,

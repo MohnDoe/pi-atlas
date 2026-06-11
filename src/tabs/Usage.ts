@@ -74,8 +74,14 @@ export class Usage extends Container {
       this.addChild(new Spacer(1));
       const highestPct = (this.tools[0]!.count * 100) / totalToolCall;
       for (const toolStat of this.tools) {
-        const pct = (toolStat.count * 100) / totalToolCall;
-        const barPct = (pct * 100) / highestPct;
+        let pct = 0;
+        let barPct = 0;
+
+        if (totalToolCall > 0) {
+          pct = (toolStat.count * 100) / totalToolCall;
+          barPct = (pct * 100) / highestPct;
+        }
+
         const row = new UsageRow(
           {
             name: toolStat.tool,
