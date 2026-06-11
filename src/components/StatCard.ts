@@ -7,7 +7,7 @@ export class StatCard implements Component {
 
   constructor(label: string, value: string, theme: StatsTheme, accentFn = chalk.green) {
     this.box = new Box(1, 0);
-    this.box.addChild(new Text(theme.fg("dim", label), 1, 0));
+    this.box.addChild(new Text(theme.fg("muted", label), 1, 0));
     this.box.addChild(new Text(accentFn(value), 1, 0));
   }
 

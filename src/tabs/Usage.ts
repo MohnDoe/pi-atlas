@@ -2,11 +2,22 @@ import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { UsageRow } from "../components/UsageRow";
 import { formatNumber } from "../parser";
-import type { StatsTheme, ToolStat } from "../types";
+import type { StatsSummary, StatsTheme, ToolStat } from "../types";
+import { GridRow } from "../components/shared/GridRow";
+import { StatCard } from "../components/StatCard";
+
+interface TokenUsageStat {
+  total: StatsSummary["totalTokens"];
+  input: StatsSummary["totalInputTokens"];
+  output: StatsSummary["totalOutputTokens"];
+  cacheRead: StatsSummary["totalCacheReadTokens"];
+  cacheWrite: StatsSummary["totalCacheWriteTokens"];
+}
 
 export class Usage extends Container {
   constructor(
     private tools: ToolStat[],
+    private tokenUsage: TokenUsageStat,
     private theme: StatsTheme,
   ) {
     super();
@@ -14,7 +25,46 @@ export class Usage extends Container {
 
   render(width: number): string[] {
     this.clear();
+
+    const title = this.theme.bold("Tokens");
+    const subtitle = this.theme.fg("muted", formatNumber(this.tokenUsage.total));
+    const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
+    this.addChild(new Text(title + gap + subtitle, 0, 0));
+
+    const row = new GridRow(
+      [
+        new StatCard(
+          "Input",
+          formatNumber(this.tokenUsage.input),
+          this.theme,
+          chalk.hex("#a0dcfd"),
+        ),
+        new StatCard(
+          "Output",
+          formatNumber(this.tokenUsage.output),
+          this.theme,
+          chalk.hex("#a0dcfd"),
+        ),
+        new StatCard(
+          "Cache Read",
+          formatNumber(this.tokenUsage.cacheRead),
+          this.theme,
+          chalk.hex("#a0dcfd"),
+        ),
+        new StatCard(
+          "Cache Write",
+          formatNumber(this.tokenUsage.cacheWrite),
+          this.theme,
+          chalk.hex("#a0dcfd"),
+        ),
+      ],
+      [25, 25, 25, 25],
+    );
+
+    this.addChild(row);
+
     if (this.tools.length > 0) {
+      this.addChild(new Spacer(1));
       //TODO: create a component for that.
       const title = this.theme.bold("Tool Calls");
       const totalToolCall = this.tools.reduce((prev, curr) => prev + curr.count, 0);

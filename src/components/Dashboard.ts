@@ -89,7 +89,17 @@ export class Dashboard extends Container {
       new Languages(summary.languages, this.theme, this.langPalette),
       new Models(summary.models, this.theme, this.modelPalette),
       new Projects(summary.projects, this.theme),
-      new Usage(summary.tools, this.theme),
+      new Usage(
+        summary.tools,
+        {
+          total: summary.totalTokens,
+          input: summary.totalInputTokens,
+          output: summary.totalOutputTokens,
+          cacheRead: summary.totalCacheReadTokens,
+          cacheWrite: summary.totalCacheWriteTokens,
+        },
+        this.theme,
+      ),
     ];
   }
 
