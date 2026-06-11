@@ -1,11 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import chalk from "chalk";
+import { langPalette, modelPalette } from "./colorPalette";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
-import { ColorPalette } from "./colorPalette.js";
 import { loadAggregate, summarize } from "./engine";
 import { StatsTheme } from "./types";
 
@@ -69,23 +68,6 @@ export default function (pi: ExtensionAPI) {
       // Phase 2: Show dashboard (handles empty state internally)
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
-
-      const langPalette = new ColorPalette({
-        TypeScript: chalk.green,
-        Python: chalk.blue,
-        JavaScript: chalk.yellow,
-        TypeScript: chalk.green,
-        JSON: chalk.yellow,
-      });
-      const modelPalette = new ColorPalette({
-        claude-sonnet-4-20250514: chalk.magenta,
-        "claude-sonnet-4": chalk.magenta,
-        claude: chalk.magenta,
-        "gemini-2.5-pro": chalk.cyan,
-        gemini: chalk.cyan,
-        "gpt-4o": chalk.red,
-        gpt: chalk.red,
-      });
 
       // Effective rows for the Dashboard: popup mode uses 80% maxHeight minus
       // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
