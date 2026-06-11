@@ -41,16 +41,20 @@ export class Dashboard extends Container {
   private langPalette: ColorPalette;
   private modelPalette: ColorPalette;
 
+  private updateLabel: string | null;
+
   constructor(
     summaries: StatsSummary[],
     theme: StatsTheme,
     terminalRows: number,
+    updateLabel: string | null,
     onClose?: () => void,
   ) {
     super();
     this.summaries = summaries;
     this.theme = theme;
     this.terminalRows = terminalRows;
+    this.updateLabel = updateLabel;
     this.onClose = onClose ?? null;
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
@@ -131,9 +135,11 @@ export class Dashboard extends Container {
     }
 
     this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
-    this.addChild(
-      new RawLine(this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select")),
-    );
+    const updateText = this.updateLabel
+      ? this.theme.fg("dim", this.updateLabel)
+      : "";
+    const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
+    this.addChild(new RawLine(`${updateText}${updateText ? "  ·  " : ""}${controls}`));
 
     return super.render(width);
   }

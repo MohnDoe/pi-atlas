@@ -83,7 +83,7 @@ describe("DashboardPopup", () => {
   it("delegates handleInput to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, null, () => {
       closed = true;
     });
     const popup = new DashboardPopup(dash);

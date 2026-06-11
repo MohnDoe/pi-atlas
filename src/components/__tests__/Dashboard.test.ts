@@ -94,7 +94,7 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, null, () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -104,7 +104,7 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, null, () => {
       closed = true;
     });
     dash.handleInput("q");

@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { computeSignature, loadAggregate, readCache, summarize, writeCache } from "../engine.js";
+import { computeSignature, getCacheTimestamp, loadAggregate, readCache, summarize, writeCache } from "../engine.js";
 import { dateFromISOString, emptyDay, mergeDay } from "../parser.js";
 import { DayAgg } from "../types.js";
 
@@ -376,6 +376,26 @@ describe("cache read/write", () => {
     await writeFile(cachePath, "not-json");
     const payload = await readCache(cachePath);
     expect(payload).toBeNull();
+  });
+
+  it("returns generatedAt from valid cache", async () => {
+    const d = emptyDay("2026-06-08");
+    await writeCache(cachePath, "sig-abc", [d]);
+    const ts = await getCacheTimestamp(cachePath);
+    expect(ts).not.toBeNull();
+    // generatedAt is an ISO string
+    expect(new Date(ts!).toISOString()).toBe(ts);
+  });
+
+  it("returns null for missing cache", async () => {
+    const ts = await getCacheTimestamp("/nonexistent/cache.json");
+    expect(ts).toBeNull();
+  });
+
+  it("returns null for corrupt cache", async () => {
+    await writeFile(cachePath, "not-json");
+    const ts = await getCacheTimestamp(cachePath);
+    expect(ts).toBeNull();
   });
 });
 

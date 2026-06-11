@@ -142,6 +142,52 @@ export function formatCost(n: number): string {
   return "$" + n.toFixed(2);
 }
 
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatTime(d: Date): string {
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+function datePart(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+export function formatCacheTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const time = formatTime(d);
+
+  const now = new Date();
+  const today = datePart(now.toISOString());
+  const yesterday = datePart(new Date(now.getTime() - 86400000).toISOString());
+  const thisYear = now.getUTCFullYear();
+
+  const dayPart = datePart(iso);
+
+  if (dayPart === today) {
+    return time;
+  }
+
+  if (dayPart === yesterday) {
+    return `Yesterday ${time}`;
+  }
+
+  const month = MONTH_NAMES[d.getUTCMonth()];
+  const day = d.getUTCDate();
+
+  if (d.getUTCFullYear() === thisYear) {
+    return `${month} ${day}, ${time}`;
+  }
+
+  return `${month} ${day}, ${d.getUTCFullYear()}`;
+}
+
 export function formatModelName(raw: string): string {
   // Strip date suffix (YYYYMMDD or YYYY-MM-DD)
   let name = raw.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");

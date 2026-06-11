@@ -18,6 +18,7 @@ import {
   parseUserMessage,
   projectNameFromCwd,
   sessionProjectMap,
+  formatCacheTimestamp,
 } from "../parser";
 import type {
   AssistantMessageBody,
@@ -1206,5 +1207,39 @@ describe("parseFile", () => {
     const dayB = mapB.get("2026-06-08")!;
     expect(Object.keys(dayB.projectCost)).toEqual(["proj-beta"]);
     expect(dayB.projectCost["proj-beta"]).toBe(0.25);
+  });
+});
+
+describe("formatCacheTimestamp", () => {
+  it("shows time only for same day", () => {
+    const now = new Date();
+    const iso = now.toISOString();
+    const result = formatCacheTimestamp(iso);
+    // Should contain hours:minutes but not the date parts
+    expect(result).toMatch(/\d{1,2}:\d{2}/);
+    expect(result).not.toContain("Yesterday");
+    expect(result).not.toContain(",");
+  });
+
+  it("shows 'Yesterday' for previous day", () => {
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const iso = yesterday.toISOString();
+    const result = formatCacheTimestamp(iso);
+    expect(result).toMatch(/^Yesterday/);
+  });
+
+  it("shows date for older dates this year", () => {
+    const old = new Date("2026-01-15T14:30:00Z");
+    const iso = old.toISOString();
+    const result = formatCacheTimestamp(iso);
+    expect(result).toMatch(/^Jan 15,/);
+  });
+
+  it("shows date with year for previous year", () => {
+    const old = new Date("2025-06-10T09:15:00Z");
+    const iso = old.toISOString();
+    const result = formatCacheTimestamp(iso);
+    expect(result).toMatch(/2025/);
   });
 });

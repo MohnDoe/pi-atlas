@@ -5,7 +5,8 @@ import { langPalette, modelPalette } from "./colorPalette";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
-import { loadAggregate, summarize } from "./engine";
+import { getCacheTimestamp, loadAggregate, summarize } from "./engine";
+import { formatCacheTimestamp } from "./parser";
 import { StatsTheme } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
@@ -42,6 +43,10 @@ export default function (pi: ExtensionAPI) {
           }
         : {};
 
+      // Read last update timestamp before loading (cache may be rewritten)
+      const lastUpdate = await getCacheTimestamp(CACHE_PATH);
+      const updateLabel = lastUpdate ? `Last update : ${formatCacheTimestamp(lastUpdate)}` : null;
+
       // Phase 1: Show loading, parse session logs
       let days: Awaited<ReturnType<typeof loadAggregate>>;
       try {
@@ -76,7 +81,7 @@ export default function (pi: ExtensionAPI) {
       const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () =>
+        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, updateLabel, () =>
           done(undefined),
         );
         // Wrap in popup border only when using overlay mode

@@ -251,6 +251,11 @@ export async function readCache(cachePath: string): Promise<CachePayload | null>
   }
 }
 
+export async function getCacheTimestamp(cachePath: string): Promise<string | null> {
+  const payload = await readCache(cachePath);
+  return payload?.generatedAt ?? null;
+}
+
 /** Check if cache is still valid against current directory signature */
 export async function isCacheValid(cachePath: string, sessionsDir: string): Promise<boolean> {
   const cached = await readCache(cachePath);
