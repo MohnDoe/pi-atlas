@@ -79,8 +79,24 @@ export const langPalette = new ColorPalette({
   Zig: chalk.hex("#EC915C"),
 });
 
+//TODO: map model name -> provider name
 export const modelPalette = new ColorPalette({
-  claude: chalk.magenta,
-  gemini: chalk.cyan,
-  gpt: chalk.red,
+  anthropic: chalk.hex("#191919"),
+  awsBedrock: chalk.hex("#FF9900"),
+  azureOpenAI: chalk.hex("#0078D4"),
+  cohere: chalk.hex("#39594D"),
+  deepseek: chalk.hex("#5786FE"),
+  fireworks: chalk.hex("#FD6F3E"),
+  gemini: chalk.hex("#8E75B2"),
+  googleVertexAI: chalk.hex("#4285F4"),
+  groq: chalk.hex("#F55036"),
+  huggingface: chalk.hex("#FFD21E"),
+  lmstudio: chalk.hex("#000000"),
+  mistral: chalk.hex("#FA520F"),
+  ollama: chalk.hex("#000000"),
+  openai: chalk.hex("#000000"),
+  perplexity: chalk.hex("#1FB8CD"),
+  replicate: chalk.hex("#000000"),
+  together: chalk.hex("#0F6FFF"),
+  xai: chalk.hex("#000000"),
 });
