@@ -2,6 +2,7 @@ import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import { formatCost, formatModelName, formatNumber } from "../parser";
 import { ModelStat, StatsTheme } from "../types";
 import { ColumnDef, RankedTable } from "../components/RankedTable";
+import { ColorPalette } from "../colorPalette.js";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
@@ -12,7 +13,7 @@ export class Models implements Component {
   private cachedWidth = -1;
   private theme: StatsTheme;
 
-  constructor(models: ModelStat[], theme: StatsTheme, maxHeight: number) {
+  constructor(models: ModelStat[], theme: StatsTheme, maxHeight: number, palette: ColorPalette) {
     this.theme = theme;
     this.isEmpty = models.length === 0;
 
@@ -23,7 +24,7 @@ export class Models implements Component {
         { header: "Calls", width: 10 },
       ];
       const rows = models.map((m) => [
-        formatModelName(m.model),
+        palette.getColor(m.model)(formatModelName(m.model)),
         formatCost(m.cost),
         formatNumber(m.calls),
       ]);

@@ -1,9 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import chalk from "chalk";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
+import { ColorPalette } from "./colorPalette.js";
 import { loadAggregate, summarize } from "./engine";
 import { StatsTheme } from "./types";
 
@@ -68,6 +70,23 @@ export default function (pi: ExtensionAPI) {
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
       const summaries = ranges.map((r) => summarize(days, r));
 
+      const langPalette = new ColorPalette({
+        TypeScript: chalk.green,
+        Python: chalk.blue,
+        JavaScript: chalk.yellow,
+        TypeScript: chalk.green,
+        JSON: chalk.yellow,
+      });
+      const modelPalette = new ColorPalette({
+        claude-sonnet-4-20250514: chalk.magenta,
+        "claude-sonnet-4": chalk.magenta,
+        claude: chalk.magenta,
+        "gemini-2.5-pro": chalk.cyan,
+        gemini: chalk.cyan,
+        "gpt-4o": chalk.red,
+        gpt: chalk.red,
+      });
+
       // Effective rows for the Dashboard: popup mode uses 80% maxHeight minus
       // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
       // full terminal. Dashboard internally subtracts its own chrome (CHROME_ROWS)
@@ -75,8 +94,13 @@ export default function (pi: ExtensionAPI) {
       const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () =>
-          done(undefined),
+        const dashboard = new Dashboard(
+          summaries,
+          theme as StatsTheme,
+          dashRows,
+          langPalette,
+          modelPalette,
+          () => done(undefined),
         );
         // Wrap in popup border only when using overlay mode
         const component = usePopup ? new DashboardPopup(dashboard) : dashboard;

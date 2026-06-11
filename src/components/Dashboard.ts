@@ -7,6 +7,7 @@ import { Overview } from "../tabs/Overview";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
 import { ProjectsTools } from "../tabs/ProjectsTools";
+import { ColorPalette } from "../colorPalette.js";
 
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
@@ -35,11 +36,15 @@ export class Dashboard extends Container {
   private rangeLabels: string[];
   private theme: StatsTheme;
   private terminalRows: number;
+  private langPalette: ColorPalette;
+  private modelPalette: ColorPalette;
 
   constructor(
     summaries: StatsSummary[],
     theme: StatsTheme,
     terminalRows: number,
+    langPalette: ColorPalette,
+    modelPalette: ColorPalette,
     onClose?: () => void,
   ) {
     super();
@@ -47,6 +52,8 @@ export class Dashboard extends Container {
     this.theme = theme;
     this.terminalRows = terminalRows;
     this.onClose = onClose ?? null;
+    this.langPalette = langPalette;
+    this.modelPalette = modelPalette;
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects + Tools"], theme, 0);
     this.rangeLabels = ["1d", "7d", "30d", "All"];
     this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
@@ -79,8 +86,8 @@ export class Dashboard extends Container {
         this.theme,
         contentHeight,
       ),
-      new Languages(summary.languages, this.theme),
-      new Models(summary.models, this.theme, contentHeight),
+      new Languages(summary.languages, this.theme, this.langPalette),
+      new Models(summary.models, this.theme, contentHeight, this.modelPalette),
       new ProjectsTools(summary.projects, summary.tools, this.theme, contentHeight),
     ];
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { testPalette, testTheme, visibleLength } from "../../__tests__/components.fixtures";
 import { Languages } from "../Languages";
 
 describe("Languages", () => {
@@ -10,7 +10,7 @@ describe("Languages", () => {
   ];
 
   it("renders ranked table with  data rows", () => {
-    const tab = new Languages(languages, testTheme());
+    const tab = new Languages(languages, testTheme(), testPalette());
     const lines = tab.render(80);
 
     const text = lines.join("\n");
@@ -33,7 +33,7 @@ describe("Languages", () => {
   });
 
   it("caches render output and invalidate clears cache", () => {
-    const tab = new Languages(languages, testTheme());
+    const tab = new Languages(languages, testTheme(), testPalette());
 
     // Render at width 80
     const first = tab.render(80);
@@ -50,7 +50,7 @@ describe("Languages", () => {
   });
 
   it("re-renders at new width after invalidate", () => {
-    const tab = new Languages(languages, testTheme());
+    const tab = new Languages(languages, testTheme(), testPalette());
 
     tab.render(80);
     tab.invalidate();
@@ -61,7 +61,7 @@ describe("Languages", () => {
   });
 
   it("renders empty state message when languages is empty", () => {
-    const tab = new Languages([], testTheme());
+    const tab = new Languages([], testTheme(), testPalette());
     const lines = tab.render(80);
     const text = lines.join("\n");
 

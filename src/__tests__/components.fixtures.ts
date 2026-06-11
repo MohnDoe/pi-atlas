@@ -1,4 +1,6 @@
 import type { StatsTheme } from "../types";
+import chalk from "chalk";
+import { ColorPalette } from "../colorPalette.js";
 
 export function testTheme(): StatsTheme {
   return {
@@ -6,6 +8,10 @@ export function testTheme(): StatsTheme {
     bg: (color, text) => `<bg:${color}>${text}</bg:${color}>`,
     bold: (text) => `<b>${text}</b>`,
   };
+}
+
+export function testPalette(): ColorPalette {
+  return new ColorPalette({});
 }
 
 export function visibleLength(s: string): number {

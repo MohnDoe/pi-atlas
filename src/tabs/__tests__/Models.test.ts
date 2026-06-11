@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { testPalette, testTheme, visibleLength } from "../../__tests__/components.fixtures";
 import { Models } from "../Models";
 
 describe("Models", () => {
@@ -10,7 +10,7 @@ describe("Models", () => {
   ];
 
   it("renders header row with Model, Cost, Calls columns", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     const lines = tab.render(80);
     expect(lines.length).toBeGreaterThanOrEqual(1);
     const header = lines[0];
@@ -20,7 +20,7 @@ describe("Models", () => {
   });
 
   it("renders data rows with formatted model names and costs", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     const lines = tab.render(80);
     // formatModelName strips date suffix and capitalizes
     expect(lines[1]).toContain("Claude Sonnet 4");
@@ -31,7 +31,7 @@ describe("Models", () => {
   });
 
   it("renders data rows with rank numbers", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     const lines = tab.render(80);
     expect(lines[1]).toContain("1");
     expect(lines[1]).toContain("Claude Sonnet 4");
@@ -42,14 +42,14 @@ describe("Models", () => {
   });
 
   it("shows empty state when models is empty", () => {
-    const tab = new Models([], testTheme(), 10);
+    const tab = new Models([], testTheme(), 10, testPalette());
     const lines = tab.render(80);
     expect(lines.length).toBe(1);
     expect(lines[0]).toContain("No model data for this time range");
   });
 
   it("renders within width", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     const lines = tab.render(50);
     for (const line of lines) {
       expect(visibleLength(line)).toBeLessThanOrEqual(50);
@@ -62,7 +62,7 @@ describe("Models", () => {
       cost: i * 10,
       calls: i * 5,
     }));
-    const tab = new Models(manyModels, testTheme(), 6);
+    const tab = new Models(manyModels, testTheme(), 6, testPalette());
     let lines = tab.render(80);
     expect(lines[1]).toContain("Model 0");
 
@@ -77,7 +77,7 @@ describe("Models", () => {
       cost: i * 10,
       calls: i * 5,
     }));
-    const tab = new Models(manyModels, testTheme(), 6);
+    const tab = new Models(manyModels, testTheme(), 6, testPalette());
 
     tab.handleInput("\x1b[B");
     tab.handleInput("\x1b[B");
@@ -90,7 +90,7 @@ describe("Models", () => {
   });
 
   it("does not scroll past start", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     tab.handleInput("\x1b[A");
     const lines = tab.render(80);
     expect(lines[1]).toContain("Claude Sonnet 4"); // still first row
@@ -102,7 +102,7 @@ describe("Models", () => {
       cost: i * 10,
       calls: i * 5,
     }));
-    const tab = new Models(manyModels, testTheme(), 6); // 5 data rows visible
+    const tab = new Models(manyModels, testTheme(), 6, testPalette()); // 5 data rows visible
     // Scroll way past end
     for (let i = 0; i < 10; i++) tab.handleInput("\x1b[B");
     const lines = tab.render(80);
@@ -110,7 +110,7 @@ describe("Models", () => {
   });
 
   it("ignores non-scroll keys", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     const before = tab.render(80);
     tab.handleInput("x");
     tab.handleInput("\r"); // enter
@@ -119,7 +119,7 @@ describe("Models", () => {
   });
 
   it("invalidates render cache", () => {
-    const tab = new Models(models, testTheme(), 10);
+    const tab = new Models(models, testTheme(), 10, testPalette());
     tab.render(80); // cache at width 80
     tab.invalidate();
     const lines = tab.render(60); // should re-render at new width

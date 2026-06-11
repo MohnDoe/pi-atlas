@@ -1,7 +1,7 @@
 import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
 import { LangStat, StatsTheme } from "../types";
 import { UsageRow } from "../components/UsageRow";
-import chalk from "chalk";
+import { ColorPalette } from "../colorPalette.js";
 import { formatNumber } from "../parser";
 
 export class Languages extends Container {
@@ -10,6 +10,7 @@ export class Languages extends Container {
   constructor(
     private languages: LangStat[],
     theme: StatsTheme,
+    private palette: ColorPalette,
   ) {
     super();
     this.theme = theme;
@@ -29,14 +30,16 @@ export class Languages extends Container {
       for (const langStat of this.languages) {
         const pct = (langStat.lines * 100) / totalLines;
         const barPct = (pct * 100) / highestPct;
-        const row = new UsageRow({
-          name: langStat.language,
-          color: chalk.white,
-          editCount: formatNumber(langStat.edits),
-          lineCount: formatNumber(langStat.lines),
-          pct,
-          barPct,
-        });
+        const row = new UsageRow(
+          {
+            name: langStat.language,
+            editCount: formatNumber(langStat.edits),
+            lineCount: formatNumber(langStat.lines),
+            pct,
+            barPct,
+          },
+          this.palette,
+        );
         this.addChild(row);
       }
     } else {
