@@ -28,15 +28,18 @@ export default function (pi: ExtensionAPI) {
       const termHeight = process.stdout.rows || 24;
       const usePopup = termWidth >= MIN_POPUP_WIDTH && termHeight >= MIN_POPUP_HEIGHT;
 
-      const overlayOpts = usePopup ? {
-        overlay: true as const,
-        overlayOptions: {
-          width: "80%" as const,
-          maxHeight: "80%" as const,
-          anchor: "center" as const,
-          margin: 1,
-        },
-      } : {};
+      const overlayOpts = usePopup
+        ? {
+            overlay: true as const,
+            overlayOptions: {
+              minWidth: 100,
+              width: "50%" as const,
+              maxHeight: "80%" as const,
+              anchor: "center" as const,
+              margin: 2,
+            },
+          }
+        : {};
 
       // Phase 1: Show loading, parse session logs
       let days: Awaited<ReturnType<typeof loadAggregate>>;
@@ -69,12 +72,12 @@ export default function (pi: ExtensionAPI) {
       // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
       // full terminal. Dashboard internally subtracts its own chrome (CHROME_ROWS)
       // from this value to compute content height.
-      const dashRows = usePopup
-        ? Math.floor(termHeight * 0.8) - 2
-        : termHeight;
+      const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () => done(undefined));
+        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, () =>
+          done(undefined),
+        );
         // Wrap in popup border only when using overlay mode
         const component = usePopup ? new DashboardPopup(dashboard) : dashboard;
         return {

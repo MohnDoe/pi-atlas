@@ -1,50 +1,55 @@
-import { type Component } from "@earendil-works/pi-tui";
+import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
 import { LangStat, StatsTheme } from "../types";
+import { UsageRow } from "../components/UsageRow";
+import chalk from "chalk";
 import { formatNumber } from "../parser";
-import { RankedTable } from "../components/RankedTable";
 
-export class Languages implements Component {
+export class Languages extends Container {
   private theme: StatsTheme;
-  private table: RankedTable | null = null;
-  private cachedLines: string[] | null = null;
-  private cachedWidth = -1;
 
-  constructor(languages: LangStat[], theme: StatsTheme, maxHeight: number) {
+  constructor(
+    private languages: LangStat[],
+    theme: StatsTheme,
+  ) {
+    super();
     this.theme = theme;
-
-    if (languages.length > 0) {
-      const columns = [
-        { header: "Language", width: 20 },
-        { header: "Lines", width: 10 },
-        { header: "Edits", width: 10 },
-      ];
-      const rows = languages.map((l) => [l.language, formatNumber(l.lines), formatNumber(l.edits)]);
-      this.table = new RankedTable(columns, rows, maxHeight, this.theme);
-    }
   }
 
   render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+    this.clear();
+    if (this.languages.length > 0) {
+      const title = this.theme.bold("Languages");
+      const subtitle = this.theme.fg("dim", "by lines written");
+      const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
+      this.addChild(new Text(title + gap + subtitle, 0, 0));
+      this.addChild(new Spacer(1));
 
-    if (this.table) {
-      this.cachedLines = this.table.render(width);
+      const totalLines = this.languages.reduce((prev, curr) => prev + curr.lines, 0);
+      const highestPct = (this.languages[0].lines * 100) / totalLines;
+      for (const langStat of this.languages) {
+        const pct = (langStat.lines * 100) / totalLines;
+        const barPct = (pct * 100) / highestPct;
+        const row = new UsageRow({
+          name: langStat.language,
+          color: chalk.white,
+          editCount: formatNumber(langStat.edits),
+          lineCount: formatNumber(langStat.lines),
+          pct,
+          barPct,
+        });
+        this.addChild(row);
+      }
     } else {
-      this.cachedLines = [this.theme.fg("muted", "No language data for this time range")];
+      this.addChild(new Text(this.theme.fg("muted", "No language data for this time range.")));
     }
-    this.cachedWidth = width;
-    return this.cachedLines;
+    return super.render(width);
   }
 
-  handleInput(data: string): void {
-    if (this.table) {
-      this.table.handleInput(data);
-      this.invalidate();
-    }
+  handleInput(_data: string): void {
+    this.invalidate();
   }
 
   invalidate(): void {
-    this.cachedLines = null;
-    this.cachedWidth = -1;
-    if (this.table) this.table.invalidate();
+    super.invalidate();
   }
 }

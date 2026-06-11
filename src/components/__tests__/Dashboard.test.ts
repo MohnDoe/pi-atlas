@@ -111,7 +111,7 @@ describe("Dashboard", () => {
     expect(closed).toBe(true);
   });
 
-  it("renders Languages tab with ranked table when active", () => {
+  it("renders Languages tab when active", () => {
     const summary = {
       ...makeSummary(),
       languages: [
@@ -128,15 +128,14 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
+    expect(text).toContain("Languages");
+    expect(text).toContain("by lines written");
+
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
-    expect(text).toContain("1.5k");
-    expect(text).toContain("800");
-    expect(text).toContain("#");
-    expect(text).toContain("Language");
-    expect(text).toContain("Lines");
-    expect(text).toContain("Edits");
+    expect(text).toContain("1.5k ln");
+    expect(text).toContain("800 ln");
   });
 
   it("Languages tab updates when time range changes", () => {

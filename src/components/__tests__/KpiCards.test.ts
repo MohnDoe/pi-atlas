@@ -50,7 +50,7 @@ describe("KpiCards", () => {
   it("formats large token numbers", () => {
     const cards = new KpiCards({ ...kpis, totalTokens: 1500000 }, testTheme());
     const lines = cards.render(80);
-    expect(lines.join("\n")).toContain("1.5M");
+    expect(lines.join("\n")).toContain("1.50M");
   });
 
   it("formats large costs with compact notation", () => {
