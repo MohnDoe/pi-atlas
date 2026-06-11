@@ -6,7 +6,7 @@ export class UsageRow implements Component {
     private lang: {
       name: string;
       mainValueText: string;
-      secondaryValueText: string;
+      secondaryValueText?: string;
       barPct: number;
       pct: number;
     },
@@ -14,17 +14,17 @@ export class UsageRow implements Component {
   ) {}
 
   render(width: number): string[] {
-    const {
-      name,
-      mainValueText: mainCountText,
-      secondaryValueText: secondCountText,
-      barPct,
-      pct,
-    } = this.lang;
+    const { name, mainValueText, secondaryValueText, barPct, pct } = this.lang;
 
-    // Line 1: name (left) + [edits - ln ] (right)
+    // Line 1: name (left) + [secondary(?) - mainStr ] (right)
     const nameStr = chalk.bold(name);
-    const valueStr = chalk.dim(secondCountText) + " · " + chalk.bold(mainCountText);
+
+    let valueStr = "";
+    if (secondaryValueText) {
+      valueStr += chalk.dim(secondaryValueText) + " · ";
+    }
+    valueStr += chalk.bold(mainValueText);
+
     const firstLineGap = " ".repeat(
       Math.max(0, width - visibleWidth(nameStr) - visibleWidth(valueStr)),
     );
