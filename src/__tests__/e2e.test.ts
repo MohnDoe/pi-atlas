@@ -95,7 +95,8 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Overview");
     expect(text).toContain("Languages");
     expect(text).toContain("Models");
-    expect(text).toContain("Projects + Tools");
+    expect(text).toContain("Projects");
+    expect(text).toContain("Usage");
 
     // Range selector
     expect(text).toContain("1d");

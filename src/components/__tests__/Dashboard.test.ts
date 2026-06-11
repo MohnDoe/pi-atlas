@@ -281,9 +281,9 @@ describe("Dashboard", () => {
     expect(lines.join("\n")).toContain("Languages");
   });
 
-  // ---- Projects + Tools tab ----
+  // ---- Projects tab ----
 
-  it("renders Projects+Tools tab with side-by-side tables", () => {
+  it("renders Project tab", () => {
     const summary = {
       ...makeSummary(),
       projects: [
@@ -305,16 +305,11 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Project");
-    expect(text).toContain("Tool");
-    expect(text).toContain("pi-usage");
-    expect(text).toContain("bash");
-    expect(text).toContain("$15.50");
-    expect(text).toContain("150");
-    expect(text).not.toContain("Coming soon");
+    expect(text).toContain("Projects");
+    expect(text).toContain("by cost");
   });
 
-  it("Projects+Tools tab shows empty states when no data", () => {
+  it("Projects tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
     const summaries = [summary, summary, summary, summary];
     const dash = new Dashboard(summaries, testTheme(), 24);
@@ -325,25 +320,19 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("No project data");
-    expect(text).toContain("No tool data");
+    expect(text).toContain("No projects data");
   });
 
-  it("Projects+Tools tab updates when time range changes", () => {
+  it("Projects tab updates when time range changes", () => {
     const summary1d = {
       ...makeSummary(),
       projects: [{ project: "pi-usage", cost: 1.0, sessions: 5 }],
-      tools: [{ tool: "bash", count: 10 }],
     };
     const summary7d = {
       ...makeSummary(),
       projects: [
         { project: "pi-usage", cost: 15.5, sessions: 42 },
         { project: "dotfiles", cost: 8.2, sessions: 20 },
-      ],
-      tools: [
-        { tool: "bash", count: 150 },
-        { tool: "read", count: 120 },
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
@@ -353,14 +342,12 @@ describe("Dashboard", () => {
     dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("\x1b[C"); // → Projects + Tools
+    dash.handleInput("\x1b[C"); // → Projects
     let lines = dash.render(80);
     let text = lines.join("\n");
-    // 1d range: only pi-usage and bash
+    // 1d range: only pi-usage
     expect(text).toContain("pi-usage");
-    expect(text).toContain("bash");
     expect(text).not.toContain("dotfiles");
-    expect(text).not.toContain("read");
 
     // Switch back to Overview, r to 7d, then back to Projects+Tools
     dash.handleInput("\x1b[D"); // ← Models
@@ -373,39 +360,6 @@ describe("Dashboard", () => {
     lines = dash.render(80);
     text = lines.join("\n");
     expect(text).toContain("dotfiles");
-    expect(text).toContain("read");
-  });
-
-  it("Projects+Tools tab scrolls with up/down", () => {
-    const manyProjects = Array.from({ length: 20 }, (_, i) => ({
-      project: `proj-${i}`,
-      cost: 20 - i,
-      sessions: (20 - i) * 10,
-    }));
-    const manyTools = Array.from({ length: 25 }, (_, i) => ({
-      tool: `tool-${i}`,
-      count: 30 - i,
-    }));
-    const summary = { ...makeSummary(), projects: manyProjects, tools: manyTools };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
-
-    // Navigate to Projects+Tools
-    dash.handleInput("\x1b[C"); // → Languages
-    dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("\x1b[C"); // → Projects + Tools
-    let lines = dash.render(80);
-    let text = lines.join("\n");
-    expect(text).toContain("proj-0");
-    expect(text).toContain("tool-0");
-
-    // Scroll down
-    dash.handleInput("\x1b[B");
-    dash.handleInput("\x1b[B");
-    dash.handleInput("\x1b[B");
-    lines = dash.render(80);
-    text = lines.join("\n");
-    expect(text).toContain("proj-3");
-    expect(text).toContain("tool-3");
+    expect(text).toContain("pi-usage");
   });
 });

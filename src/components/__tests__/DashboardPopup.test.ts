@@ -187,11 +187,10 @@ describe("DashboardPopup", () => {
     expect(text).toContain("150");
   });
 
-  it("renders Projects+Tools tab content through popup", () => {
+  it("renders Projects tab content through popup", () => {
     const summary = {
       ...makeSummary(),
       projects: [{ project: "pi-usage", cost: 15.5, sessions: 42 }],
-      tools: [{ tool: "bash", count: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
     const dash = new Dashboard(summaries, testTheme(), 24);
@@ -205,10 +204,8 @@ describe("DashboardPopup", () => {
     const lines = popup.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Project");
-    expect(text).toContain("Tool");
-    expect(text).toContain("pi-usage");
-    expect(text).toContain("bash");
+    expect(text).toContain("Projects");
+    expect(text).toContain("by cost");
   });
 
   it("shows empty state through popup when no session data", () => {

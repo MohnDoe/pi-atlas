@@ -1,5 +1,4 @@
 import type { StatsTheme } from "../types";
-import chalk from "chalk";
 import { ColorPalette } from "../colorPalette.js";
 
 export function testTheme(): StatsTheme {
