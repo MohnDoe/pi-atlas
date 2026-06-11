@@ -25,7 +25,7 @@ describe("DashboardPopup", () => {
 
   it("renders box-drawing border around content", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);
@@ -50,7 +50,7 @@ describe("DashboardPopup", () => {
 
   it("all lines have same width", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);
@@ -65,7 +65,7 @@ describe("DashboardPopup", () => {
 
   it("renders content at inner width (width - 2)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render at 60: inner content gets 58
@@ -83,7 +83,7 @@ describe("DashboardPopup", () => {
   it("delegates handleInput to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette(), () => {
+    const dash = new Dashboard(summaries, testTheme(), 24, () => {
       closed = true;
     });
     const popup = new DashboardPopup(dash);
@@ -94,7 +94,7 @@ describe("DashboardPopup", () => {
 
   it("re-renders after handleInput changes state (cache invalidation)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render once to populate caches
@@ -113,7 +113,7 @@ describe("DashboardPopup", () => {
 
   it("delegates invalidate to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Render once to populate cache
@@ -131,7 +131,7 @@ describe("DashboardPopup", () => {
 
   it("caches rendered output and invalidates on width change", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines80 = popup.render(80);
@@ -152,7 +152,7 @@ describe("DashboardPopup", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Languages tab
@@ -172,7 +172,7 @@ describe("DashboardPopup", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Models tab
@@ -194,7 +194,7 @@ describe("DashboardPopup", () => {
       tools: [{ tool: "bash", count: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     // Navigate to Projects+Tools tab
@@ -221,7 +221,7 @@ describe("DashboardPopup", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const popup = new DashboardPopup(dash);
 
     const lines = popup.render(80);

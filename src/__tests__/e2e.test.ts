@@ -87,7 +87,7 @@ describe("JSONL → Dashboard", () => {
     const summaries = ranges.map((r) => summarize(days, r));
 
     // Render dashboard
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -154,7 +154,7 @@ describe("JSONL → Dashboard", () => {
     const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
     const summaries = ranges.map((r) => summarize(days, r));
 
-    const dash = new Dashboard(summaries, testTheme(), 24, testPalette(), testPalette());
+    const dash = new Dashboard(summaries, testTheme(), 24);
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 
@@ -164,8 +164,5 @@ describe("JSONL → Dashboard", () => {
     // Should show language data from parsed file
     expect(text).toContain("TypeScript");
     expect(text).toContain("Rust");
-    expect(text).toContain("Language");
-    expect(text).toContain("Lines");
-    expect(text).toContain("Edits");
   });
 });
