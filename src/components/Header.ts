@@ -1,4 +1,4 @@
-import { Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RangeSelector } from "./RangeSelector";
 
@@ -6,8 +6,7 @@ export class Header implements Component {
   constructor(private rangeSelector: RangeSelector) {}
 
   render(width: number): string[] {
-    const title = chalk.bold("Pi Usage");
-    const subtitle = chalk.dim(`v 0.0.1`);
+    const title = chalk.bold("Pi Usage") + " · " + chalk.dim(`v 0.0.1`);
 
     // Right side: range
     const rangesWitdth = 15;
@@ -16,12 +15,9 @@ export class Header implements Component {
     // Line 1: title (left) + tabs (right)
     const titleW = visibleWidth(title);
     const gap = " ".repeat(Math.max(0, width - titleW - rangesWitdth));
-    const line1 = title + gap + ranges;
+    const line = title + gap + ranges;
 
-    // Line 2: subtitle only (tabs only appear on line 1)
-    const line2 = truncateToWidth(subtitle, width, "...");
-
-    return [line1, line2];
+    return [line];
   }
 
   invalidate(): void {

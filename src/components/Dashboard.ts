@@ -88,9 +88,8 @@ export class Dashboard extends Container {
   render(width: number): string[] {
     this.clear();
     this.addChild(this.header);
-
     this.addChild(new Spacer(1));
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
+
     this.addChild(this.tabBar);
     this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
 
