@@ -6,10 +6,10 @@ import { Header } from "./Header";
 import { Overview } from "../tabs/Overview";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
-import { ProjectsTools } from "../tabs/ProjectsTools";
 import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
+
 
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
