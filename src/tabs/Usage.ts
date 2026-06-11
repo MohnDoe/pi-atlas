@@ -1,46 +1,54 @@
-import { type Component } from "@earendil-works/pi-tui";
-import type { ProjectStat, ToolStat, StatsTheme } from "../types";
-import { ProjectsToolsView } from "../components/ProjectToolsView";
+import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
+import chalk from "chalk";
+import { UsageRow } from "../components/UsageRow";
+import { formatNumber } from "../parser";
+import type { StatsTheme, ToolStat } from "../types";
 
-export class ProjectsTools implements Component {
-  private view: ProjectsToolsView;
-  private cachedLines: string[] | null = null;
-  private cachedWidth = -1;
-
+export class Usage extends Container {
   constructor(
-    projects: ProjectStat[],
-    tools: ToolStat[],
-    theme: StatsTheme,
-    maxHeight: number,
+    private tools: ToolStat[],
+    private theme: StatsTheme,
   ) {
-    const projRows = projects.map((p) => ({
-      project: p.project,
-      cost: p.cost,
-      sessions: p.sessions,
-    }));
-    const toolRows = tools.map((t) => ({
-      tool: t.tool,
-      count: t.count,
-    }));
-    this.view = new ProjectsToolsView(projRows, toolRows, maxHeight, theme);
+    super();
   }
 
   render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
-    this.cachedLines = this.view.render(width);
-    this.cachedWidth = width;
-    return this.cachedLines;
+    this.clear();
+    if (this.tools.length > 0) {
+      //TODO: create a component for that.
+      const title = this.theme.bold("Tool Calls");
+      const totalToolCall = this.tools.reduce((prev, curr) => prev + curr.count, 0);
+      const subtitle = this.theme.fg("muted", totalToolCall.toString());
+      const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
+      this.addChild(new Text(title + gap + subtitle, 0, 0));
+      this.addChild(new Spacer(1));
+      const highestPct = (this.tools[0]!.count * 100) / totalToolCall;
+      for (const toolStat of this.tools) {
+        const pct = (toolStat.count * 100) / totalToolCall;
+        const barPct = (pct * 100) / highestPct;
+        const row = new UsageRow(
+          {
+            name: toolStat.tool,
+            mainValueText: formatNumber(toolStat.count),
+            pct,
+            barPct,
+          },
+          chalk.white,
+        );
+        this.addChild(row);
+      }
+    } else {
+      this.addChild(new Text(this.theme.fg("muted", "No tools data for this time range.")));
+    }
+
+    return super.render(width);
   }
 
-  handleInput(data: string): void {
-    this.view.handleInput(data);
-    this.cachedLines = null;
-    this.cachedWidth = -1;
+  handleInput(_data: string): void {
+    this.invalidate();
   }
 
   invalidate(): void {
-    this.cachedLines = null;
-    this.cachedWidth = -1;
-    this.view.invalidate();
+    super.invalidate();
   }
 }
