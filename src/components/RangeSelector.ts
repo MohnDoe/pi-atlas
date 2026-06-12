@@ -2,32 +2,22 @@ import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import { StatsTheme } from "../types";
 
 export class RangeSelector implements Component {
-  private ranges: string[];
-  private theme: StatsTheme;
   selectedIndex: number;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(theme: StatsTheme, ranges: string[] = ["1d", "7d", "30d", "All"], selectedIndex = 0) {
-    this.theme = theme;
-    this.ranges = ranges;
+  constructor(
+    private theme: StatsTheme,
+    private ranges: string[] = ["Today", "Last 7 days", "Last 30 days", "All time"],
+    selectedIndex = 0,
+  ) {
     this.selectedIndex = selectedIndex;
   }
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
-    const parts: string[] = [];
-    for (let i = 0; i < this.ranges.length; i++) {
-      const label = this.ranges[i];
-      if (i === this.selectedIndex) {
-        parts.push(this.theme.bg("selectedBg", this.theme.fg("accent", `[${label}]`)));
-      } else {
-        parts.push(this.theme.fg("muted", `${label}`));
-      }
-    }
-
-    this.cachedLines = [parts.join(" ")];
+    this.cachedLines = [this.theme.fg("accent", this.ranges[this.selectedIndex])];
     this.cachedWidth = width;
     return this.cachedLines;
   }

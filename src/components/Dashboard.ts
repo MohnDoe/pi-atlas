@@ -49,7 +49,7 @@ export class Dashboard extends Container {
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Usage"], theme, 0);
-    this.rangeLabels = ["1d", "7d", "30d", "All"];
+    this.rangeLabels = ["Today", "Last 7 days", "Last 30 days", "All time"];
     this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
     this.header = new Header(this.rangeSelector);
     this.buildTabs();

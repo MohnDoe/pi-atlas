@@ -3,15 +3,15 @@ import chalk from "chalk";
 import { BorderBox } from "./BorderBox";
 import { RangeSelector } from "./RangeSelector";
 
-const BOX_WIDTH = 20;
+const RANGE_BOX_WIDTH = 17;
 
 export class Header implements Component {
-  private box: BorderBox;
+  private rangeBox: BorderBox;
 
   constructor(private rangeSelector: RangeSelector) {
-    this.box = new BorderBox({
-      child: rangeSelector,
-      title: "[r] Range",
+    this.rangeBox = new BorderBox({
+      child: this.rangeSelector,
+      title: "Range (r)",
       rounded: true,
     });
   }
@@ -23,13 +23,13 @@ export class Header implements Component {
     const line1 = title + " ".repeat(Math.max(0, width - visibleWidth(title)));
 
     // Lines 2-4: BorderBox right-aligned, fixed width
-    const gap = " ".repeat(Math.max(0, width - BOX_WIDTH));
-    const boxLines = this.box.render(BOX_WIDTH).map((line) => gap + line);
+    const gap = " ".repeat(Math.max(0, width - RANGE_BOX_WIDTH));
+    const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH).map((line) => gap + line);
 
     return [line1, ...boxLines];
   }
 
   invalidate(): void {
-    this.box.invalidate();
+    this.rangeBox.invalidate();
   }
 }

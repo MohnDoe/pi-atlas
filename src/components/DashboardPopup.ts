@@ -12,7 +12,6 @@ export class DashboardPopup implements Component {
 
   constructor(dashboard: Dashboard) {
     this.borderBox = new BorderBox({
-      title: chalk.bold("Pi Usage") + chalk.dim(" · 0.1"),
       child: dashboard,
     });
   }
