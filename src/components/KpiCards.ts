@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { StatsTheme } from "../types";
 import { type Component } from "@earendil-works/pi-tui";
 import { GridRow } from "./shared/GridRow";
@@ -26,18 +25,18 @@ export class KpiCards implements Component {
 
     this.topRow = new GridRow(
       [
-        new StatCard("Total", formatCost(kpis.totalCost), this.theme, chalk.green),
-        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, chalk.blue),
-        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, chalk.magenta),
+        new StatCard("Total", formatCost(kpis.totalCost), this.theme, "good"),
+        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, "info"),
+        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, "accent"),
       ],
       colPcts,
     );
 
     this.bottomRow = new GridRow(
       [
-        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, chalk.yellow),
-        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, chalk.cyan),
-        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, chalk.red),
+        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, "warning"),
+        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, "info"),
+        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, "error"),
       ],
       colPcts,
     );
