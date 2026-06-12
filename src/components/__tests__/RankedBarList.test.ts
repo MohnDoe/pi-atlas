@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
 import chalk from "chalk";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { describe, expect, it } from "vitest";
 import { RankedBarList } from "../RankedBarList";
 
 describe("RankedBarList", () => {
