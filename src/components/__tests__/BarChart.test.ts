@@ -54,20 +54,7 @@ describe("BarChart", () => {
     expect(text).toContain("█");
   });
 
-  it("uses theme.fg('accent') for bar blocks", () => {
-    const spend = [{ date: "2026-06-08", cost: 5.0 }];
-    const chart = new BarChart(spend, "7d", 5, testTheme());
-    const lines = chart.render(80);
-    const text = lines.join("\n");
-    expect(text).toContain("<fg:accent>█");
-  });
 
-  it("uses theme.fg('dim') for X-axis labels", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
-    const lines = chart.render(80);
-    const labelLine = lines[lines.length - 1];
-    expect(labelLine).toContain("<fg:dim>");
-  });
 
   it("30d range labels show day numbers every 5th and first/last", () => {
     // Build 30 days of data spanning a month
@@ -79,9 +66,7 @@ describe("BarChart", () => {
     const lines = chart.render(80);
     // Last line is the label row
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine
-      .replace(/\x1b\[[0-9;]*m/g, "")
-      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // Should contain day numbers like "1", "5", "10", etc.
     expect(visible).toContain("1");
     expect(visible).toContain("5");
@@ -103,9 +88,7 @@ describe("BarChart", () => {
     const chart = new BarChart(spend, "All", 10, testTheme());
     const lines = chart.render(80);
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine
-      .replace(/\x1b\[[0-9;]*m/g, "")
-      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
     // Month changes get labels

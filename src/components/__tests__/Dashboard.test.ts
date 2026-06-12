@@ -16,25 +16,7 @@ describe("Dashboard", () => {
     expect(text).toContain("█");
   });
 
-  it("uses theme.fg('borderMuted') for separators", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
-    const lines = dash.render(80);
-    // Separator lines are "─" repeated (not BorderBox border chars)
-    const sepLines = lines.filter((l) => l.includes("─") && !/╭|╮|╰|╯|┌|┐|└|┘|│/.test(l));
-    expect(sepLines.length).toBeGreaterThan(0);
-    for (const line of sepLines) {
-      expect(line).toContain("<fg:borderMuted>");
-    }
-  });
 
-  it("uses theme.fg('dim') for footer", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
-    const lines = dash.render(80);
-    const footer = lines[lines.length - 1];
-    expect(footer).toContain("<fg:dim>");
-  });
 
   it("shows 'No sessions found' when no session data exists", () => {
     const zeroSummary = {

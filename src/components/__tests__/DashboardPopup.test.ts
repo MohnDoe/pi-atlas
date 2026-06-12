@@ -39,8 +39,7 @@ describe("DashboardPopup", () => {
 
     // Every line should be exactly 80 chars visible width
     for (const line of lines) {
-      // Strip theme tags to check visible width
-      const stripped = line.replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+      const stripped = line.replace(/\x1b\[[0-9;]*m/g, "");
       expect(stripped.length).toBe(80);
     }
   });

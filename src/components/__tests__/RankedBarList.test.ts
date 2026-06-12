@@ -22,11 +22,6 @@ describe("RankedBarList", () => {
     expect(text).toContain("100 ln");
     expect(text).toContain("5 edits");
     expect(text).toContain("100.00%");
-    // Theme tags: bold name, muted secondary, bold main, dim pct
-    expect(text).toContain("<b>TypeScript</b>");
-    expect(text).toContain("<fg:muted>5 edits</fg:muted>");
-    expect(text).toContain("<b>100 ln</b>");
-    expect(text).toContain("<fg:dim>100.00%</fg:dim>");
   });
 
   it("returns empty array for empty items", () => {

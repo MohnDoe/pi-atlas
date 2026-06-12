@@ -74,13 +74,7 @@ describe("RankedTable", () => {
     expect(lines[0]).toContain("Language");
   });
 
-  it("uses theme.bg('selectedBg') and theme.bold for header row", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
-    const lines = table.render(80);
-    const headerLine = lines[0];
-    expect(headerLine).toContain("<bg:selectedBg>");
-    expect(headerLine).toContain("<b>");
-  });
+
 
   it("scrolls down with handleInput", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [

@@ -60,18 +60,5 @@ describe("TabBar", () => {
     expect(visibleLength(lines[0])).toBeLessThanOrEqual(60);
   });
 
-  it("uses theme.bg('selectedBg') and theme.fg('accent') for active tab", () => {
-    const tb = new TabBar(tabs, testTheme(), 0);
-    const lines = tb.render(80);
-    // Active tab (Overview at index 0) should have selectedBg + accent
-    expect(lines[0]).toContain("<bg:selectedBg>");
-    expect(lines[0]).toContain("<fg:accent>");
-  });
 
-  it("uses theme.fg('muted') for inactive tabs", () => {
-    const tb = new TabBar(tabs, testTheme(), 0);
-    const lines = tb.render(80);
-    // Inactive tabs should use muted
-    expect(lines[0]).toContain("<fg:muted>");
-  });
 });

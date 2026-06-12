@@ -1,17 +1,9 @@
-import { Component } from "@earendil-works/pi-tui";
+import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import { BorderBox } from "./BorderBox";
 import { RangeSelector } from "./RangeSelector";
 import { StatsTheme } from "../types";
 
 const RANGE_BOX_WIDTH = 17;
-
-/** Strip ANSI escapes and test theme tags to compute visible length. */
-function visibleLen(s: string): number {
-  return s
-    .replace(/\x1b\[[0-9;]*m/g, "")
-    .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "")
-    .length;
-}
 
 export class Header implements Component {
   private rangeBox: BorderBox;
@@ -34,8 +26,8 @@ export class Header implements Component {
     const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH);
     const leftWidth = width - RANGE_BOX_WIDTH;
 
-    const line1 = title + " ".repeat(Math.max(0, leftWidth - visibleLen(title)));
-    const line2 = version + " ".repeat(Math.max(0, leftWidth - visibleLen(version)));
+    const line1 = title + " ".repeat(Math.max(0, leftWidth - visibleWidth(title)));
+    const line2 = version + " ".repeat(Math.max(0, leftWidth - visibleWidth(version)));
     const line3 = " ".repeat(leftWidth);
 
     return [line1 + boxLines[0], line2 + boxLines[1], line3 + boxLines[2]];
