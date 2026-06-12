@@ -17,16 +17,21 @@ export class Header implements Component {
   }
 
   render(width: number): string[] {
-    const title = chalk.bold("Pi Usage") + " · " + chalk.dim(`v 0.0.1`);
+    const title = chalk.bold("Pi Usage");
+    const version = " · " + chalk.dim("v 0.0.1");
 
-    // Line 1: title on the left
-    const line1 = title + " ".repeat(Math.max(0, width - visibleWidth(title)));
+    const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH);
+    const leftWidth = width - RANGE_BOX_WIDTH;
 
-    // Lines 2-4: BorderBox right-aligned, fixed width
-    const gap = " ".repeat(Math.max(0, width - RANGE_BOX_WIDTH));
-    const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH).map((line) => gap + line);
+    const line1 = title + " ".repeat(Math.max(0, leftWidth - visibleWidth(title)));
+    const line2 = version + " ".repeat(Math.max(0, leftWidth - visibleWidth(version)));
+    const line3 = " ".repeat(leftWidth);
 
-    return [line1, ...boxLines];
+    return [
+      line1 + boxLines[0],
+      line2 + boxLines[1],
+      line3 + boxLines[2],
+    ];
   }
 
   invalidate(): void {
