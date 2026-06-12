@@ -4,7 +4,9 @@ import { RangeSelector } from "../RangeSelector";
 import { Header } from "../Header";
 
 function plainText(s: string): string {
-  return s.replace(/\x1b\[[0-9;]*m/g, "");
+  return s
+    .replace(/\x1b\[[0-9;]*m/g, "")
+    .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
 }
 
 describe("Header", () => {
@@ -14,7 +16,7 @@ describe("Header", () => {
       ["Today", "Last 7 days", "Last 30 days", "All time"],
       0,
     );
-    const header = new Header(rs);
+    const header = new Header(testTheme(), rs);
     const lines = header.render(80);
 
     expect(lines).toHaveLength(3);
