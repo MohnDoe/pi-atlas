@@ -29,6 +29,9 @@ export function emptyDay(date: string): DayAgg {
     langEdits: {},
     modelCost: {},
     modelCount: {},
+    providerCost: {},
+    providerCount: {},
+    modelToProvider: new Map(),
     projectCost: {},
     projectSessions: {},
     toolCount: {},
@@ -59,6 +62,12 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   for (const [k, v] of Object.entries(update.modelCount)) {
     base.modelCount[k] = (base.modelCount[k] ?? 0) + v;
   }
+  for (const [k, v] of Object.entries(update.providerCost)) {
+    base.providerCost[k] = (base.providerCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.providerCount)) {
+    base.providerCount[k] = (base.providerCount[k] ?? 0) + v;
+  }
   for (const [k, v] of Object.entries(update.projectCost)) {
     base.projectCost[k] = (base.projectCost[k] ?? 0) + v;
   }
@@ -69,6 +78,11 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   for (const [k, v] of Object.entries(update.toolCount)) {
     base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
   }
+
+  base.modelToProvider = new Map([
+    ...base.modelToProvider.entries(),
+    ...update.modelToProvider.entries(),
+  ]);
 }
 
 export function parseSessionEntry(entry: SessionEntry): DayAgg {
@@ -120,9 +134,14 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
     }
   }
 
-  if (msg.model && msg.usage?.cost) {
-    day.modelCost[msg.model] = msg.usage.cost.total;
+  if (msg.model) {
+    day.modelCost[msg.model] = msg.usage?.cost?.total || 0;
     day.modelCount[msg.model] = 1;
+    if (msg.provider) {
+      day.modelToProvider.set(msg.model, msg.provider);
+      day.providerCost[msg.provider] = msg.usage?.cost?.total || 0;
+      day.providerCount[msg.provider] = 1;
+    }
   }
 
   if (msg.content) {

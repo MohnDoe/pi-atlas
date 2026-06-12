@@ -475,6 +475,9 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.asstMsgs).toBe(1);
     expect(dayAgg.modelCost["deepseek-v4-pro"]).toBe(0.00141);
     expect(dayAgg.modelCount["deepseek-v4-pro"]).toBe(1);
+    expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
+    expect(dayAgg.providerCount["deepseek"]).toBe(1);
+    expect(dayAgg.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
   });
 
   it("returns a DayAgg for a user message", () => {
@@ -695,8 +698,8 @@ describe("parseSessionLogEntry", () => {
     expect(day.inTok).toBe(100);
     expect(day.outTok).toBe(50);
     expect(day.cost).toBe(0);
-    expect(day.modelCost).toEqual({});
-    expect(day.modelCount).toEqual({});
+    expect(day.modelCost).toEqual({ "deepseek-v4": 0 });
+    expect(day.modelCount).toEqual({ "deepseek-v4": 1 });
   });
 
   it("parses unknown file extensions as 'Other'", () => {
@@ -847,6 +850,115 @@ describe("mergeDay", () => {
     mergeDay(a, c);
     expect(a.modelCost).toEqual({ "deepseek-v4": 0.08, "gpt-5": 0.1 });
     expect(a.modelCount).toEqual({ "deepseek-v4": 5, "gpt-5": 1 });
+  });
+
+  it("maps model to its provider", () => {
+    const a = parseSessionLogEntry({
+      type: "message",
+      id: "msg-1",
+      parentId: "prev",
+      timestamp: "2026-06-08T10:05:00.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "hello" }],
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: {
+            input: 0.001,
+            output: 0.0004,
+            cacheRead: 0.00001,
+            cacheWrite: 0,
+            total: 0.00141,
+          },
+        },
+        timestamp: 1700000000000,
+      } as AssistantMessageBody,
+    })!;
+    const b = parseSessionLogEntry({
+      type: "message",
+      id: "msg-2",
+      parentId: "msg-1",
+      timestamp: "2026-06-08T10:05:01.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "??" }],
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: {
+            input: 0.001,
+            output: 0.0004,
+            cacheRead: 0.00001,
+            cacheWrite: 0,
+            total: 0.00141,
+          },
+        },
+        timestamp: 1700000000001,
+      } as AssistantMessageBody,
+    })!;
+
+    const c = parseSessionLogEntry({
+      type: "message",
+      id: "msg-3",
+      parentId: "msg-2",
+      timestamp: "2026-06-08T10:05:02.000Z",
+      message: {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "OK" }],
+        provider: "openai",
+        model: "gpt-4",
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: {
+            input: 0.001,
+            output: 0.0004,
+            cacheRead: 0.00001,
+            cacheWrite: 0,
+            total: 0.00141,
+          },
+        },
+        timestamp: 1700000000001,
+      } as AssistantMessageBody,
+    })!;
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(a.modelToProvider.get("gpt-4")).toBe("openai");
+  });
+
+  it("merges provider cost and count records", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      providerCost: { deepseek: 0.05, openai: 0.1 },
+      providerCount: { deepseek: 3, openai: 1 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      providerCost: { deepseek: 0.03 },
+      providerCount: { deepseek: 2 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.providerCost).toEqual({ deepseek: 0.08, openai: 0.1 });
+    expect(a.providerCount).toEqual({ deepseek: 5, openai: 1 });
   });
 
   it("merges projectCost records", () => {
@@ -1120,5 +1232,3 @@ describe("parseFile", () => {
     expect(dayB.projectCost["proj-beta"]).toBe(0.25);
   });
 });
-
-

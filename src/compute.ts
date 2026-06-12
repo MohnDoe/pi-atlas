@@ -81,9 +81,13 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   const langEdits: Record<string, number> = {};
   const modelCost: Record<string, number> = {};
   const modelCount: Record<string, number> = {};
+  const providerCost: Record<string, number> = {};
+  const providerCount: Record<string, number> = {};
   const projectCost: Record<string, number> = {};
   const projectSessions: Record<string, Set<string>> = {};
   const toolCount: Record<string, number> = {};
+
+  let modelToProvider: Map<string, string> = new Map();
 
   for (const day of filtered) {
     totalCost += day.cost;
@@ -93,6 +97,8 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     totalOutputTokens += day.outTok;
     totalCacheReadTokens += day.crTok;
     totalCacheWriteTokens += day.cwTok;
+
+    modelToProvider = new Map([...modelToProvider.entries(), ...day.modelToProvider.entries()]);
 
     if (day.date === todayStr) todayCost += day.cost;
 
@@ -113,6 +119,14 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     }
     for (const [model, count] of Object.entries(day.modelCount)) {
       modelCount[model] = (modelCount[model] ?? 0) + count;
+    }
+
+    // merge providers
+    for (const [provider, cost] of Object.entries(day.providerCost)) {
+      providerCost[provider] = (providerCost[provider] ?? 0) + cost;
+    }
+    for (const [provider, count] of Object.entries(day.providerCount)) {
+      providerCount[provider] = (providerCount[provider] ?? 0) + count;
     }
 
     // merge projects
@@ -139,7 +153,12 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .sort((a, b) => b.lines - a.lines);
 
   const models: ModelStat[] = Object.entries(modelCost)
-    .map(([model, cost]) => ({ model, cost, calls: modelCount[model] ?? 0 }))
+    .map(([model, cost]) => ({
+      provider: modelToProvider.get(model) || undefined,
+      model,
+      cost,
+      calls: modelCount[model] ?? 0,
+    }))
     .sort((a, b) => b.calls - a.calls)
     .sort((a, b) => b.cost - a.cost);
 

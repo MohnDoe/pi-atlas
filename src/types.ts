@@ -19,6 +19,9 @@ export interface DayAgg {
   langEdits: Record<string, number>;
   modelCost: Record<string, number>;
   modelCount: Record<string, number>;
+  providerCost: Record<string, number>;
+  providerCount: Record<string, number>;
+  modelToProvider: Map<string, string>;
   projectCost: Record<string, number>;
   projectSessions: Record<string, Set<string>>;
   toolCount: Record<string, number>;
@@ -38,6 +41,7 @@ export interface LangStat {
 }
 
 export interface ModelStat {
+  provider?: string;
   model: string;
   cost: number;
   calls: number;
