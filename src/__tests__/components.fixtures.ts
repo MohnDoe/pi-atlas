@@ -6,6 +6,12 @@ const FG_CODES: Record<string, string> = {
   dim: "\x1b[2m",
   muted: "\x1b[90m",
   borderMuted: "\x1b[90m",
+  success: "\x1b[32m",
+  border: "\x1b[34m",
+  borderAccent: "\x1b[96m",
+  warning: "\x1b[33m",
+  error: "\x1b[31m",
+  text: "\x1b[37m",
 };
 
 const BG_CODES: Record<string, string> = {

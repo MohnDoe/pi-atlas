@@ -25,9 +25,9 @@ export class KpiCards implements Component {
 
     this.topRow = new GridRow(
       [
-        new StatCard("Total", formatCost(kpis.totalCost), this.theme, "good"),
-        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, "info"),
-        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, "accent"),
+        new StatCard("Total", formatCost(kpis.totalCost), this.theme, "success"),
+        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, "accent"),
+        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, "borderAccent"),
       ],
       colPcts,
     );
@@ -35,7 +35,7 @@ export class KpiCards implements Component {
     this.bottomRow = new GridRow(
       [
         new StatCard("Active", formatNumber(kpis.daysActive), this.theme, "warning"),
-        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, "info"),
+        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, "border"),
         new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, "error"),
       ],
       colPcts,
