@@ -21,8 +21,12 @@ describe("Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
-    // Separator lines are "─" repeated
-    const sepLines = lines.filter((l) => l.includes("─"));
+    // Separator lines are "─" repeated (not BorderBox border chars)
+    const sepLines = lines.filter(
+      (l) =>
+        l.includes("─") &&
+        !/╭|╮|╰|╯|┌|┐|└|┘|│/.test(l),
+    );
     expect(sepLines.length).toBeGreaterThan(0);
     for (const line of sepLines) {
       expect(line).toContain("<fg:borderMuted>");

@@ -26,7 +26,7 @@ class RawLine implements Component {
 
 export class Dashboard extends Container {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
-  private static readonly CHROME_ROWS = 8;
+  private static readonly CHROME_ROWS = 11;
 
   private tabBar: TabBar;
   private header: Header;

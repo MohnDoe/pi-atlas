@@ -1,26 +1,35 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
+import { BorderBox } from "./BorderBox";
 import { RangeSelector } from "./RangeSelector";
 
+const BOX_WIDTH = 20;
+
 export class Header implements Component {
-  constructor(private rangeSelector: RangeSelector) {}
+  private box: BorderBox;
+
+  constructor(private rangeSelector: RangeSelector) {
+    this.box = new BorderBox({
+      child: rangeSelector,
+      title: "[r] Range",
+      rounded: true,
+    });
+  }
 
   render(width: number): string[] {
     const title = chalk.bold("Pi Usage") + " · " + chalk.dim(`v 0.0.1`);
 
-    // Right side: range
-    const rangesWitdth = 15;
-    const ranges = this.rangeSelector.render(rangesWitdth);
+    // Line 1: title on the left
+    const line1 = title + " ".repeat(Math.max(0, width - visibleWidth(title)));
 
-    // Line 1: title (left) + tabs (right)
-    const titleW = visibleWidth(title);
-    const gap = " ".repeat(Math.max(0, width - titleW - rangesWitdth));
-    const line = title + gap + ranges;
+    // Lines 2-4: BorderBox right-aligned, fixed width
+    const gap = " ".repeat(Math.max(0, width - BOX_WIDTH));
+    const boxLines = this.box.render(BOX_WIDTH).map((line) => gap + line);
 
-    return [line];
+    return [line1, ...boxLines];
   }
 
   invalidate(): void {
-    this.rangeSelector.invalidate();
+    this.box.invalidate();
   }
 }
