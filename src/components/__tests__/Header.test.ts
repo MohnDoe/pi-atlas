@@ -9,7 +9,11 @@ function plainText(s: string): string {
 
 describe("Header", () => {
   it("renders title on 2 lines with range box right-aligned", () => {
-    const rs = new RangeSelector(testTheme(), ["Today", "Last 7 days", "Last 30 days", "All time"], 0);
+    const rs = new RangeSelector(
+      testTheme(),
+      ["Today", "Last 7 days", "Last 30 days", "All time"],
+      0,
+    );
     const header = new Header(rs);
     const lines = header.render(80);
 
@@ -26,7 +30,7 @@ describe("Header", () => {
 
     // Line 1: version on the left, box content on the right
     const l1 = plainText(lines[1]);
-    expect(l1).toMatch(/^\s*· v 0\.0\.1\s+│.*Today/);
+    expect(l1).toMatch(/^\s*v 0\.0\.1\s+│.*Today/);
 
     // Line 2: empty left side, box bottom border on the right
     const l2 = plainText(lines[2]);
