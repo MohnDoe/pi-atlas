@@ -100,6 +100,7 @@ export class BorderBox implements Component {
 
   handleInput(data: string): void {
     this.child.handleInput?.(data);
+    this.invalidate();
   }
 
   invalidate(): void {
