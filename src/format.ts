@@ -123,8 +123,18 @@ export function dateFromISOString(str: string): string {
 // ---- Month / day constants ----
 
 export const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 // ---- Number formatting ----
@@ -144,16 +154,19 @@ export function formatCost(n: number): string {
 
 // ---- Timestamp formatting ----
 
+function localDatePart(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function formatTime(d: Date): string {
-  const h = d.getUTCHours();
-  const m = d.getUTCMinutes();
+  const h = d.getHours();
+  const m = d.getMinutes();
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 || 12;
   return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
-
-function datePart(iso: string): string {
-  return iso.slice(0, 10);
 }
 
 export function formatCacheTimestamp(iso: string): string {
@@ -161,11 +174,11 @@ export function formatCacheTimestamp(iso: string): string {
   const time = formatTime(d);
 
   const now = new Date();
-  const today = datePart(now.toISOString());
-  const yesterday = datePart(new Date(now.getTime() - 86400000).toISOString());
-  const thisYear = now.getUTCFullYear();
+  const today = localDatePart(now);
+  const yesterday = localDatePart(new Date(now.getTime() - 86400000));
+  const thisYear = now.getFullYear();
 
-  const dayPart = datePart(iso);
+  const dayPart = localDatePart(d);
 
   if (dayPart === today) {
     return time;
@@ -175,14 +188,14 @@ export function formatCacheTimestamp(iso: string): string {
     return `Yesterday ${time}`;
   }
 
-  const month = MONTH_NAMES[d.getUTCMonth()];
-  const day = d.getUTCDate();
+  const month = MONTH_NAMES[d.getMonth()];
+  const day = d.getDate();
 
-  if (d.getUTCFullYear() === thisYear) {
+  if (d.getFullYear() === thisYear) {
     return `${month} ${day}, ${time}`;
   }
 
-  return `${month} ${day}, ${d.getUTCFullYear()}`;
+  return `${month} ${day}, ${d.getFullYear()}`;
 }
 
 // ---- Model name formatting ----
