@@ -42,7 +42,7 @@ export class UsageRow implements Component {
     const barWidth = width - pctStringWidth - visibleWidth(secondLineGap);
 
     const filled = Math.round((barPct / 100) * barWidth);
-    const bar = this.color("█".repeat(filled)) + chalk.dim("░".repeat(barWidth - filled));
+    const bar = this.color("■".repeat(filled)) + chalk.dim("■".repeat(barWidth - filled));
 
     return [
       nameStr + firstLineGap + valueStr,
