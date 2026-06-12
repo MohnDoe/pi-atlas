@@ -29,15 +29,17 @@ export class Models extends Container {
       this.addChild(new Text(title + gap + subtitle, 0, 0));
       this.addChild(new Spacer(1));
 
-      this.addChild(new RankedBarList(
-        this.models.map((m) => ({
-          name: formatModelName(m.model),
-          primaryValue: m.cost,
-          mainValueText: formatCost(m.cost),
-          secondaryValueText: formatNumber(m.calls) + " calls",
-          color: this.palette.getColor(m.model),
-        })),
-      ));
+      this.addChild(
+        new RankedBarList(
+          this.models.map((m) => ({
+            name: formatModelName(m.model),
+            primaryValue: m.cost,
+            mainValueText: formatCost(m.cost),
+            secondaryValueText: formatNumber(m.calls) + " calls",
+            color: this.palette.getColor(m.provider || ""),
+          })),
+        ),
+      );
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
