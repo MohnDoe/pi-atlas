@@ -104,9 +104,18 @@ describe("summarize", () => {
   });
 
   it("computes daily spend with zero-fill for gaps", () => {
-    const d1 = emptyDay("2026-06-05");
+    const today = new Date();
+    // day0 = 6 days ago, day3 = 3 days ago (both within 7d range)
+    const d0 = new Date(today);
+    d0.setUTCDate(d0.getUTCDate() - 6);
+    const day0 = dateFromISOString(d0.toISOString());
+    const d3 = new Date(today);
+    d3.setUTCDate(d3.getUTCDate() - 3);
+    const day3 = dateFromISOString(d3.toISOString());
+
+    const d1 = emptyDay(day0);
     d1.cost = 1;
-    const d2 = emptyDay("2026-06-08");
+    const d2 = emptyDay(day3);
     d2.cost = 2;
     const days = [d1, d2];
 
@@ -114,17 +123,20 @@ describe("summarize", () => {
     expect(s.dailySpend.length).toBeGreaterThanOrEqual(4);
     // Should include all dates from earliest to latest, with zeros for gaps
     const dates = s.dailySpend.map((d) => d.date);
-    expect(dates).toContain("2026-06-05");
-    expect(dates).toContain("2026-06-06");
-    expect(dates).toContain("2026-06-07");
-    expect(dates).toContain("2026-06-08");
+    expect(dates).toContain(day0);
+    expect(dates).toContain(day3);
 
+    // Check gaps are zero-filled (dates between day0 and day3)
     const spendByDate: Record<string, number> = {};
     for (const ds of s.dailySpend) spendByDate[ds.date] = ds.cost;
-    expect(spendByDate["2026-06-05"]).toBe(1);
-    expect(spendByDate["2026-06-06"]).toBe(0);
-    expect(spendByDate["2026-06-07"]).toBe(0);
-    expect(spendByDate["2026-06-08"]).toBe(2);
+    expect(spendByDate[day0]).toBe(1);
+    expect(spendByDate[day3]).toBe(2);
+
+    // Verify zeros in between
+    const dMid = new Date(d0);
+    dMid.setUTCDate(dMid.getUTCDate() + 1);
+    const midStr = dateFromISOString(dMid.toISOString());
+    expect(spendByDate[midStr]).toBe(0);
   });
 
   it("sorts models by cost descending (then calls descending), tools by count descending", () => {
@@ -201,7 +213,16 @@ describe("summarize", () => {
   });
 
   it("computes all KPIs for multiple-day 7d range", () => {
-    const d1 = emptyDay("2026-06-05");
+    const today = new Date();
+    const day2ago = new Date(today);
+    day2ago.setUTCDate(day2ago.getUTCDate() - 1);
+    const day1ago = new Date(today);
+    day1ago.setUTCDate(day1ago.getUTCDate() - 0);
+
+    const d1date = dateFromISOString(day2ago.toISOString());
+    const d2date = dateFromISOString(day1ago.toISOString());
+
+    const d1 = emptyDay(d1date);
     mergeDay(d1, {
       ...emptyDay(""),
       cost: 2.5,
@@ -219,7 +240,7 @@ describe("summarize", () => {
       langLines: { TypeScript: 100, Python: 50 },
       langEdits: { TypeScript: 3, Python: 1 },
     });
-    const d2 = emptyDay("2026-06-06");
+    const d2 = emptyDay(d2date);
     mergeDay(d2, {
       ...emptyDay(""),
       cost: 1.5,
