@@ -38,6 +38,7 @@ export class Models extends Container {
             secondaryValueText: formatNumber(m.calls) + " calls",
             color: this.palette.getColor(m.provider || ""),
           })),
+          this.theme,
         ),
       );
     } else {
