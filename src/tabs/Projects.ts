@@ -28,6 +28,7 @@ export class Projects extends Container {
           secondaryValueText: formatNumber(p.sessions) + " sessions",
           color: chalk.white,
         })),
+        this.theme,
       ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No projects data for this time range.")));

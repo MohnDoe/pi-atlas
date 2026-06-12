@@ -78,6 +78,7 @@ export class Usage extends Container {
           mainValueText: formatNumber(t.count),
           color: chalk.white,
         })),
+        this.theme,
       ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No tools data for this time range.")));

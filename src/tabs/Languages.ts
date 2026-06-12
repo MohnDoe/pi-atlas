@@ -33,6 +33,7 @@ export class Languages extends Container {
           secondaryValueText: formatNumber(l.edits) + " edits",
           color: this.palette.getColor(l.language),
         })),
+        this.theme,
       ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No language data for this time range.")));

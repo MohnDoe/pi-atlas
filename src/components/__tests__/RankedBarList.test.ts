@@ -1,9 +1,11 @@
 import chalk from "chalk";
 import { describe, expect, it } from "vitest";
+import { testTheme } from "../../__tests__/components.fixtures";
 import { RankedBarList } from "../RankedBarList";
 
 describe("RankedBarList", () => {
   it("renders a single item with 100% bar width", () => {
+    const theme = testTheme();
     const list = new RankedBarList([
       {
         name: "TypeScript",
@@ -12,7 +14,7 @@ describe("RankedBarList", () => {
         secondaryValueText: "5 edits",
         color: chalk.green,
       },
-    ]);
+    ], theme);
     const lines = list.render(80);
     expect(lines.length).toBe(3); // name+value, bar+%, spacer
     const text = lines.join("\n");
@@ -20,10 +22,15 @@ describe("RankedBarList", () => {
     expect(text).toContain("100 ln");
     expect(text).toContain("5 edits");
     expect(text).toContain("100.00%");
+    // Theme tags: bold name, muted secondary, bold main, dim pct
+    expect(text).toContain("<b>TypeScript</b>");
+    expect(text).toContain("<fg:muted>5 edits</fg:muted>");
+    expect(text).toContain("<b>100 ln</b>");
+    expect(text).toContain("<fg:dim>100.00%</fg:dim>");
   });
 
   it("returns empty array for empty items", () => {
-    const list = new RankedBarList([]);
+    const list = new RankedBarList([], testTheme());
     expect(list.render(80)).toEqual([]);
   });
 
@@ -31,7 +38,7 @@ describe("RankedBarList", () => {
     const list = new RankedBarList([
       { name: "Python", primaryValue: 60, mainValueText: "60 ln", color: chalk.blue },
       { name: "Rust", primaryValue: 40, mainValueText: "40 ln", color: chalk.red },
-    ]);
+    ], testTheme());
     const lines = list.render(80);
     const text = lines.join("\n");
     // Python should be 60% and 100% bar, Rust should be 40% and 66.67% bar
@@ -45,7 +52,7 @@ describe("RankedBarList", () => {
   it("renders without secondary value", () => {
     const list = new RankedBarList([
       { name: "bash", primaryValue: 10, mainValueText: "10", color: chalk.white },
-    ]);
+    ], testTheme());
     const lines = list.render(80);
     const text = lines.join("\n");
     expect(text).toContain("bash");
@@ -56,7 +63,7 @@ describe("RankedBarList", () => {
     const list = new RankedBarList([
       { name: "Empty1", primaryValue: 0, mainValueText: "0", color: chalk.gray },
       { name: "Empty2", primaryValue: 0, mainValueText: "0", color: chalk.gray },
-    ]);
+    ], testTheme());
     const lines = list.render(80);
     const text = lines.join("\n");
     expect(text).toContain("0.00%");
@@ -67,7 +74,7 @@ describe("RankedBarList", () => {
   it("caches rendered output for same width", () => {
     const list = new RankedBarList([
       { name: "Rust", primaryValue: 50, mainValueText: "50 ln", color: chalk.red },
-    ]);
+    ], testTheme());
     const lines1 = list.render(80);
     const lines2 = list.render(80);
     expect(lines1).toBe(lines2); // same reference (cached)
@@ -76,7 +83,7 @@ describe("RankedBarList", () => {
   it("re-renders when width changes", () => {
     const list = new RankedBarList([
       { name: "Rust", primaryValue: 50, mainValueText: "50 ln", color: chalk.red },
-    ]);
+    ], testTheme());
     const lines1 = list.render(80);
     const lines2 = list.render(40);
     expect(lines1).not.toBe(lines2);
@@ -85,7 +92,7 @@ describe("RankedBarList", () => {
   it("invalidates cache", () => {
     const list = new RankedBarList([
       { name: "Rust", primaryValue: 50, mainValueText: "50 ln", color: chalk.red },
-    ]);
+    ], testTheme());
     list.render(80);
     list.invalidate();
     const lines = list.render(80);

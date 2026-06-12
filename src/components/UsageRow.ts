@@ -1,5 +1,6 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import chalk, { ChalkInstance } from "chalk";
+import type { ChalkInstance } from "chalk";
+import type { StatsTheme } from "../types";
 
 export class UsageRow implements Component {
   constructor(
@@ -11,6 +12,7 @@ export class UsageRow implements Component {
       pct: number;
     },
     private color: ChalkInstance,
+    private theme: StatsTheme,
   ) {}
 
   render(width: number): string[] {
@@ -21,20 +23,20 @@ export class UsageRow implements Component {
     pct = Math.max(0, pct);
 
     // Line 1: name (left) + [secondary(?) - mainStr ] (right)
-    const nameStr = chalk.bold(name);
+    const nameStr = this.theme.bold(name);
 
     let valueStr = "";
     if (secondaryValueText) {
-      valueStr += chalk.dim(secondaryValueText) + " · ";
+      valueStr += this.theme.fg("muted", secondaryValueText) + " · ";
     }
-    valueStr += chalk.bold(mainValueText);
+    valueStr += this.theme.bold(mainValueText);
 
     const firstLineGap = " ".repeat(
       Math.max(0, width - visibleWidth(nameStr) - visibleWidth(valueStr)),
     );
 
     // Line 2: progress bar - [percentage]
-    const pctString = chalk.dim(`${pct.toFixed(2)}%`);
+    const pctString = this.theme.fg("dim", `${pct.toFixed(2)}%`);
     const pctStringWidth = visibleWidth(pctString);
     // const pctStringWidth = 6; // always same size as XX.XX%
     const secondLineGap = "  ";
@@ -42,7 +44,7 @@ export class UsageRow implements Component {
     const barWidth = width - pctStringWidth - visibleWidth(secondLineGap);
 
     const filled = Math.round((barPct / 100) * barWidth);
-    const bar = this.color("■".repeat(filled)) + chalk.gray("■".repeat(barWidth - filled));
+    const bar = this.color("■".repeat(filled)) + this.theme.fg("dim", "■".repeat(barWidth - filled));
 
     return [
       nameStr + firstLineGap + valueStr,
