@@ -6,7 +6,7 @@ import { Dashboard } from "../components/Dashboard";
 import { summarize } from "../compute.js";
 import { parseFile } from "../parser";
 import { DayAgg } from "../types";
-import { testPalette, testTheme } from "./components.fixtures";
+import { testTheme } from "./components.fixtures";
 
 describe("JSONL → Dashboard", () => {
   let tmpDir: string;
@@ -99,10 +99,8 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Usage");
 
     // Range selector
-    expect(text).toContain("1d");
-    expect(text).toContain("7d");
-    expect(text).toContain("30d");
-    expect(text).toContain("All");
+    expect(text).toContain("Range (r)");
+    expect(text).toContain("All time");
   });
 
   it("end-to-end: Navigate to Languages tab shows ranked table from parsed data", async () => {

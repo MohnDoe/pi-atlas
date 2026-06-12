@@ -10,8 +10,7 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
-    expect(text).toContain("1d");
-    expect(text).toContain("7d");
+    expect(text).toContain("All time");
     expect(text).toContain("Total");
     expect(text).toContain("Esc/q close");
     expect(text).toContain("█");
@@ -22,11 +21,7 @@ describe("Dashboard", () => {
     const dash = new Dashboard(summaries, testTheme(), 24);
     const lines = dash.render(80);
     // Separator lines are "─" repeated (not BorderBox border chars)
-    const sepLines = lines.filter(
-      (l) =>
-        l.includes("─") &&
-        !/╭|╮|╰|╯|┌|┐|└|┘|│/.test(l),
-    );
+    const sepLines = lines.filter((l) => l.includes("─") && !/╭|╮|╰|╯|┌|┐|└|┘|│/.test(l));
     expect(sepLines.length).toBeGreaterThan(0);
     for (const line of sepLines) {
       expect(line).toContain("<fg:borderMuted>");
