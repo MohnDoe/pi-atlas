@@ -80,8 +80,8 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   }
 
   base.modelToProvider = new Map([
-    ...base.modelToProvider.entries(),
-    ...update.modelToProvider.entries(),
+    ...(base.modelToProvider.size > 0 ? base.modelToProvider.entries() : []),
+    ...(update.modelToProvider.size > 0 ? update.modelToProvider.entries() : []),
   ]);
 }
 

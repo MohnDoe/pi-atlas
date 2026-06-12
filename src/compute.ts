@@ -98,7 +98,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     totalCacheReadTokens += day.crTok;
     totalCacheWriteTokens += day.cwTok;
 
-    modelToProvider = new Map([...modelToProvider.entries(), ...day.modelToProvider.entries()]);
+    modelToProvider = new Map([
+      ...(modelToProvider.size > 0 ? modelToProvider.entries() : []),
+      ...(day.modelToProvider.size > 0 ? day.modelToProvider.entries() : []),
+    ]);
 
     if (day.date === todayStr) todayCost += day.cost;
 
