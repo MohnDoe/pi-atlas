@@ -1,5 +1,4 @@
-import chalk from "chalk";
-import { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
 import { GridRow } from "./shared/GridRow";
 import { StatCard } from "./StatCard";
@@ -15,29 +14,29 @@ export interface KpiData {
 }
 
 export class KpiCards implements Component {
-  private theme: StatsTheme;
+  private theme: Theme;
   private topRow: GridRow;
   private bottomRow: GridRow;
 
-  constructor(kpis: KpiData, theme: StatsTheme) {
+  constructor(kpis: KpiData, theme: Theme) {
     this.theme = theme;
 
     const colPcts = [33, 33, 34];
 
     this.topRow = new GridRow(
       [
-        new StatCard("Total", formatCost(kpis.totalCost), this.theme, chalk.green),
-        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, chalk.blue),
-        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, chalk.magenta),
+        new StatCard("Total", formatCost(kpis.totalCost), this.theme, "success"),
+        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, "accent"),
+        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, "borderAccent"),
       ],
       colPcts,
     );
 
     this.bottomRow = new GridRow(
       [
-        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, chalk.yellow),
-        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, chalk.cyan),
-        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, chalk.red),
+        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, "warning"),
+        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, "border"),
+        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, "error"),
       ],
       colPcts,
     );

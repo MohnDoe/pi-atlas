@@ -8,7 +8,6 @@ import { LoadingView } from "./components/LoadingView";
 import { getCacheTimestamp, loadAggregate } from "./cache.js";
 import { summarize } from "./compute.js";
 import { formatCacheTimestamp } from "./format";
-import { StatsTheme } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
@@ -82,7 +81,7 @@ export default function (pi: ExtensionAPI) {
       const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme as StatsTheme, dashRows, updateLabel, () =>
+        const dashboard = new Dashboard(summaries, theme, dashRows, updateLabel, () =>
           done(undefined),
         );
         // Wrap in popup border only when using overlay mode

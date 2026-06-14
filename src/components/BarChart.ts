@@ -1,5 +1,6 @@
 import { type Component } from "@earendil-works/pi-tui";
-import { DaySpend, StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { DaySpend } from "../types";
 import { MONTH_NAMES } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -8,11 +9,11 @@ export class BarChart implements Component {
   private data: DaySpend[];
   private range: string;
   private maxHeight: number;
-  private theme: StatsTheme;
+  private theme: Theme;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(data: DaySpend[], range: string, maxHeight: number, theme: StatsTheme) {
+  constructor(data: DaySpend[], range: string, maxHeight: number, theme: Theme) {
     this.data = data;
     this.range = range;
     this.maxHeight = maxHeight;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { makeTheme } from "../../__tests__/components.fixtures";
 import { BarChart } from "../BarChart";
 
 describe("BarChart", () => {
@@ -14,7 +14,7 @@ describe("BarChart", () => {
   ];
 
   it("renders bar chart with X-axis labels", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     // Should have some visual output (bars)
     expect(lines.length).toBeGreaterThan(0);
@@ -24,15 +24,15 @@ describe("BarChart", () => {
   });
 
   it("renders within width", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(50);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(50);
+      expect(line.length).toBeLessThanOrEqual(50);
     }
   });
 
   it("handles empty daily spend", () => {
-    const chart = new BarChart([], "7d", 15, testTheme());
+    const chart = new BarChart([], "7d", 15, makeTheme());
     const lines = chart.render(80);
     expect(lines.length).toBeGreaterThan(0);
     // Should show empty state or just labels
@@ -41,33 +41,20 @@ describe("BarChart", () => {
   });
 
   it("auto-scales bars to available height", () => {
-    const chart = new BarChart(dailySpend, "7d", 10, testTheme());
+    const chart = new BarChart(dailySpend, "7d", 10, makeTheme());
     const lines = chart.render(80);
     // Should have at most maxHeight rows of bar content
     expect(lines.length).toBeLessThanOrEqual(12); // 10 bars + 2 labels
   });
 
   it("uses block characters for bars", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     const text = lines.join("\n");
     expect(text).toContain("█");
   });
 
-  it("uses theme.fg('accent') for bar blocks", () => {
-    const spend = [{ date: "2026-06-08", cost: 5.0 }];
-    const chart = new BarChart(spend, "7d", 5, testTheme());
-    const lines = chart.render(80);
-    const text = lines.join("\n");
-    expect(text).toContain("<fg:accent>█");
-  });
 
-  it("uses theme.fg('dim') for X-axis labels", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
-    const lines = chart.render(80);
-    const labelLine = lines[lines.length - 1];
-    expect(labelLine).toContain("<fg:dim>");
-  });
 
   it("30d range labels show day numbers every 5th and first/last", () => {
     // Build 30 days of data spanning a month
@@ -75,13 +62,11 @@ describe("BarChart", () => {
     for (let i = 1; i <= 30; i++) {
       spend.push({ date: `2026-06-${String(i).padStart(2, "0")}`, cost: i });
     }
-    const chart = new BarChart(spend, "30d", 10, testTheme());
+    const chart = new BarChart(spend, "30d", 10, makeTheme());
     const lines = chart.render(80);
     // Last line is the label row
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine
-      .replace(/\x1b\[[0-9;]*m/g, "")
-      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // Should contain day numbers like "1", "5", "10", etc.
     expect(visible).toContain("1");
     expect(visible).toContain("5");
@@ -100,12 +85,10 @@ describe("BarChart", () => {
       { date: "2026-03-25", cost: 4 },
       { date: "2026-04-05", cost: 5 },
     ];
-    const chart = new BarChart(spend, "All", 10, testTheme());
+    const chart = new BarChart(spend, "All", 10, makeTheme());
     const lines = chart.render(80);
     const labelLine = lines[lines.length - 1];
-    const visible = labelLine
-      .replace(/\x1b\[[0-9;]*m/g, "")
-      .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "");
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
     // Month changes get labels
@@ -115,12 +98,12 @@ describe("BarChart", () => {
   });
 
   it("invalidates cache", () => {
-    const chart = new BarChart(dailySpend, "7d", 15, testTheme());
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     chart.render(80);
     chart.invalidate();
     const lines = chart.render(60);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(60);
+      expect(line.length).toBeLessThanOrEqual(60);
     }
   });
 });

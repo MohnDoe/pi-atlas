@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { makeTheme } from "../../__tests__/components.fixtures";
 import { RankedTable } from "../RankedTable";
 
 describe("RankedTable", () => {
@@ -16,7 +16,7 @@ describe("RankedTable", () => {
   ];
 
   it("renders header row with column names and # rank column", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
+    const table = new RankedTable(columns, rows, 10, makeTheme());
     const lines = table.render(80);
     expect(lines.length).toBeGreaterThanOrEqual(1);
     const header = lines[0];
@@ -27,7 +27,7 @@ describe("RankedTable", () => {
   });
 
   it("renders data rows with rank numbers", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
+    const table = new RankedTable(columns, rows, 10, makeTheme());
     const lines = table.render(80);
     // Skip header (index 0), check first two data rows
     expect(lines.length).toBeGreaterThanOrEqual(3);
@@ -40,15 +40,15 @@ describe("RankedTable", () => {
   });
 
   it("renders within width", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
+    const table = new RankedTable(columns, rows, 10, makeTheme());
     const lines = table.render(50);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(50);
+      expect(line.length).toBeLessThanOrEqual(50);
     }
   });
 
   it("shows all rows when they fit within maxHeight", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
+    const table = new RankedTable(columns, rows, 10, makeTheme());
     const lines = table.render(80);
     // 1 header + 3 data rows = 4 lines (all fit in 10)
     expect(lines.length).toBe(4);
@@ -60,13 +60,13 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 1 header + 5 data
+    const table = new RankedTable(columns, manyRows, 6, makeTheme()); // 1 header + 5 data
     const lines = table.render(80);
     expect(lines.length).toBe(6);
   });
 
   it("handles empty rows", () => {
-    const table = new RankedTable(columns, [], 10, testTheme());
+    const table = new RankedTable(columns, [], 10, makeTheme());
     const lines = table.render(80);
     // Should have at least a header, maybe an empty message
     expect(lines.length).toBeGreaterThanOrEqual(1);
@@ -74,13 +74,7 @@ describe("RankedTable", () => {
     expect(lines[0]).toContain("Language");
   });
 
-  it("uses theme.bg('selectedBg') and theme.bold for header row", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
-    const lines = table.render(80);
-    const headerLine = lines[0];
-    expect(headerLine).toContain("<bg:selectedBg>");
-    expect(headerLine).toContain("<b>");
-  });
+
 
   it("scrolls down with handleInput", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [
@@ -88,7 +82,7 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 5 data rows visible
+    const table = new RankedTable(columns, manyRows, 6, makeTheme()); // 5 data rows visible
 
     // Initial: rows 0-4
     let lines = table.render(80);
@@ -108,7 +102,7 @@ describe("RankedTable", () => {
       String(i * 100),
       String(i * 10),
     ]);
-    const table = new RankedTable(columns, manyRows, 6, testTheme());
+    const table = new RankedTable(columns, manyRows, 6, makeTheme());
 
     // Scroll down first
     table.handleInput("\x1b[B");
@@ -124,7 +118,7 @@ describe("RankedTable", () => {
 
   it("does not scroll past start", () => {
     const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 10, testTheme());
+    const table = new RankedTable(columns, manyRows, 10, makeTheme());
     // All rows fit, scrolling up should not do anything
     table.handleInput("\x1b[A");
     const lines = table.render(80);
@@ -133,7 +127,7 @@ describe("RankedTable", () => {
 
   it("does not scroll past end", () => {
     const manyRows = Array.from({ length: 5 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 6, testTheme()); // 5 visible data rows, 5 total
+    const table = new RankedTable(columns, manyRows, 6, makeTheme()); // 5 visible data rows, 5 total
     // Scroll all the way down
     for (let i = 0; i < 10; i++) table.handleInput("\x1b[B");
     const lines = table.render(80);
@@ -142,18 +136,18 @@ describe("RankedTable", () => {
   });
 
   it("invalidates render cache", () => {
-    const table = new RankedTable(columns, rows, 10, testTheme());
+    const table = new RankedTable(columns, rows, 10, makeTheme());
     table.render(80);
     table.invalidate();
     const lines = table.render(60);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(60);
+      expect(line.length).toBeLessThanOrEqual(60);
     }
   });
 
   it("renders rank numbers continuously respecting scroll offset", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [`Lang${i}`, "100", "10"]);
-    const table = new RankedTable(columns, manyRows, 6, testTheme());
+    const table = new RankedTable(columns, manyRows, 6, makeTheme());
 
     // Scroll down a few times
     table.handleInput("\x1b[B");

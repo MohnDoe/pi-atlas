@@ -1,14 +1,14 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 
 export class TabBar implements Component {
   private tabs: string[];
-  private theme: StatsTheme;
+  private theme: Theme;
   activeIndex: number;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(tabs: string[], theme: StatsTheme, activeIndex = 0) {
+  constructor(tabs: string[], theme: Theme, activeIndex = 0) {
     this.tabs = tabs;
     this.theme = theme;
     this.activeIndex = activeIndex;

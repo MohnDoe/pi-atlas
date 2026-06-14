@@ -1,15 +1,16 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
-import { LangStat, StatsTheme } from "../types";
+import { LangStat } from "../types";
 import { RankedBarList } from "../components/RankedBarList";
 import { ColorPalette } from "../colorPalette.js";
 import { formatNumber } from "../format";
 
 export class Languages extends Container {
-  private theme: StatsTheme;
+  private theme: Theme;
 
   constructor(
     private languages: LangStat[],
-    theme: StatsTheme,
+    theme: Theme,
     private palette: ColorPalette,
   ) {
     super();
@@ -33,6 +34,7 @@ export class Languages extends Container {
           secondaryValueText: formatNumber(l.edits) + " edits",
           color: this.palette.getColor(l.language),
         })),
+        this.theme,
       ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No language data for this time range.")));

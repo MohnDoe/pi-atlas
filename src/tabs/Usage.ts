@@ -1,8 +1,9 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RankedBarList } from "../components/RankedBarList";
 import { formatNumber } from "../format";
-import type { StatsSummary, StatsTheme, ToolStat } from "../types";
+import type { StatsSummary, ToolStat } from "../types";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
 
@@ -18,7 +19,7 @@ export class Usage extends Container {
   constructor(
     private tools: ToolStat[],
     private tokenUsage: TokenUsageStat,
-    private theme: StatsTheme,
+    private theme: Theme,
   ) {
     super();
   }
@@ -37,25 +38,25 @@ export class Usage extends Container {
           "Input",
           formatNumber(this.tokenUsage.input),
           this.theme,
-          chalk.hex("#a0dcfd"),
+          "accent",
         ),
         new StatCard(
           "Output",
           formatNumber(this.tokenUsage.output),
           this.theme,
-          chalk.hex("#a0dcfd"),
+          "accent",
         ),
         new StatCard(
           "Cache Read",
           formatNumber(this.tokenUsage.cacheRead),
           this.theme,
-          chalk.hex("#a0dcfd"),
+          "accent",
         ),
         new StatCard(
           "Cache Write",
           formatNumber(this.tokenUsage.cacheWrite),
           this.theme,
-          chalk.hex("#a0dcfd"),
+          "accent",
         ),
       ],
       [25, 25, 25, 25],
@@ -78,6 +79,7 @@ export class Usage extends Container {
           mainValueText: formatNumber(t.count),
           color: chalk.white,
         })),
+        this.theme,
       ));
     } else {
       this.addChild(new Text(this.theme.fg("muted", "No tools data for this time range.")));

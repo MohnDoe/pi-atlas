@@ -1,14 +1,18 @@
 import { Box, Component, Text } from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import { StatsTheme } from "../types";
+import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 
 export class StatCard implements Component {
   private box: Box;
 
-  constructor(label: string, value: string, theme: StatsTheme, accentFn = chalk.green) {
+  constructor(
+    label: string,
+    value: string,
+    private theme: Theme,
+    private accentColor: ThemeColor = "accent",
+  ) {
     this.box = new Box(1, 0);
     this.box.addChild(new Text(theme.fg("muted", label), 1, 0));
-    this.box.addChild(new Text(accentFn(value), 1, 0));
+    this.box.addChild(new Text(theme.fg(accentColor, value), 1, 0));
   }
 
   render(width: number): string[] {

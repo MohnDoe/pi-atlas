@@ -1,5 +1,5 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 
 export class RangeSelector implements Component {
   selectedIndex: number;
@@ -7,7 +7,7 @@ export class RangeSelector implements Component {
   private cachedWidth = -1;
 
   constructor(
-    private theme: StatsTheme,
+    private theme: Theme,
     private ranges: string[] = ["Today", "Last 7 days", "Last 30 days", "All time"],
     selectedIndex = 0,
   ) {

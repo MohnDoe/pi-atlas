@@ -1,5 +1,5 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import chalk from "chalk";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { BorderBox } from "./BorderBox";
 import { RangeSelector } from "./RangeSelector";
 
@@ -8,7 +8,10 @@ const RANGE_BOX_WIDTH = 17;
 export class Header implements Component {
   private rangeBox: BorderBox;
 
-  constructor(private rangeSelector: RangeSelector) {
+  constructor(
+    private theme: Theme,
+    private rangeSelector: RangeSelector,
+  ) {
     this.rangeBox = new BorderBox({
       child: this.rangeSelector,
       title: "Range (r)",
@@ -17,8 +20,8 @@ export class Header implements Component {
   }
 
   render(width: number): string[] {
-    const title = chalk.bold("Pi Usage");
-    const version = chalk.dim("v 0.0.1");
+    const title = this.theme.bold("Pi Usage");
+    const version = this.theme.fg("dim", "v 0.0.1");
 
     const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH);
     const leftWidth = width - RANGE_BOX_WIDTH;

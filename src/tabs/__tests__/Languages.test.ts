@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testPalette, testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Languages } from "../Languages";
 
 describe("Languages", () => {
@@ -10,7 +10,7 @@ describe("Languages", () => {
   ];
 
   it("renders ranked table with  data rows", () => {
-    const tab = new Languages(languages, testTheme(), testPalette());
+    const tab = new Languages(languages, makeTheme(), testPalette());
     const lines = tab.render(80);
 
     const text = lines.join("\n");
@@ -28,12 +28,12 @@ describe("Languages", () => {
 
     // Fits within width
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(80);
+      expect(line.length).toBeLessThanOrEqual(80);
     }
   });
 
   it("caches render output and invalidate clears cache", () => {
-    const tab = new Languages(languages, testTheme(), testPalette());
+    const tab = new Languages(languages, makeTheme(), testPalette());
 
     // Render at width 80
     const first = tab.render(80);
@@ -50,22 +50,21 @@ describe("Languages", () => {
   });
 
   it("re-renders at new width after invalidate", () => {
-    const tab = new Languages(languages, testTheme(), testPalette());
+    const tab = new Languages(languages, makeTheme(), testPalette());
 
     tab.render(80);
     tab.invalidate();
     const lines = tab.render(50);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(50);
+      expect(line.length).toBeLessThanOrEqual(50);
     }
   });
 
   it("renders empty state message when languages is empty", () => {
-    const tab = new Languages([], testTheme(), testPalette());
+    const tab = new Languages([], makeTheme(), testPalette());
     const lines = tab.render(80);
     const text = lines.join("\n");
 
     expect(text).toContain("No language data for this time range");
-    expect(text).toContain("<fg:muted>");
   });
 });

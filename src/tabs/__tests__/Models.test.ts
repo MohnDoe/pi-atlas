@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testPalette, testTheme, visibleLength } from "../../__tests__/components.fixtures";
+import { testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Models } from "../Models";
 
 describe("Models", () => {
@@ -10,7 +10,7 @@ describe("Models", () => {
   ];
 
   it("renders data rows with formatted model names and costs", () => {
-    const tab = new Models(models, testTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette());
     const lines = tab.render(80);
 
     const text = lines.join("\n");
@@ -23,26 +23,26 @@ describe("Models", () => {
   });
 
   it("shows empty state when models is empty", () => {
-    const tab = new Models([], testTheme(), testPalette());
+    const tab = new Models([], makeTheme(), testPalette());
     const text = tab.render(80).join("\n");
     expect(text).toContain("No model data for this time range");
   });
 
   it("renders within width", () => {
-    const tab = new Models(models, testTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette());
     const lines = tab.render(50);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(50);
+      expect(line.length).toBeLessThanOrEqual(50);
     }
   });
 
   it("invalidates render cache", () => {
-    const tab = new Models(models, testTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette());
     tab.render(80); // cache at width 80
     tab.invalidate();
     const lines = tab.render(60); // should re-render at new width
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(60);
+      expect(line.length).toBeLessThanOrEqual(60);
     }
   });
 });

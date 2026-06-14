@@ -1,4 +1,4 @@
-import { Component } from "@earendil-works/pi-tui";
+import { Component, visibleWidth } from "@earendil-works/pi-tui";
 
 export interface BorderBoxOptions {
   child: Component;
@@ -7,27 +7,19 @@ export interface BorderBoxOptions {
   rounded?: boolean;
 }
 
-/** Strip ANSI escapes and test theme tags to compute visible length. */
-function visibleLen(s: string): number {
-  return s
-    .replace(/\x1b\[[0-9;]*m/g, "")
-    .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "")
-    .length;
-}
-
 /** Truncate a string to fit maxLen visible chars, appending "…" if needed. */
 function truncate(s: string, maxLen: number): string {
-  if (visibleLen(s) <= maxLen) return s;
+  if (visibleWidth(s) <= maxLen) return s;
   let result = s;
-  while (visibleLen(result + "…") > maxLen && result.length > 0) {
+  while (visibleWidth(result + "…") > maxLen && result.length > 0) {
     result = result.slice(0, -1);
   }
   return result + "…";
 }
 
-/** Pad a line to targetWidth, accounting for invisible tags. */
+/** Pad a line to targetWidth, accounting for invisible ANSI escapes. */
 function padLine(line: string, targetWidth: number): string {
-  const padNeeded = Math.max(0, targetWidth - visibleLen(line));
+  const padNeeded = Math.max(0, targetWidth - visibleWidth(line));
   return line + " ".repeat(padNeeded);
 }
 
@@ -44,12 +36,12 @@ function borderLine(
   }
 
   const decor = `─ ${text} ─`;
-  const decorLen = visibleLen(decor);
+  const decorLen = visibleWidth(decor);
   const fill = Math.max(0, innerWidth - decorLen);
 
   const truncated = fill === 0 ? truncate(text, innerWidth - 4) : text;
   const finalDecor = `─ ${truncated} ─`;
-  const finalFill = Math.max(0, innerWidth - visibleLen(finalDecor));
+  const finalFill = Math.max(0, innerWidth - visibleWidth(finalDecor));
 
   return padLine(`${left}${finalDecor}${"─".repeat(finalFill)}${right}`, width);
 }
@@ -86,7 +78,7 @@ export class BorderBox implements Component {
 
     // Content lines
     for (const line of childLines) {
-      const padNeeded = Math.max(0, innerWidth - visibleLen(line));
+      const padNeeded = Math.max(0, innerWidth - visibleWidth(line));
       const padded = line + " ".repeat(padNeeded);
       lines.push(padLine(`│${padded}│`, width));
     }

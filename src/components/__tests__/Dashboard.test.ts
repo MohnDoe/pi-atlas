@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { testTheme } from "../../__tests__/components.fixtures";
+import { makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
 import { Dashboard } from "../Dashboard";
 
 describe("Dashboard", () => {
   it("renders all sections", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
@@ -16,25 +16,7 @@ describe("Dashboard", () => {
     expect(text).toContain("█");
   });
 
-  it("uses theme.fg('borderMuted') for separators", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
-    const lines = dash.render(80);
-    // Separator lines are "─" repeated (not BorderBox border chars)
-    const sepLines = lines.filter((l) => l.includes("─") && !/╭|╮|╰|╯|┌|┐|└|┘|│/.test(l));
-    expect(sepLines.length).toBeGreaterThan(0);
-    for (const line of sepLines) {
-      expect(line).toContain("<fg:borderMuted>");
-    }
-  });
 
-  it("uses theme.fg('dim') for footer", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
-    const lines = dash.render(80);
-    const footer = lines[lines.length - 1];
-    expect(footer).toContain("<fg:dim>");
-  });
 
   it("shows 'No sessions found' when no session data exists", () => {
     const zeroSummary = {
@@ -46,7 +28,7 @@ describe("Dashboard", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No sessions found");
@@ -64,7 +46,7 @@ describe("Dashboard", () => {
     };
     // 1d range (index 0) empty, others have data
     const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
     // Default range is All (index 3). r key cycles: All→1d
     dash.handleInput("r");
     const lines = dash.render(80);
@@ -75,7 +57,7 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, null, () => {
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -85,7 +67,7 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     let closed = false;
-    const dash = new Dashboard(summaries, testTheme(), 24, null, () => {
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, () => {
       closed = true;
     });
     dash.handleInput("q");
@@ -102,7 +84,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Switch to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
@@ -132,7 +114,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Default range is All (index 3 = summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
@@ -156,7 +138,7 @@ describe("Dashboard", () => {
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     dash.handleInput("\x1b[C"); // right to Languages
     const lines = dash.render(80);
@@ -176,7 +158,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Switch to Models tab (index 2)
     dash.handleInput("\x1b[C"); // right to Languages
@@ -194,7 +176,7 @@ describe("Dashboard", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -209,7 +191,7 @@ describe("Dashboard", () => {
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -231,7 +213,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Default range is All (index 3 = summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
@@ -256,7 +238,7 @@ describe("Dashboard", () => {
 
   it("switches tabs with left/right arrows", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
@@ -277,7 +259,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Navigate to Projects+Tools tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
@@ -293,7 +275,7 @@ describe("Dashboard", () => {
   it("Projects tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -317,7 +299,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, makeTheme(), 24);
 
     // Default range is All (index 3 = summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d

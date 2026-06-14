@@ -1,5 +1,6 @@
-import { Container, matchesKey, type Component, Spacer } from "@earendil-works/pi-tui";
-import { StatsSummary, StatsTheme } from "../types";
+import { Container, matchesKey, type Component, Spacer, Text } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { StatsSummary } from "../types";
 import { RangeSelector } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 import { Header } from "./Header";
@@ -9,20 +10,6 @@ import { Models } from "../tabs/Models";
 import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
-
-/**
- * Renders a single pre-formatted line. Does no padding or wrapping —
- * the caller is responsible for fitting the content to width.
- * Used instead of pi-tui's Text component for theme-styled content
- * because Text.width() does not understand mock theme tags used in tests.
- */
-class RawLine implements Component {
-  constructor(private content: string) {}
-  render(_width: number): string[] {
-    return [this.content];
-  }
-  invalidate(): void {}
-}
 
 export class Dashboard extends Container {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
@@ -39,7 +26,7 @@ export class Dashboard extends Container {
 
   constructor(
     private summaries: StatsSummary[],
-    private theme: StatsTheme,
+    private theme: Theme,
     private terminalRows: number,
     private updateLabel?: string | null,
     onClose?: () => void,
@@ -51,7 +38,7 @@ export class Dashboard extends Container {
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Usage"], theme, 0);
     this.rangeLabels = ["Today", "Last 7 days", "Last 30 days", "All time"];
     this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
-    this.header = new Header(this.rangeSelector);
+    this.header = new Header(this.theme, this.rangeSelector);
     this.buildTabs();
   }
 
@@ -103,19 +90,19 @@ export class Dashboard extends Container {
     this.addChild(new Spacer(1));
 
     this.addChild(this.tabBar);
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
+    this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
 
     const allEmpty = this.summaries.every((s) => s.sessionCount === 0);
 
     if (allEmpty) {
       this.addChild(new Spacer(1));
       this.addChild(
-        new RawLine(this.theme.fg("muted", "  No sessions found in ~/.pi/agent/sessions")),
+        new Text(this.theme.fg("muted", "  No sessions found in ~/.pi/agent/sessions"), 0, 0),
       );
       this.addChild(new Spacer(1));
     } else if (this.currentSummary.sessionCount === 0) {
       this.addChild(new Spacer(1));
-      this.addChild(new RawLine(this.theme.fg("muted", "  No data for this time range")));
+      this.addChild(new Text(this.theme.fg("muted", "  No data for this time range"), 0, 0));
       this.addChild(new Spacer(1));
     } else {
       const activeTab = this.tabs[this.tabBar.activeIndex];
@@ -124,10 +111,10 @@ export class Dashboard extends Container {
       }
     }
 
-    this.addChild(new RawLine(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60)))));
+    this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
     const updateText = this.updateLabel ? this.theme.fg("dim", this.updateLabel) : "";
     const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
-    this.addChild(new RawLine(`${updateText}${updateText ? "  ·  " : ""}${controls}`));
+    this.addChild(new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0));
 
     return super.render(width);
   }
