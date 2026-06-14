@@ -1,21 +1,27 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
 
 export interface ColumnDef {
   header: string;
   width: number;
 }
 
+/** Theme subset needed by RankedTable — bg/bold/fg for the header row. */
+export interface RankedTableTheme {
+  bg: (color: "selectedBg", text: string) => string;
+  bold: (text: string) => string;
+  fg: (color: "accent", text: string) => string;
+}
+
 export class RankedTable implements Component {
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
-  private theme: StatsTheme;
+  private theme: RankedTableTheme;
   private scrollOffset = 0;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: StatsTheme) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: RankedTableTheme) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;

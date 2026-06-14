@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
-import { RangeSelector } from "../RangeSelector";
-import { Header } from "../Header";
+import { RangeSelector, type RangeSelectorTheme } from "../RangeSelector";
+import { Header, type HeaderTheme } from "../Header";
+
+const identityTheme: HeaderTheme & RangeSelectorTheme = {
+  fg: (_, text) => text,
+  bold: (text) => text,
+};
 
 function plainText(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -10,18 +14,18 @@ function plainText(s: string): string {
 describe("Header", () => {
   it("renders title on 2 lines with range box right-aligned", () => {
     const rs = new RangeSelector(
-      testTheme(),
+      identityTheme,
       ["Today", "Last 7 days", "Last 30 days", "All time"],
       0,
     );
-    const header = new Header(testTheme(), rs);
+    const header = new Header(identityTheme, rs);
     const lines = header.render(80);
 
     expect(lines).toHaveLength(3);
 
     // All lines should have same visible width
     for (const line of lines) {
-      expect(visibleLength(line)).toBe(80);
+      expect(line.length).toBe(80);
     }
 
     // Line 0: "Pi Usage" on the left, box top border on the right

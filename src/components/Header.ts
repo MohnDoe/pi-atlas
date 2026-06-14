@@ -1,7 +1,12 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import { BorderBox } from "./BorderBox";
-import { RangeSelector } from "./RangeSelector";
-import { StatsTheme } from "../types";
+import { RangeSelector, type RangeSelectorTheme } from "./RangeSelector";
+
+/** Theme subset needed by Header — bold for title, fg for dim version + passes to RangeSelector. */
+export interface HeaderTheme {
+  fg: (color: "accent" | "dim", text: string) => string;
+  bold: (text: string) => string;
+}
 
 const RANGE_BOX_WIDTH = 17;
 
@@ -9,7 +14,7 @@ export class Header implements Component {
   private rangeBox: BorderBox;
 
   constructor(
-    private theme: StatsTheme,
+    private theme: HeaderTheme,
     private rangeSelector: RangeSelector,
   ) {
     this.rangeBox = new BorderBox({

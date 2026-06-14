@@ -1,14 +1,19 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
+
+/** Theme subset needed by TabBar — bg for active, fg for accent/muted. */
+export interface TabBarTheme {
+  bg: (color: "selectedBg", text: string) => string;
+  fg: (color: "accent" | "muted", text: string) => string;
+}
 
 export class TabBar implements Component {
   private tabs: string[];
-  private theme: StatsTheme;
+  private theme: TabBarTheme;
   activeIndex: number;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(tabs: string[], theme: StatsTheme, activeIndex = 0) {
+  constructor(tabs: string[], theme: TabBarTheme, activeIndex = 0) {
     this.tabs = tabs;
     this.theme = theme;
     this.activeIndex = activeIndex;

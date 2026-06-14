@@ -1,6 +1,11 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { ChalkInstance } from "chalk";
-import type { StatsTheme } from "../types";
+
+/** Theme subset needed by UsageRow — bold for name/value, fg for muted/dim. */
+export interface UsageRowTheme {
+  fg: (color: "muted" | "dim", text: string) => string;
+  bold: (text: string) => string;
+}
 
 export class UsageRow implements Component {
   constructor(
@@ -12,7 +17,7 @@ export class UsageRow implements Component {
       pct: number;
     },
     private color: ChalkInstance,
-    private theme: StatsTheme,
+    private theme: UsageRowTheme,
   ) {}
 
   render(width: number): string[] {
