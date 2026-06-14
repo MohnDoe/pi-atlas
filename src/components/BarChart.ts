@@ -1,18 +1,23 @@
 import { type Component } from "@earendil-works/pi-tui";
-import { DaySpend, StatsTheme } from "../types";
+import { DaySpend } from "../types";
 import { MONTH_NAMES } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Theme subset needed by BarChart — fg for chart bars, labels, and empty state. */
+export interface BarChartTheme {
+  fg: (color: "accent" | "dim" | "muted", text: string) => string;
+}
 
 export class BarChart implements Component {
   private data: DaySpend[];
   private range: string;
   private maxHeight: number;
-  private theme: StatsTheme;
+  private theme: BarChartTheme;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(data: DaySpend[], range: string, maxHeight: number, theme: StatsTheme) {
+  constructor(data: DaySpend[], range: string, maxHeight: number, theme: BarChartTheme) {
     this.data = data;
     this.range = range;
     this.maxHeight = maxHeight;
