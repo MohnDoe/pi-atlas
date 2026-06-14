@@ -1,6 +1,6 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { ChalkInstance } from "chalk";
-import type { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 
 export class UsageRow implements Component {
   constructor(
@@ -12,7 +12,7 @@ export class UsageRow implements Component {
       pct: number;
     },
     private color: ChalkInstance,
-    private theme: StatsTheme,
+    private theme: Theme,
   ) {}
 
   render(width: number): string[] {

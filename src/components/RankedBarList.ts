@@ -1,6 +1,6 @@
 import { type Component } from "@earendil-works/pi-tui";
 import type { ChalkInstance } from "chalk";
-import type { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { UsageRow } from "./UsageRow";
 
 export interface RankedBarItem {
@@ -15,7 +15,7 @@ export class RankedBarList implements Component {
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(private items: RankedBarItem[], private theme: StatsTheme) {}
+  constructor(private items: RankedBarItem[], private theme: Theme) {}
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) {

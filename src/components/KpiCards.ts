@@ -1,4 +1,4 @@
-import { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
 import { GridRow } from "./shared/GridRow";
 import { StatCard } from "./StatCard";
@@ -14,11 +14,11 @@ export interface KpiData {
 }
 
 export class KpiCards implements Component {
-  private theme: StatsTheme;
+  private theme: Theme;
   private topRow: GridRow;
   private bottomRow: GridRow;
 
-  constructor(kpis: KpiData, theme: StatsTheme) {
+  constructor(kpis: KpiData, theme: Theme) {
     this.theme = theme;
 
     const colPcts = [33, 33, 34];

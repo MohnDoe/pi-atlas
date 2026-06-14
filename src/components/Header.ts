@@ -1,7 +1,7 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { BorderBox } from "./BorderBox";
 import { RangeSelector } from "./RangeSelector";
-import { StatsTheme } from "../types";
 
 const RANGE_BOX_WIDTH = 17;
 
@@ -9,7 +9,7 @@ export class Header implements Component {
   private rangeBox: BorderBox;
 
   constructor(
-    private theme: StatsTheme,
+    private theme: Theme,
     private rangeSelector: RangeSelector,
   ) {
     this.rangeBox = new BorderBox({

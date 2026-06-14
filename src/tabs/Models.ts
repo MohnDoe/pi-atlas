@@ -1,18 +1,19 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
 import { formatCost, formatNumber, formatModelName } from "../format";
-import { ModelStat, StatsTheme } from "../types";
+import { ModelStat } from "../types";
 import { RankedBarList } from "../components/RankedBarList";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
 export class Models extends Container {
   private isEmpty: boolean;
-  private theme: StatsTheme;
+  private theme: Theme;
 
   constructor(
     private models: ModelStat[],
-    theme: StatsTheme,
+    theme: Theme,
     private palette: ColorPalette,
   ) {
     super();
