@@ -1,15 +1,16 @@
 import { Container, Text, visibleWidth, Spacer } from "@earendil-works/pi-tui";
-import { LangStat, StatsTheme } from "../types";
+import { LangStat } from "../types";
 import { RankedBarList } from "../components/RankedBarList";
+import type { UsageRowTheme } from "../components/UsageRow";
 import { ColorPalette } from "../colorPalette.js";
 import { formatNumber } from "../format";
 
 export class Languages extends Container {
-  private theme: StatsTheme;
+  private theme: UsageRowTheme;
 
   constructor(
     private languages: LangStat[],
-    theme: StatsTheme,
+    theme: UsageRowTheme,
     private palette: ColorPalette,
   ) {
     super();

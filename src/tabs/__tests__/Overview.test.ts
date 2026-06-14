@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { testTheme, visibleLength } from "../../__tests__/components.fixtures";
 import { Overview } from "../Overview";
+import type { BarChartTheme } from "../../components/BarChart";
+import type { StatCardTheme } from "../../components/StatCard";
+
+const identityTheme: StatCardTheme & BarChartTheme = {
+  fg: (_, text) => text,
+};
 
 describe("Overview", () => {
   const kpis = {
@@ -23,7 +28,7 @@ describe("Overview", () => {
   ];
 
   it("renders KpiCards followed by spacer followed by BarChart", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", testTheme(), 15);
+    const overview = new Overview(kpis, dailySpend, "7d", identityTheme, 15);
     const lines = overview.render(80);
 
     // Should have KPI + spacer + chart
@@ -53,7 +58,7 @@ describe("Overview", () => {
 
   it("adapts bar chart height to available space after KpiCards", () => {
     // Use a small maxHeight to verify chart still renders
-    const overview = new Overview(kpis, dailySpend, "7d", testTheme(), 10);
+    const overview = new Overview(kpis, dailySpend, "7d", identityTheme, 10);
     const lines = overview.render(80);
 
     // Chart should still render (not zero lines)
@@ -64,7 +69,7 @@ describe("Overview", () => {
   });
 
   it("shows 'No data' when daily spend is empty", () => {
-    const overview = new Overview(kpis, [], "7d", testTheme(), 15);
+    const overview = new Overview(kpis, [], "7d", identityTheme, 15);
     const lines = overview.render(80);
 
     const text = lines.join("\n");
@@ -74,7 +79,7 @@ describe("Overview", () => {
   });
 
   it("handleInput is a no-op", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", testTheme(), 15);
+    const overview = new Overview(kpis, dailySpend, "7d", identityTheme, 15);
     const before = overview.render(80);
 
     overview.handleInput("up");
@@ -86,13 +91,13 @@ describe("Overview", () => {
   });
 
   it("invalidate clears cache and re-renders at new width", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", testTheme(), 15);
+    const overview = new Overview(kpis, dailySpend, "7d", identityTheme, 15);
     overview.render(80);
     overview.invalidate();
 
     const lines = overview.render(60);
     for (const line of lines) {
-      expect(visibleLength(line)).toBeLessThanOrEqual(60);
+      expect(line.length).toBeLessThanOrEqual(60);
     }
   });
 });

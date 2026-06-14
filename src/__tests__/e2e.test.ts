@@ -2,11 +2,16 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Dashboard } from "../components/Dashboard";
+import { Dashboard, type DashboardTheme } from "../components/Dashboard";
 import { summarize } from "../compute.js";
 import { parseFile } from "../parser";
 import { DayAgg } from "../types";
-import { testTheme } from "./components.fixtures";
+
+const identityTheme: DashboardTheme = {
+  fg: (_, text) => text,
+  bg: (_, text) => text,
+  bold: (text) => text,
+};
 
 describe("JSONL → Dashboard", () => {
   let tmpDir: string;
@@ -87,7 +92,7 @@ describe("JSONL → Dashboard", () => {
     const summaries = ranges.map((r) => summarize(days, r));
 
     // Render dashboard
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, identityTheme, 24);
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -153,7 +158,7 @@ describe("JSONL → Dashboard", () => {
     const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
     const summaries = ranges.map((r) => summarize(days, r));
 
-    const dash = new Dashboard(summaries, testTheme(), 24);
+    const dash = new Dashboard(summaries, identityTheme, 24);
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 

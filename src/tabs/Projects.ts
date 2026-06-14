@@ -1,13 +1,14 @@
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RankedBarList } from "../components/RankedBarList";
+import type { UsageRowTheme } from "../components/UsageRow";
 import { formatCost, formatNumber } from "../format";
-import type { ProjectStat, StatsTheme } from "../types";
+import type { ProjectStat } from "../types";
 
 export class Projects extends Container {
   constructor(
     private projects: ProjectStat[],
-    private theme: StatsTheme,
+    private theme: UsageRowTheme,
   ) {
     super();
   }

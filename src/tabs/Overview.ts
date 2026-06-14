@@ -1,9 +1,10 @@
 import { type Component } from "@earendil-works/pi-tui";
-import { DaySpend, StatsTheme } from "../types";
-import { BarChart } from "../components/BarChart";
+import { DaySpend } from "../types";
+import { BarChart, type BarChartTheme } from "../components/BarChart";
 import { KpiCards, KpiData } from "../components/KpiCards";
+import type { StatCardTheme } from "../components/StatCard";
 
-const KPI_CARDS_HEIGHT = 4; // 2 rows × 2 lines (label + value)
+const KPI_CARDS_HEIGHT = 4;
 const SPACER_HEIGHT = 1;
 
 export class Overview implements Component {
@@ -16,7 +17,7 @@ export class Overview implements Component {
     kpis: KpiData,
     dailySpend: DaySpend[],
     rangeLabel: string,
-    theme: StatsTheme,
+    theme: StatCardTheme & BarChartTheme,
     maxHeight: number,
   ) {
     this.kpiCards = new KpiCards(kpis, theme);

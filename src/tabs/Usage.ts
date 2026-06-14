@@ -1,10 +1,12 @@
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RankedBarList } from "../components/RankedBarList";
+import type { UsageRowTheme } from "../components/UsageRow";
 import { formatNumber } from "../format";
-import type { StatsSummary, StatsTheme, ToolStat } from "../types";
+import type { StatsSummary, ToolStat } from "../types";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
+import type { StatCardTheme } from "../components/StatCard";
 
 interface TokenUsageStat {
   total: StatsSummary["totalTokens"];
@@ -18,7 +20,7 @@ export class Usage extends Container {
   constructor(
     private tools: ToolStat[],
     private tokenUsage: TokenUsageStat,
-    private theme: StatsTheme,
+    private theme: UsageRowTheme & StatCardTheme,
   ) {
     super();
   }

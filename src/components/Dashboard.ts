@@ -1,5 +1,5 @@
 import { Container, matchesKey, type Component, Spacer } from "@earendil-works/pi-tui";
-import { StatsSummary, StatsTheme } from "../types";
+import { StatsSummary } from "../types";
 import { RangeSelector } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 import { Header } from "./Header";
@@ -9,6 +9,13 @@ import { Models } from "../tabs/Models";
 import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
+
+/** Theme subset needed by Dashboard and all its child components. */
+export interface DashboardTheme {
+  fg: (color: "accent" | "dim" | "muted" | "borderMuted" | "success" | "warning" | "error" | "borderAccent" | "border", text: string) => string;
+  bg: (color: "selectedBg", text: string) => string;
+  bold: (text: string) => string;
+}
 
 /**
  * Renders a single pre-formatted line. Does no padding or wrapping —
@@ -39,7 +46,7 @@ export class Dashboard extends Container {
 
   constructor(
     private summaries: StatsSummary[],
-    private theme: StatsTheme,
+    private theme: DashboardTheme,
     private terminalRows: number,
     private updateLabel?: string | null,
     onClose?: () => void,
