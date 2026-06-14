@@ -1,8 +1,9 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { RankedBarList } from "../components/RankedBarList";
 import { formatNumber } from "../format";
-import type { StatsSummary, StatsTheme, ToolStat } from "../types";
+import type { StatsSummary, ToolStat } from "../types";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
 
@@ -18,7 +19,7 @@ export class Usage extends Container {
   constructor(
     private tools: ToolStat[],
     private tokenUsage: TokenUsageStat,
-    private theme: StatsTheme,
+    private theme: Theme,
   ) {
     super();
   }

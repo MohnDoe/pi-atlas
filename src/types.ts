@@ -1,9 +1,3 @@
-export interface StatsTheme {
-  fg: (color: string, text: string) => string;
-  bg: (color: string, text: string) => string;
-  bold: (text: string) => string;
-}
-
 export interface DayAgg {
   date: string; // "YYYY-MM-DD"
   cost: number;

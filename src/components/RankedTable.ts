@@ -1,5 +1,5 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 
 export interface ColumnDef {
   header: string;
@@ -10,12 +10,12 @@ export class RankedTable implements Component {
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
-  private theme: StatsTheme;
+  private theme: Theme;
   private scrollOffset = 0;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: StatsTheme) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
