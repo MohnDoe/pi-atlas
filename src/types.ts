@@ -1,8 +1,10 @@
-export interface StatsTheme {
-  fg: (color: string, text: string) => string;
-  bg: (color: string, text: string) => string;
-  bold: (text: string) => string;
-}
+/**
+ * NOTE: StatsTheme has been replaced by per-component narrow theme interfaces.
+ * Each component now exports its own Theme interface co-located with the component.
+ * See components/BarChart.ts (BarChartTheme), components/Header.ts (HeaderTheme), etc.
+ * For backward compatibility, this type alias represents the full set needed by Dashboard.
+ */
+export type StatsTheme = import("./components/Dashboard").DashboardTheme;
 
 export interface DayAgg {
   date: string; // "YYYY-MM-DD"
