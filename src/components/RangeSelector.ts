@@ -1,5 +1,9 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import { StatsTheme } from "../types";
+
+/** Theme subset needed by RangeSelector — only fg(accent). */
+export interface RangeSelectorTheme {
+  fg: (color: "accent", text: string) => string;
+}
 
 export class RangeSelector implements Component {
   selectedIndex: number;
@@ -7,7 +11,7 @@ export class RangeSelector implements Component {
   private cachedWidth = -1;
 
   constructor(
-    private theme: StatsTheme,
+    private theme: RangeSelectorTheme,
     private ranges: string[] = ["Today", "Last 7 days", "Last 30 days", "All time"],
     selectedIndex = 0,
   ) {
