@@ -15,27 +15,23 @@ describe("SortedTable", () => {
     ["JSON", "300", "5"],
   ];
 
-  it("renders header row with column names and # rank column", () => {
+  it("renders header row with column names", () => {
     const table = new SortedTable(columns, rows, 10, makeTheme());
     const lines = table.render(80);
     expect(lines.length).toBeGreaterThanOrEqual(1);
     const header = lines[0];
-    expect(header).toContain("#");
     expect(header).toContain("Language");
     expect(header).toContain("Lines");
     expect(header).toContain("Edits");
   });
 
-  it("renders data rows with rank numbers", () => {
+  it("renders data rows", () => {
     const table = new SortedTable(columns, rows, 10, makeTheme());
     const lines = table.render(80);
     // Skip header (index 0), check first two data rows
     expect(lines.length).toBeGreaterThanOrEqual(3);
-    expect(lines[1]).toContain("1");
     expect(lines[1]).toContain("TypeScript");
-    expect(lines[2]).toContain("2");
     expect(lines[2]).toContain("Python");
-    expect(lines[3]).toContain("3");
     expect(lines[3]).toContain("JSON");
   });
 
@@ -70,7 +66,6 @@ describe("SortedTable", () => {
     const lines = table.render(80);
     // Should have at least a header, maybe an empty message
     expect(lines.length).toBeGreaterThanOrEqual(1);
-    expect(lines[0]).toContain("#");
     expect(lines[0]).toContain("Language");
   });
 
@@ -143,7 +138,7 @@ describe("SortedTable", () => {
     }
   });
 
-  it("renders rank numbers continuously respecting scroll offset", () => {
+  it("renders rows continuously respecting scroll offset", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [`Lang${i}`, "100", "10"]);
     const table = new SortedTable(columns, manyRows, 6, makeTheme());
 
@@ -152,8 +147,7 @@ describe("SortedTable", () => {
     table.handleInput("\x1b[B");
     table.handleInput("\x1b[B");
     const lines = table.render(80);
-    // First visible row should be rank 4 (scroll offset 3, rank = offset + 1)
-    expect(lines[1]).toContain("4");
+    // First visible row should show Lang3 (scroll offset 3)
     expect(lines[1]).toContain("Lang3");
   });
 });
