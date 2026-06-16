@@ -481,6 +481,28 @@ describe("SortedTable", () => {
       expect(strip(lines[1])).toContain("▶ EFA");
     });
 
+    it("resets marquee when cursor moves to a different row", () => {
+      const cols: ColumnDef[] = [
+        { header: "Name", width: 5, marquee: true },
+      ];
+      const rows = [["Hello World!"], ["Another Long"]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10 }, makeTheme());
+
+      // Advance ticks on row 0
+      table.render(20); // tick=1, offset=0 → "Hello"
+      table.render(20); // tick=2, offset=0
+      table.render(20); // tick=3, offset=0
+      table.render(20); // tick=4, offset=1 → "ello "
+
+      let lines = table.render(20); // tick=5, offset=1 → "ello "
+      expect(strip(lines[1])).toContain("▶ ello");
+
+      // Move to row 1 — tick resets
+      table.handleInput("\x1b[B");
+      lines = table.render(20); // tick=0, offset=0
+      expect(strip(lines[2])).toContain("▶ Anoth"); // marquee starts from beginning
+    });
+
     it("non-marquee columns truncate on focused row while marquee columns scroll", () => {
       const cols: ColumnDef[] = [
         { header: "Label", width: 10, marquee: true },
