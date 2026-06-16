@@ -1,9 +1,11 @@
-import { matchesKey, type Component } from "@earendil-works/pi-tui";
+import { matchesKey, type Component, type TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { MarqueeText } from "./MarqueeText.js";
 
 export interface ColumnDef {
   header: string;
   width: number | string;
+  marquee?: boolean;
 }
 
 export interface SortConfig {
@@ -22,6 +24,9 @@ export interface SortedTableConfig {
   maxHeight: number;
   sort?: SortConfig;
   cursor?: CursorOptions;
+  /** TUI reference for driving marquee animation. MarqueeText instances call
+   *  tui.requestRender() to advance their animation. */
+  tui: TUI;
 }
 
 export class SortedTable implements Component {
@@ -38,9 +43,12 @@ export class SortedTable implements Component {
   private cachedWidth = -1;
   private cursorPrefix: string;
   private padPrefix: string;
+  private tui: TUI;
+  private marqueeCells: Map<string, MarqueeText> = new Map();
+  private lastRenderWidth = -1;
 
   constructor(config: SortedTableConfig, theme: Theme) {
-    const fillCount = config.columns.filter(c => c.width === "fill").length;
+    const fillCount = config.columns.filter((c) => c.width === "fill").length;
     if (fillCount > 1) throw new Error("Cannot have more than one fill column");
 
     for (const col of config.columns) {
@@ -56,6 +64,8 @@ export class SortedTable implements Component {
     this.theme = theme;
     this.sort = config.sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
+
+    this.tui = config.tui;
 
     const cursorOpts = config.cursor;
     const cursorEnabled = cursorOpts?.enabled ?? true;
@@ -79,7 +89,7 @@ export class SortedTable implements Component {
     const resolved = new Array(this.columns.length).fill(-1);
     let fixedUsed = 0;
     let pctUsed = 0;
-    const fillIdx = this.columns.findIndex(c => c.width === "fill");
+    const fillIdx = this.columns.findIndex((c) => c.width === "fill");
 
     // Pass 1: fixed widths
     for (let i = 0; i < this.columns.length; i++) {
@@ -117,9 +127,30 @@ export class SortedTable implements Component {
   }
 
   render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+    // Force state refresh on width change (terminal resize, overlay reposition, etc.)
+    if (this.lastRenderWidth !== -1 && this.lastRenderWidth !== width) {
+      this.cachedLines = null;
+      this.cachedWidth = -1;
+      this.cleanupMarquee();
+    }
+    this.lastRenderWidth = width;
 
     const colWidths = this.resolveWidths(width);
+
+    // Bypass cache when focused row has active marquee columns
+    const hasMarquee =
+      this.focusedRow >= 0 &&
+      this.columns.some(
+        (col, j) => col.marquee && (this.rows[this.focusedRow]?.[j]?.length ?? 0) > colWidths[j],
+      );
+
+    if (hasMarquee) {
+      this.cachedLines = null;
+      this.cachedWidth = -1;
+    }
+
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+
     const lines: string[] = [];
     const gap = " ";
 
@@ -150,10 +181,25 @@ export class SortedTable implements Component {
       let row = "";
       const data = this.rows[i];
       for (let j = 0; j < this.columns.length; j++) {
-        const val = (data[j] ?? "").slice(0, colWidths[j]);
-        row += val.padEnd(colWidths[j]) + gap;
+        const raw = data[j] ?? "";
+        let val: string;
+        if (i === this.focusedRow && this.columns[j].marquee && raw.length > colWidths[j]) {
+          val = this.marqueeText(i, j, raw, colWidths[j]);
+          row += val + gap;
+        } else if (this.columns[j].marquee && raw.length > colWidths[j]) {
+          // Unfocused marquee column — truncated with ellipsis
+          val = raw.slice(0, Math.max(0, colWidths[j] - 1)) + "…";
+          row += val.padEnd(colWidths[j]) + gap;
+        } else {
+          val = raw.slice(0, colWidths[j]);
+          row += val.padEnd(colWidths[j]) + gap;
+        }
       }
-      row = row.trimEnd();
+      // trimEnd() would eat trailing gap spaces when the marquee wrap-around
+      // lands at the end of the visible window. Skip it for marquee rows.
+      if (i !== this.focusedRow || !hasMarquee) {
+        row = row.trimEnd();
+      }
       const prefix = i === this.focusedRow ? this.cursorPrefix : this.padPrefix;
       row = this.padToWidth(row, width - prefix.length);
       row = prefix + row;
@@ -172,6 +218,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "up")) {
       if (this.focusedRow > 0) {
         this.focusedRow--;
+        this.cleanupMarquee();
         this.followFocus();
         this.invalidate();
       }
@@ -180,6 +227,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "down")) {
       if (this.focusedRow < this.rows.length - 1) {
         this.focusedRow++;
+        this.cleanupMarquee();
         this.followFocus();
         this.invalidate();
       }
@@ -194,8 +242,25 @@ export class SortedTable implements Component {
     }
   }
 
+  private marqueeText(row: number, col: number, text: string, width: number): string {
+    const key = `${row}-${col}`;
+    let mt = this.marqueeCells.get(key);
+    if (!mt) {
+      mt = new MarqueeText(text, this.tui);
+      this.marqueeCells.set(key, mt);
+    }
+    return mt.render(width)[0];
+  }
+
+  private cleanupMarquee(): void {
+    this.marqueeCells.forEach((mt) => mt.destroy());
+    this.marqueeCells.clear();
+  }
+
   invalidate(): void {
     this.cachedLines = null;
     this.cachedWidth = -1;
+    this.cleanupMarquee();
+    this.lastRenderWidth = -1;
   }
 }

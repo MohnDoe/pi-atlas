@@ -1,5 +1,5 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Text } from "@earendil-works/pi-tui";
+import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
 import { SortedTable } from "../components/SortedTable.js";
 import { formatCost, formatModelName, formatNumber } from "../format";
@@ -16,6 +16,7 @@ export class Models extends Container {
     private models: ModelStat[],
     theme: Theme,
     private palette: ColorPalette,
+    private tui: TUI,
   ) {
     super();
     this.theme = theme;
@@ -29,7 +30,7 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: "Model", width: "fill" },
+              { header: "Model", width: "fill", marquee: true },
               { header: "Provider", width: 12 },
               { header: "Calls", width: 6 },
               { header: "Cost", width: 8 },
@@ -42,6 +43,7 @@ export class Models extends Container {
             ]),
             maxHeight: 20,
             sort: { column: 3, direction: "desc" },
+            tui: this.tui,
           },
           this.theme,
         );
