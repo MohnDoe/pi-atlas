@@ -15,7 +15,7 @@ export class MarqueeText implements Component {
 
   constructor(
     private text: string,
-    private tui?: TUI,
+    private tui: TUI,
   ) {}
 
   render(width: number): string[] {
@@ -25,10 +25,10 @@ export class MarqueeText implements Component {
     }
 
     // Start animation timer on first render with overflow
-    if (!this.timer && this.tui) {
+    if (!this.timer) {
       this.timer = setInterval(() => {
         this.tickCounter++;
-        this.tui!.requestRender();
+        this.tui.requestRender();
       }, 50);
     }
 

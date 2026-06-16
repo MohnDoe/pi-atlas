@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { testPalette, makeTheme } from "../../__tests__/components.fixtures";
+import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Models } from "../Models";
 
 describe("Models", () => {
-  const models = [
+  const mockTui = makeMockTUI();
+
+const models = [
     { model: "claude-sonnet-4-20250514", cost: 150.5, calls: 42 },
     { model: "gemini-2.5-pro", cost: 85.25, calls: 28 },
     { model: "gpt-4o", cost: 0.75, calls: 5 },
   ];
 
   it("renders data rows with formatted model names and costs", () => {
-    const tab = new Models(models, makeTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
     const lines = tab.render(80);
 
     const text = lines.join("\n");
@@ -23,13 +25,13 @@ describe("Models", () => {
   });
 
   it("shows empty state when models is empty", () => {
-    const tab = new Models([], makeTheme(), testPalette());
+    const tab = new Models([], makeTheme(), testPalette(), mockTui);
     const text = tab.render(80).join("\n");
     expect(text).toContain("No model data for this time range");
   });
 
   it("renders within width", () => {
-    const tab = new Models(models, makeTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
     const lines = tab.render(50);
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(50);
@@ -37,7 +39,7 @@ describe("Models", () => {
   });
 
   it("invalidates render cache", () => {
-    const tab = new Models(models, makeTheme(), testPalette());
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
     tab.render(80); // cache at width 80
     tab.invalidate();
     const lines = tab.render(60); // should re-render at new width

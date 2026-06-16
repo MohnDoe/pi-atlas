@@ -28,9 +28,9 @@ export class Dashboard extends Container {
     private summaries: StatsSummary[],
     private theme: Theme,
     private terminalRows: number,
-    private updateLabel?: string | null,
+    private updateLabel: string | null | undefined,
+    private tui: TUI,
     onClose?: () => void,
-    private tui?: TUI,
   ) {
     super();
     this.onClose = onClose ?? null;

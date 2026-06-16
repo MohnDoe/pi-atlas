@@ -24,9 +24,9 @@ export interface SortedTableConfig {
   maxHeight: number;
   sort?: SortConfig;
   cursor?: CursorOptions;
-  /** TUI reference for driving marquee animation. When provided, MarqueeText
-   *  instances call tui.requestRender() to advance their animation. */
-  tui?: TUI;
+  /** TUI reference for driving marquee animation. MarqueeText instances call
+   *  tui.requestRender() to advance their animation. */
+  tui: TUI;
 }
 
 export class SortedTable implements Component {
@@ -43,7 +43,7 @@ export class SortedTable implements Component {
   private cachedWidth = -1;
   private cursorPrefix: string;
   private padPrefix: string;
-  private tui?: TUI;
+  private tui: TUI;
   private marqueeCells: Map<string, MarqueeText> = new Map();
 
   constructor(config: SortedTableConfig, theme: Theme) {
@@ -189,12 +189,6 @@ export class SortedTable implements Component {
         row = this.theme.bg("selectedBg", row);
       }
       lines.push(row);
-    }
-
-    if (hasMarquee && !this.tui) {
-      // Without a TUI (e.g., in tests), advance ticks manually since the timer
-      // won't fire. With a TUI, MarqueeText's internal timer handles it.
-      this.marqueeCells.forEach((mt) => mt.advance());
     }
 
     this.cachedLines = lines;

@@ -16,7 +16,7 @@ export class Models extends Container {
     private models: ModelStat[],
     theme: Theme,
     private palette: ColorPalette,
-    private tui?: TUI,
+    private tui: TUI,
   ) {
     super();
     this.theme = theme;
