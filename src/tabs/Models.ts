@@ -10,6 +10,7 @@ const EMPTY_MESSAGE = "No model data for this time range";
 export class Models extends Container {
   private isEmpty: boolean;
   private theme: Theme;
+  private table: SortedTable | null = null;
 
   constructor(
     private models: ModelStat[],
@@ -24,8 +25,8 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
-      this.addChild(
-        new SortedTable(
+      if (!this.table) {
+        this.table = new SortedTable(
           [
             {
               header: "Model",
@@ -53,16 +54,17 @@ export class Models extends Container {
             column: 3,
             direction: "desc",
           },
-        ),
-      );
+        );
+      }
+      this.addChild(this.table);
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
     return super.render(width);
   }
 
-  handleInput(_data: string): void {
-    this.invalidate();
+  handleInput(data: string): void {
+    this.table?.handleInput(data);
   }
 
   invalidate(): void {
