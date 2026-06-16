@@ -16,7 +16,7 @@ export class Header implements Component {
       {
         child: this.rangeSelector,
         title: "Range (r)",
-        rounded: true,
+        rounded: false,
         color: "dim",
       },
       theme,
