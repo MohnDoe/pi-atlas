@@ -469,7 +469,7 @@ describe("SortedTable", () => {
       let lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ Hello");
 
-      // Advance 150ms = 3 timer ticks → offset=1 → "ello "
+      // Advance 150ms = 1 timer tick → offset=1 → "ello "
       vi.advanceTimersByTime(150);
       lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ ello");
@@ -486,8 +486,8 @@ describe("SortedTable", () => {
       let lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ ABC");
 
-      // Advance 600ms = 12 timer ticks → offset=floor(12/3)%11=4 → "EF "
-      // (5-space gap after text; trailing space stripped by trimEnd)
+      // Advance 600ms = 4 timer ticks → offset=4%11=4 → "EF "
+      // (5-space gap after text; trimEnd skipped for marquee rows)
       vi.advanceTimersByTime(600);
       lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ EF");
@@ -527,7 +527,7 @@ describe("SortedTable", () => {
       expect(r1).toContain("▶ ABCDEFGHIJ");
       expect(r1).toContain("XYZ");
 
-      // Advance 150ms = 3 ticks → offset=1 → "BCDEFGHIJK"
+      // Advance 150ms = 1 tick → offset=1 → "BCDEFGHIJK"
       vi.advanceTimersByTime(150);
       lines = table.render(30);
       const r1b = strip(lines[1]);
@@ -561,7 +561,7 @@ describe("SortedTable", () => {
       expect(strip(lines[2])).toContain("▶ Long");
 
       // Advance ticks — unfocused row stays same (with ellipsis), focused advances
-      vi.advanceTimersByTime(300); // tick=6, offset=2
+      vi.advanceTimersByTime(300); // 2 ticks, offset=2
       lines = table.render(20);
       expect(strip(lines[1])).toContain("  Long…"); // unchanged
       expect(strip(lines[2])).toContain("▶ ng T"); // focused advanced
@@ -582,7 +582,7 @@ describe("SortedTable", () => {
       lines = table.render(15);
       expect(strip(lines[1])).toContain("▶ Hello World!!");
 
-      // Advance 150ms = 3 ticks → offset=1 → "ello World!!!!"
+      // Advance 150ms = 1 tick → offset=1 → "ello World!!!!"
       vi.advanceTimersByTime(150);
       lines = table.render(15);
       expect(strip(lines[1])).toContain("▶ ello World!!!");

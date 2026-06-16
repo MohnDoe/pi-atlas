@@ -3,8 +3,8 @@ import type { TUI } from "@earendil-works/pi-tui";
 
 /**
  * A component that displays text with a marquee scroll effect when the text
- * overflows the available width. Text scrolls left at 1 character per 3 ticks,
- * wrapping around when reaching the end.
+ * overflows the available width. Text scrolls left at 1 character per tick
+ * (150ms), wrapping around when reaching the end.
  *
  * Each instance manages its own tick counter and animation timer. When a TUI
  * reference is provided, the timer calls tui.requestRender() to animate.
@@ -12,6 +12,7 @@ import type { TUI } from "@earendil-works/pi-tui";
 export class MarqueeText implements Component {
   private tickCounter = 0;
   private timer: ReturnType<typeof setInterval> | undefined;
+  private closed = false;
 
   constructor(
     private text: string,
@@ -26,16 +27,13 @@ export class MarqueeText implements Component {
 
     // Start animation timer on first render with overflow
     if (!this.timer) {
-      this.timer = setInterval(() => {
-        this.tickCounter++;
-        this.tui.requestRender();
-      }, 50);
+      this.startTimer();
     }
 
     // Gap separates end of text from its beginning when wrapping
     const gap = " ".repeat(5);
     const extended = this.text + gap;
-    const offset = Math.floor(this.tickCounter / 3) % extended.length;
+    const offset = this.tickCounter % extended.length;
     const visible = (extended + extended).slice(offset, offset + width);
     return [visible];
   }
@@ -51,13 +49,25 @@ export class MarqueeText implements Component {
     this.stopTimer();
   }
 
-  /** Stop the animation timer */
+  /** Stop the animation timer and mark instance as closed. */
   destroy(): void {
+    this.closed = true;
     this.stopTimer();
   }
 
   invalidate(): void {
     // No internal cache to clear
+  }
+
+  private startTimer(): void {
+    this.timer = setInterval(() => {
+      if (this.closed) {
+        this.stopTimer();
+        return;
+      }
+      this.tickCounter++;
+      this.tui.requestRender();
+    }, 150);
   }
 
   private stopTimer(): void {

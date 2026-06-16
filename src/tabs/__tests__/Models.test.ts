@@ -5,7 +5,7 @@ import { Models } from "../Models";
 describe("Models", () => {
   const mockTui = makeMockTUI();
 
-const models = [
+  const models = [
     { model: "claude-sonnet-4-20250514", cost: 150.5, calls: 42 },
     { model: "gemini-2.5-pro", cost: 85.25, calls: 28 },
     { model: "gpt-4o", cost: 0.75, calls: 5 },

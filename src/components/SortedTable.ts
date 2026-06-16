@@ -185,15 +185,21 @@ export class SortedTable implements Component {
         let val: string;
         if (i === this.focusedRow && this.columns[j].marquee && raw.length > colWidths[j]) {
           val = this.marqueeText(i, j, raw, colWidths[j]);
+          row += val + gap;
         } else if (this.columns[j].marquee && raw.length > colWidths[j]) {
           // Unfocused marquee column — truncated with ellipsis
           val = raw.slice(0, Math.max(0, colWidths[j] - 1)) + "…";
+          row += val.padEnd(colWidths[j]) + gap;
         } else {
           val = raw.slice(0, colWidths[j]);
+          row += val.padEnd(colWidths[j]) + gap;
         }
-        row += val.padEnd(colWidths[j]) + gap;
       }
-      row = row.trimEnd();
+      // trimEnd() would eat trailing gap spaces when the marquee wrap-around
+      // lands at the end of the visible window. Skip it for marquee rows.
+      if (i !== this.focusedRow || !hasMarquee) {
+        row = row.trimEnd();
+      }
       const prefix = i === this.focusedRow ? this.cursorPrefix : this.padPrefix;
       row = this.padToWidth(row, width - prefix.length);
       row = prefix + row;

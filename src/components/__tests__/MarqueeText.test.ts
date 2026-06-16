@@ -34,11 +34,11 @@ describe("MarqueeText", () => {
     // tick=0 → "Hello"
     expect(mt.render(5)[0]).toBe("Hello");
 
-    // Advance 50ms = 1 timer tick → still offset=0 (floor(1/3)=0)
+    // Advance 50ms = timer hasn't fired yet → still offset=0
     vi.advanceTimersByTime(50);
     expect(mt.render(5)[0]).toBe("Hello");
 
-    // Advance 100ms more = 3 total ticks → offset=1 → "ello "
+    // Advance 100ms more = 1 timer tick at 150ms → offset=1 → "ello "
     vi.advanceTimersByTime(100);
     expect(mt.render(5)[0]).toBe("ello ");
   });
@@ -47,7 +47,7 @@ describe("MarqueeText", () => {
     const mt = new MarqueeText("ABCDEF", tui);
     mt.render(3);
 
-    // Advance 600ms = 12 timer ticks → offset=floor(12/3)%11=4 → "EF "
+    // Advance 600ms = 4 timer ticks → offset=4%11=4 → "EF "
     // (5-space gap after text shows first gap space at position 6)
     vi.advanceTimersByTime(600);
     expect(mt.render(3)[0]).toBe("EF ");
@@ -56,7 +56,7 @@ describe("MarqueeText", () => {
   it("resets marquee to start", () => {
     const mt = new MarqueeText("Hello World!", tui);
     mt.render(5);
-    vi.advanceTimersByTime(150); // 3 ticks, offset=1
+    vi.advanceTimersByTime(150); // 1 tick, offset=1
     expect(mt.render(5)[0]).toBe("ello ");
 
     mt.reset();
