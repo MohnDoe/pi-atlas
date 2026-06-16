@@ -176,6 +176,9 @@ export class SortedTable implements Component {
         let val: string;
         if (i === this.focusedRow && this.columns[j].marquee && raw.length > colWidths[j]) {
           val = this.marqueeText(i, j, raw, colWidths[j]);
+        } else if (this.columns[j].marquee && raw.length > colWidths[j]) {
+          // Unfocused marquee column — truncated with ellipsis
+          val = raw.slice(0, Math.max(0, colWidths[j] - 1)) + "…";
         } else {
           val = raw.slice(0, colWidths[j]);
         }

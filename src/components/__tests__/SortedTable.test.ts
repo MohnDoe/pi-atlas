@@ -538,32 +538,32 @@ describe("SortedTable", () => {
       expect(r1b).not.toContain("ABCDEFGHIJ");
     });
 
-    it("does not scroll unfocused rows even with marquee column", () => {
+    it("shows ellipsis on unfocused marquee columns, scrolling on focused", () => {
       const cols: ColumnDef[] = [
         { header: "Name", width: 5, marquee: true },
       ];
       const rows = [["Longish Name"], ["Long Text Here!"]];
       const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
 
-      // Focused row 0 — marquee starts at "Longi"
+      // Focused row 0 — marquee starts at "Longi" (no ellipsis when focused)
       let lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ Longi");
 
-      // Move cursor to row 1 — tick resets
+      // Move cursor to row 1 — row 0 becomes unfocused, shows ellipsis
       table.handleInput("\x1b[B");
       vi.advanceTimersByTime(0);
       lines = table.render(20);
       const unfocused = strip(lines[1]); // row 0 unfocused
-      expect(unfocused).toContain("  Longi"); // truncated, no scroll
+      expect(unfocused).toContain("  Long…"); // truncated with ellipsis
       expect(unfocused).not.toContain("ongis"); // would appear if marquee was active
 
-      // Focused row 1 shows "Long" at offset 0
+      // Focused row 1 shows "Long" at offset 0 (no ellipsis)
       expect(strip(lines[2])).toContain("▶ Long");
 
-      // Advance ticks — unfocused row stays same, focused row advances
+      // Advance ticks — unfocused row stays same (with ellipsis), focused advances
       vi.advanceTimersByTime(300); // tick=6, offset=2
       lines = table.render(20);
-      expect(strip(lines[1])).toContain("  Longi"); // unchanged
+      expect(strip(lines[1])).toContain("  Long…"); // unchanged
       expect(strip(lines[2])).toContain("▶ ng T"); // focused advanced
     });
   });
