@@ -45,6 +45,7 @@ export class SortedTable implements Component {
   private padPrefix: string;
   private tui: TUI;
   private marqueeCells: Map<string, MarqueeText> = new Map();
+  private lastRenderWidth = -1;
 
   constructor(config: SortedTableConfig, theme: Theme) {
     const fillCount = config.columns.filter((c) => c.width === "fill").length;
@@ -126,6 +127,14 @@ export class SortedTable implements Component {
   }
 
   render(width: number): string[] {
+    // Force state refresh on width change (terminal resize, overlay reposition, etc.)
+    if (this.lastRenderWidth !== -1 && this.lastRenderWidth !== width) {
+      this.cachedLines = null;
+      this.cachedWidth = -1;
+      this.cleanupMarquee();
+    }
+    this.lastRenderWidth = width;
+
     const colWidths = this.resolveWidths(width);
 
     // Bypass cache when focused row has active marquee columns
@@ -246,5 +255,6 @@ export class SortedTable implements Component {
     this.cachedLines = null;
     this.cachedWidth = -1;
     this.cleanupMarquee();
+    this.lastRenderWidth = -1;
   }
 }
