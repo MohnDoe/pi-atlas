@@ -344,5 +344,27 @@ describe("SortedTable", () => {
       expect(lines[2].startsWith("▶ ")).toBe(true);
       expect(lines[3].startsWith("  ")).toBe(true);
     });
+
+    it("hides cursor when disabled", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme(), undefined, { enabled: false });
+      const lines = table.render(80);
+
+      // No cursor prefix on any row
+      for (const line of lines) {
+        expect(line.startsWith("▶ ")).toBe(false);
+      }
+      // Header should not be padded either
+      expect(lines[0].startsWith("  ")).toBe(false);
+    });
+
+    it("uses custom cursor char", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme(), undefined, {
+        char: "▸",
+      });
+      const lines = table.render(80);
+
+      expect(lines[1].startsWith("▸ ")).toBe(true);
+      expect(lines[2].startsWith("  ")).toBe(true);
+    });
   });
 });

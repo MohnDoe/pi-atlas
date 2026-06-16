@@ -11,7 +11,14 @@ export interface SortConfig {
   direction: "asc" | "desc";
 }
 
+export interface CursorOptions {
+  enabled?: boolean;
+  char?: string;
+}
+
 export class SortedTable implements Component {
+  static readonly DEFAULT_CURSOR_CHAR = "▶";
+  static readonly CURSOR_SUFFIX = " ";
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
@@ -21,14 +28,21 @@ export class SortedTable implements Component {
   private focusedRow = -1;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
+  private cursorPrefix: string;
+  private padPrefix: string;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, sort?: SortConfig) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, sort?: SortConfig, cursorOptions?: CursorOptions) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
     this.theme = theme;
     this.sort = sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
+
+    const cursorEnabled = cursorOptions?.enabled ?? true;
+    const cursorChar = cursorOptions?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
+    this.cursorPrefix = cursorEnabled ? cursorChar + SortedTable.CURSOR_SUFFIX : "";
+    this.padPrefix = cursorEnabled ? " ".repeat(this.cursorPrefix.length) : "";
   }
 
   private get visibleRows(): number {
@@ -61,7 +75,7 @@ export class SortedTable implements Component {
       }
       header += headerText.slice(0, col.width).padEnd(col.width) + gap;
     }
-    header = "  " + header.trimEnd();
+    header = this.padPrefix + header.trimEnd();
     const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
     if (visLen > width) header = header.slice(0, width);
     lines.push(this.theme.bold(this.theme.fg("accent", header)));
@@ -76,7 +90,7 @@ export class SortedTable implements Component {
         row += val.padEnd(this.columns[j].width) + gap;
       }
       row = row.trimEnd();
-      const cursor = i === this.focusedRow ? "▶ " : "  ";
+      const cursor = i === this.focusedRow ? this.cursorPrefix : this.padPrefix;
       row = cursor + row;
       const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
