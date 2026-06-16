@@ -6,20 +6,27 @@ export interface ColumnDef {
   width: number;
 }
 
+export interface SortConfig {
+  column: number;
+  direction: "asc" | "desc";
+}
+
 export class SortedTable implements Component {
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
   private theme: Theme;
+  private sort?: SortConfig;
   private scrollOffset = 0;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, sort?: SortConfig) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
     this.theme = theme;
+    this.sort = sort;
   }
 
   private get visibleRows(): number {
@@ -42,8 +49,15 @@ export class SortedTable implements Component {
 
     // Header row
     let header = "";
-    for (const col of this.columns) {
-      header += col.header.slice(0, col.width).padEnd(col.width) + gap;
+    for (let i = 0; i < this.columns.length; i++) {
+      const col = this.columns[i];
+      let headerText = col.header;
+      if (this.sort && this.sort.column === i) {
+        const indicator = this.sort.direction === "asc" ? " ▲" : " ▼";
+        const maxHeaderLen = col.width - indicator.length;
+        headerText = headerText.slice(0, maxHeaderLen) + indicator;
+      }
+      header += headerText.slice(0, col.width).padEnd(col.width) + gap;
     }
     header = header.trimEnd();
     const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;

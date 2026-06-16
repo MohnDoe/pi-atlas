@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
-import { SortedTable } from "../SortedTable";
+import { SortedTable, type SortConfig } from "../SortedTable";
 
 describe("SortedTable", () => {
   const columns = [
@@ -155,5 +155,74 @@ describe("SortedTable", () => {
     // First visible row should be rank 4 (scroll offset 3, rank = offset + 1)
     expect(lines[1]).toContain("4");
     expect(lines[1]).toContain("Lang3");
+  });
+
+  describe("sort indicators", () => {
+    it("shows ▲ on the sorted column header when direction is asc", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme(), {
+        column: 0,
+        direction: "asc",
+      });
+      const lines = table.render(80);
+      const header = lines[0];
+      expect(header).toContain("Language ▲");
+      expect(header).toContain("Lines");
+      expect(header).toContain("Edits");
+    });
+
+    it("shows ▼ on the sorted column header when direction is desc", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme(), {
+        column: 1,
+        direction: "desc",
+      });
+      const lines = table.render(80);
+      const header = lines[0];
+      expect(header).toContain("Lines ▼");
+      expect(header).toContain("Language");
+      expect(header).toContain("Edits");
+    });
+
+    it("uses column width computed on raw header before appending triangle", () => {
+      const tightCols = [
+        { header: "Language", width: 10 },
+        { header: "Lines", width: 10 },
+        { header: "Edits", width: 10 },
+      ];
+      const table = new SortedTable(tightCols, rows, 10, makeTheme(), {
+        column: 0,
+        direction: "asc",
+      });
+      const lines = table.render(80);
+      const header = lines[0];
+      // "Language" is 8 chars, width 10 → 2 leftover for " ▲" → "Language ▲"
+      expect(header).toContain("Language ▲");
+      expect(header).not.toContain("Langua ▲"); // not shortened unnecessarily
+    });
+
+    it("shortens header text when header plus triangle exceeds column width", () => {
+      const tightCols = [
+        { header: "VeryLongName", width: 10 },
+        { header: "Lines", width: 10 },
+        { header: "Edits", width: 10 },
+      ];
+      const table = new SortedTable(tightCols, rows, 10, makeTheme(), {
+        column: 0,
+        direction: "asc",
+      });
+      const lines = table.render(80);
+      const header = lines[0];
+      // "VeryLongName" is 12 chars, width=10, " ▲" takes 2 → max raw = 8
+      expect(header).toContain("VeryLong ▲"); // "VeryLong" (8) + " ▲" = 10
+      expect(header).not.toContain("VeryLongName");
+    });
+
+    it("shows no triangle when sort is omitted", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme());
+      const lines = table.render(80);
+      const header = lines[0];
+      expect(header).not.toContain("▲");
+      expect(header).not.toContain("▼");
+      expect(header).toContain("Language");
+    });
   });
 });
