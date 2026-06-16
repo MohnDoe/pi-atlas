@@ -9,7 +9,7 @@ const mockTui = makeMockTUI();
 describe("DashboardPopup", () => {
   it("renders box-drawing border around content", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
@@ -34,7 +34,7 @@ describe("DashboardPopup", () => {
 
   it("all lines have same width", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
@@ -48,7 +48,7 @@ describe("DashboardPopup", () => {
 
   it("renders content at inner width (width - 2)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Render at 60: inner content gets 58
@@ -77,7 +77,7 @@ describe("DashboardPopup", () => {
 
   it("re-renders after handleInput changes state (cache invalidation)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Render once to populate caches
@@ -96,7 +96,7 @@ describe("DashboardPopup", () => {
 
   it("delegates invalidate to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Render once to populate cache
@@ -114,7 +114,7 @@ describe("DashboardPopup", () => {
 
   it("caches rendered output and invalidates on width change", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     const lines80 = popup.render(80);
@@ -135,7 +135,7 @@ describe("DashboardPopup", () => {
       ],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Languages tab
@@ -155,7 +155,7 @@ describe("DashboardPopup", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Models tab
@@ -176,7 +176,7 @@ describe("DashboardPopup", () => {
       projects: [{ project: "pi-usage", cost: 15.5, sessions: 42 }],
     };
     const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Projects+Tools tab
@@ -201,7 +201,7 @@ describe("DashboardPopup", () => {
       dailySpend: [],
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, undefined, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
     const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
