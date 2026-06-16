@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
-import { SortedTable } from "../SortedTable";
+import { SortedTable, type ColumnDef } from "../SortedTable";
 
 describe("SortedTable", () => {
   const columns = [
@@ -159,6 +159,20 @@ describe("SortedTable", () => {
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBe(80);
+    }
+  });
+
+  it("resolves percentage columns relative to content width", () => {
+    const pctCols: ColumnDef[] = [
+      { header: "Col", width: "50%" },
+    ];
+    // 1 column, 0 gaps → contentWidth = 20
+    // 50% of 20 = 10
+    const table = new SortedTable(pctCols, [["hello"]], 10, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
     }
   });
 });
