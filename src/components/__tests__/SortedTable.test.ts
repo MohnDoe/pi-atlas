@@ -566,5 +566,26 @@ describe("SortedTable", () => {
       expect(strip(lines[1])).toContain("  Long…"); // unchanged
       expect(strip(lines[2])).toContain("▶ ng T"); // focused advanced
     });
+
+    it("starts marquee after resize from wide to narrow", () => {
+      const cols: ColumnDef[] = [
+        { header: "Col", width: "fill", marquee: true },
+      ];
+      const rows = [["Hello World!!!!!"]]; // 16 chars, overflows when fill < 16
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+
+      // Width=80: fill column = 80, text fits
+      let lines = table.render(80);
+      expect(strip(lines[1])).toContain("Hello World!!!!!");
+
+      // Width=15: fill = 15 < 16 → overflows, marquee at offset 0
+      lines = table.render(15);
+      expect(strip(lines[1])).toContain("▶ Hello World!!");
+
+      // Advance 150ms = 3 ticks → offset=1 → "ello World!!!!"
+      vi.advanceTimersByTime(150);
+      lines = table.render(15);
+      expect(strip(lines[1])).toContain("▶ ello World!!!");
+    });
   });
 });
