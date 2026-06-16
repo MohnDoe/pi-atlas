@@ -83,6 +83,7 @@ export default function (pi: ExtensionAPI) {
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const dashboard = new Dashboard(summaries, theme, dashRows, updateLabel, () =>
           done(undefined),
+          tui.requestRender.bind(tui),
         );
         // Wrap in popup border only when using overlay mode
         const component = usePopup ? new DashboardPopup(dashboard, theme) : dashboard;

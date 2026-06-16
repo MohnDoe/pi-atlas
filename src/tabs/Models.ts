@@ -16,6 +16,7 @@ export class Models extends Container {
     private models: ModelStat[],
     theme: Theme,
     private palette: ColorPalette,
+    private requestFrame?: () => void,
   ) {
     super();
     this.theme = theme;
@@ -29,7 +30,7 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: "Model", width: "fill" },
+              { header: "Model", width: "fill", marquee: true },
               { header: "Provider", width: 12 },
               { header: "Calls", width: 6 },
               { header: "Cost", width: 8 },
@@ -42,6 +43,7 @@ export class Models extends Container {
             ]),
             maxHeight: 20,
             sort: { column: 3, direction: "desc" },
+            requestFrame: this.requestFrame,
           },
           this.theme,
         );

@@ -30,6 +30,7 @@ export class Dashboard extends Container {
     private terminalRows: number,
     private updateLabel?: string | null,
     onClose?: () => void,
+    private requestFrame?: () => void,
   ) {
     super();
     this.onClose = onClose ?? null;
@@ -68,7 +69,7 @@ export class Dashboard extends Container {
         contentHeight,
       ),
       new Languages(summary.languages, this.theme, this.langPalette),
-      new Models(summary.models, this.theme, this.modelPalette),
+      new Models(summary.models, this.theme, this.modelPalette, this.requestFrame),
       new Projects(summary.projects, this.theme),
       new Usage(
         summary.tools,

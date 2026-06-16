@@ -23,6 +23,9 @@ export interface SortedTableConfig {
   maxHeight: number;
   sort?: SortConfig;
   cursor?: CursorOptions;
+  /** Called when the table needs an animation frame (e.g., for marquee scrolling).
+   *  The caller should trigger a re-render (e.g., via TUI.requestRender()). */
+  requestFrame?: () => void;
 }
 
 export class SortedTable implements Component {
@@ -40,9 +43,11 @@ export class SortedTable implements Component {
   private cursorPrefix: string;
   private padPrefix: string;
   private tick = 0;
+  private requestFrame?: () => void;
+  private marqueeTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(config: SortedTableConfig, theme: Theme) {
-    const fillCount = config.columns.filter(c => c.width === "fill").length;
+    const fillCount = config.columns.filter((c) => c.width === "fill").length;
     if (fillCount > 1) throw new Error("Cannot have more than one fill column");
 
     for (const col of config.columns) {
@@ -58,6 +63,8 @@ export class SortedTable implements Component {
     this.theme = theme;
     this.sort = config.sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
+
+    this.requestFrame = config.requestFrame;
 
     const cursorOpts = config.cursor;
     const cursorEnabled = cursorOpts?.enabled ?? true;
@@ -81,7 +88,7 @@ export class SortedTable implements Component {
     const resolved = new Array(this.columns.length).fill(-1);
     let fixedUsed = 0;
     let pctUsed = 0;
-    const fillIdx = this.columns.findIndex(c => c.width === "fill");
+    const fillIdx = this.columns.findIndex((c) => c.width === "fill");
 
     // Pass 1: fixed widths
     for (let i = 0; i < this.columns.length; i++) {
@@ -118,17 +125,31 @@ export class SortedTable implements Component {
     return line + " ".repeat(width - visLen);
   }
 
+  /** Start/stop the animation timer based on marquee state */
+  private updateMarqueeTimer(hasMarquee: boolean): void {
+    if (hasMarquee && !this.marqueeTimer && this.requestFrame) {
+      this.marqueeTimer = setInterval(() => this.requestFrame?.(), 50);
+    } else if (!hasMarquee && this.marqueeTimer) {
+      clearInterval(this.marqueeTimer);
+      this.marqueeTimer = undefined;
+    }
+  }
+
   render(width: number): string[] {
     const colWidths = this.resolveWidths(width);
 
-    const hasMarquee = this.focusedRow >= 0 && this.columns.some((col, j) =>
-      col.marquee && (this.rows[this.focusedRow]?.[j]?.length ?? 0) > colWidths[j]
-    );
+    const hasMarquee =
+      this.focusedRow >= 0 &&
+      this.columns.some(
+        (col, j) => col.marquee && (this.rows[this.focusedRow]?.[j]?.length ?? 0) > colWidths[j],
+      );
 
     if (hasMarquee) {
       this.cachedLines = null;
       this.cachedWidth = -1;
     }
+
+    this.updateMarqueeTimer(hasMarquee);
 
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
@@ -222,5 +243,9 @@ export class SortedTable implements Component {
   invalidate(): void {
     this.cachedLines = null;
     this.cachedWidth = -1;
+    if (this.marqueeTimer) {
+      clearInterval(this.marqueeTimer);
+      this.marqueeTimer = undefined;
+    }
   }
 }
