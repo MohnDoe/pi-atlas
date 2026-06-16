@@ -43,6 +43,35 @@ describe("Models", () => {
     }
   });
 
+  it("fill column adapts to width", () => {
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
+
+    // At width 30, fill column is ~1-2 chars — model name truncated
+    const narrowLines = tab.render(30);
+    const narrowText = narrowLines.join("\n");
+    expect(narrowText).not.toContain("Claude");
+
+    // At width 80, fill column is ~51 chars — full model name visible
+    const wideLines = tab.render(80);
+    const wideText = wideLines.join("\n");
+    expect(wideText).toContain("Claude Sonnet 4");
+  });
+
+  it("shows cursor on first row", () => {
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
+    const lines = tab.render(80);
+    // First data row (line 1, after header) should start with cursor
+    expect(lines[1]).toMatch(/^▶/);
+  });
+
+  it("shows sort indicator on Cost column", () => {
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+    // Cost column has sort: { column: 3, direction: "desc" } → ▼
+    expect(text).toContain("Cost ▼");
+  });
+
   it("invalidates render cache", () => {
     const tab = new Models(models, makeTheme(), testPalette(), mockTui);
     tab.render(80); // cache at width 80
