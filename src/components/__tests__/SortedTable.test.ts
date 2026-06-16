@@ -219,6 +219,15 @@ describe("SortedTable", () => {
     );
   });
 
+  it("throws on invalid width string (not number, N%, or fill)", () => {
+    const badCols: ColumnDef[] = [
+      { header: "A", width: "abc" },
+    ];
+    expect(() => new SortedTable(badCols, [], 10, makeTheme())).toThrow(
+      'Invalid column width: "abc"'
+    );
+  });
+
   it("handles mix of fixed, percentage, and fill columns", () => {
     const mixedCols: ColumnDef[] = [
       { header: "Fixed", width: 10 },

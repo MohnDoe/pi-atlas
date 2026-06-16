@@ -19,6 +19,13 @@ export class SortedTable implements Component {
     const fillCount = columns.filter(c => c.width === "fill").length;
     if (fillCount > 1) throw new Error("Cannot have more than one fill column");
 
+    for (const col of columns) {
+      const w = col.width;
+      if (typeof w === "string" && w !== "fill" && !/^\d+%$/.test(w)) {
+        throw new Error(`Invalid column width: "${w}"`);
+      }
+    }
+
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
@@ -51,8 +58,7 @@ export class SortedTable implements Component {
       }
     }
 
-    // Pass 2: percentage widths (from remaining after fixed)
-    const afterFixed = Math.max(0, contentWidth - fixedUsed);
+    // Pass 2: percentage widths
     for (let i = 0; i < this.columns.length; i++) {
       if (resolved[i] >= 0) continue;
       const w = this.columns[i].width;
