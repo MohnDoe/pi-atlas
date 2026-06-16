@@ -480,5 +480,34 @@ describe("SortedTable", () => {
       lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ EFA");
     });
+
+    it("does not scroll unfocused rows even with marquee column", () => {
+      const cols: ColumnDef[] = [
+        { header: "Name", width: 5, marquee: true },
+      ];
+      const rows = [["Longish Name"], ["Long Text Here!"]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10 }, makeTheme());
+
+      // Focused row 0 — marquee starts at "Longi"
+      let lines = table.render(20);
+      expect(strip(lines[1])).toContain("▶ Longi");
+
+      // Move cursor to row 1 — tick resets
+      table.handleInput("\x1b[B");
+      lines = table.render(20);
+      const unfocused = strip(lines[1]); // row 0 unfocused
+      expect(unfocused).toContain("  Longi"); // truncated, no scroll
+      expect(unfocused).not.toContain("ongis"); // would appear if marquee was active
+
+      // Focused row 1 shows "Long" at offset 0 (trailing space trimEnd'd)
+      expect(strip(lines[2])).toContain("▶ Long");
+
+      // Advance ticks — unfocused row stays same, focused row advances
+      for (let i = 0; i < 5; i++) table.render(20);
+      lines = table.render(20); // tick=6, offset=2
+      expect(strip(lines[1])).toContain("  Longi"); // unchanged
+      // "ng T" from offset=2, no trailing space
+      expect(strip(lines[2])).toContain("▶ ng T"); // focused advanced
+    });
   });
 });
