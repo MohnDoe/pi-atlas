@@ -13,6 +13,7 @@ export class DashboardPopup implements Component {
   constructor(dashboard: Dashboard, theme: Theme) {
     this.borderBox = new BorderBox(
       {
+        title: theme.bold("Pi Usage") + " " + theme.fg("muted", "v0.1"),
         child: dashboard,
         color: "text",
       },

@@ -9,7 +9,7 @@ export class Header implements Component {
   private rangeBox: BorderBox;
 
   constructor(
-    private theme: Theme,
+    theme: Theme,
     private rangeSelector: RangeSelector,
   ) {
     this.rangeBox = new BorderBox(
@@ -24,8 +24,8 @@ export class Header implements Component {
   }
 
   render(width: number): string[] {
-    const title = this.theme.bold("Pi Usage");
-    const version = this.theme.fg("dim", "v 0.0.1");
+    const title = "";
+    const version = "";
 
     const boxLines = this.rangeBox.render(RANGE_BOX_WIDTH);
     const leftWidth = width - RANGE_BOX_WIDTH;
