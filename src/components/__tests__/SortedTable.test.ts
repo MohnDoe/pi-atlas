@@ -481,6 +481,31 @@ describe("SortedTable", () => {
       expect(strip(lines[1])).toContain("▶ EFA");
     });
 
+    it("non-marquee columns truncate on focused row while marquee columns scroll", () => {
+      const cols: ColumnDef[] = [
+        { header: "Label", width: 10, marquee: true },
+        { header: "Fixed", width: 4 },
+      ];
+      const rows = [["ABCDEFGHIJKLMNOP", "XYZ"]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10 }, makeTheme());
+
+      // tick=0: marquee shows "ABCDEFGHIJ"
+      let lines = table.render(30);
+      const r1 = strip(lines[1]);
+      expect(r1).toContain("▶ ABCDEFGHIJ");
+      expect(r1).toContain("XYZ");
+
+      // tick=3: offset=1 → "BCDEFGHIJK"
+      for (let i = 0; i < 3; i++) table.render(30);
+      lines = table.render(30);
+      const r1b = strip(lines[1]);
+      expect(r1b).toContain("▶ BCDEFGHIJK");
+      // Fixed column content never changes
+      expect(r1b).toContain("XYZ");
+      // The unfixed column changed
+      expect(r1b).not.toContain("ABCDEFGHIJ");
+    });
+
     it("does not scroll unfocused rows even with marquee column", () => {
       const cols: ColumnDef[] = [
         { header: "Name", width: 5, marquee: true },
