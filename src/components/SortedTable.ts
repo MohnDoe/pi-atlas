@@ -11,22 +11,47 @@ export interface SortConfig {
   direction: "asc" | "desc";
 }
 
+export interface CursorOptions {
+  enabled?: boolean;
+  char?: string;
+}
+
+export interface SortedTableConfig {
+  columns: ColumnDef[];
+  rows: string[][];
+  maxHeight: number;
+  sort?: SortConfig;
+  cursor?: CursorOptions;
+}
+
 export class SortedTable implements Component {
+  static readonly DEFAULT_CURSOR_CHAR = "▶";
+  static readonly CURSOR_SUFFIX = " ";
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
   private theme: Theme;
   private sort?: SortConfig;
   private scrollOffset = 0;
+  private focusedRow = -1;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
+  private cursorPrefix: string;
+  private padPrefix: string;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, sort?: SortConfig) {
-    this.columns = columns;
-    this.rows = rows;
-    this.maxHeight = maxHeight;
+  constructor(config: SortedTableConfig, theme: Theme) {
+    this.columns = config.columns;
+    this.rows = config.rows;
+    this.maxHeight = config.maxHeight;
     this.theme = theme;
-    this.sort = sort;
+    this.sort = config.sort;
+    this.focusedRow = this.rows.length > 0 ? 0 : -1;
+
+    const cursorOpts = config.cursor;
+    const cursorEnabled = cursorOpts?.enabled ?? true;
+    const cursorChar = cursorOpts?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
+    this.cursorPrefix = cursorEnabled ? cursorChar + SortedTable.CURSOR_SUFFIX : "";
+    this.padPrefix = cursorEnabled ? " ".repeat(this.cursorPrefix.length) : "";
   }
 
   private get visibleRows(): number {
@@ -59,7 +84,7 @@ export class SortedTable implements Component {
       }
       header += headerText.slice(0, col.width).padEnd(col.width) + gap;
     }
-    header = header.trimEnd();
+    header = this.padPrefix + header.trimEnd();
     const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
     if (visLen > width) header = header.slice(0, width);
     lines.push(this.theme.bold(this.theme.fg("accent", header)));
@@ -74,8 +99,13 @@ export class SortedTable implements Component {
         row += val.padEnd(this.columns[j].width) + gap;
       }
       row = row.trimEnd();
+      const cursor = i === this.focusedRow ? this.cursorPrefix : this.padPrefix;
+      row = cursor + row;
       const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
+      if (i === this.focusedRow) {
+        row = this.theme.bg("selectedBg", row);
+      }
       lines.push(row);
     }
 
@@ -86,17 +116,27 @@ export class SortedTable implements Component {
 
   handleInput(data: string): void {
     if (matchesKey(data, "up")) {
-      if (this.scrollOffset > 0) {
-        this.scrollOffset--;
+      if (this.focusedRow > 0) {
+        this.focusedRow--;
+        this.followFocus();
         this.invalidate();
       }
       return;
     }
     if (matchesKey(data, "down")) {
-      if (this.scrollOffset < this.maxScroll) {
-        this.scrollOffset++;
+      if (this.focusedRow < this.rows.length - 1) {
+        this.focusedRow++;
+        this.followFocus();
         this.invalidate();
       }
+    }
+  }
+
+  private followFocus(): void {
+    if (this.focusedRow < this.scrollOffset) {
+      this.scrollOffset = this.focusedRow;
+    } else if (this.focusedRow >= this.scrollOffset + this.visibleRows) {
+      this.scrollOffset = this.focusedRow - this.visibleRows + 1;
     }
   }
 
