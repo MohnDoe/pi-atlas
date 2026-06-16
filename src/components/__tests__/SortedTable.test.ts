@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
-import { SortedTable, type SortConfig } from "../SortedTable";
+
+import { ColumnDef, SortedTable, type SortConfig } from "../SortedTable";
 
 describe("SortedTable", () => {
   const columns = [
@@ -15,27 +16,24 @@ describe("SortedTable", () => {
     ["JSON", "300", "5"],
   ];
 
-  it("renders header row with column names and # rank column", () => {
+  it("renders header row with column names", () => {
     const table = new SortedTable({ columns, rows, maxHeight: 10 }, makeTheme());
+
     const lines = table.render(80);
     expect(lines.length).toBeGreaterThanOrEqual(1);
     const header = lines[0];
-    expect(header).toContain("#");
     expect(header).toContain("Language");
     expect(header).toContain("Lines");
     expect(header).toContain("Edits");
   });
 
-  it("renders data rows with rank numbers", () => {
+  it("renders data rows", () => {
     const table = new SortedTable({ columns, rows, maxHeight: 10 }, makeTheme());
     const lines = table.render(80);
     // Skip header (index 0), check first two data rows
     expect(lines.length).toBeGreaterThanOrEqual(3);
-    expect(lines[1]).toContain("1");
     expect(lines[1]).toContain("TypeScript");
-    expect(lines[2]).toContain("2");
     expect(lines[2]).toContain("Python");
-    expect(lines[3]).toContain("3");
     expect(lines[3]).toContain("JSON");
   });
 
@@ -70,7 +68,6 @@ describe("SortedTable", () => {
     const lines = table.render(80);
     // Should have at least a header, maybe an empty message
     expect(lines.length).toBeGreaterThanOrEqual(1);
-    expect(lines[0]).toContain("#");
     expect(lines[0]).toContain("Language");
   });
 
@@ -151,18 +148,110 @@ describe("SortedTable", () => {
     }
   });
 
-  it("renders rank numbers continuously respecting scroll offset", () => {
+  it("renders rows continuously respecting scroll offset", () => {
     const manyRows = Array.from({ length: 20 }, (_, i) => [`Lang${i}`, "100", "10"]);
     const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6 }, makeTheme());
 
-    // Scroll down a few times
-    table.handleInput("\x1b[B");
-    table.handleInput("\x1b[B");
-    table.handleInput("\x1b[B");
+    // Scroll down past the viewport to trigger scroll
+    // visibleRows = 5, so pressing down 5 times moves cursor to row 5, which is >= scrollOffset + visibleRows
+    // → scrollOffset becomes 5 - 5 + 1 = 1
+    for (let i = 0; i < 5; i++) table.handleInput("\x1b[B");
     const lines = table.render(80);
-    // First visible row should be rank 4 (scroll offset 3, rank = offset + 1)
-    expect(lines[1]).toContain("4");
-    expect(lines[1]).toContain("Lang3");
+    // scrollOffset=1, first visible data row should be Lang1
+    expect(lines[1]).toContain("Lang1");
+  });
+
+  // --- Flexible width tests ---
+
+  it("renders each line at exactly the specified width (visible chars)", () => {
+    const table = new SortedTable({ columns, rows, maxHeight: 10 }, makeTheme());
+    const lines = table.render(80);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(80);
+    }
+  });
+
+  it("resolves percentage columns relative to content width", () => {
+    const pctCols: ColumnDef[] = [
+      { header: "Col", width: "50%" },
+    ];
+    // 1 column, 0 gaps → contentWidth = 20
+    // 50% of 20 = 10
+    const table = new SortedTable({ columns: pctCols, rows: [["hello"]], maxHeight: 10 }, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
+    }
+  });
+
+  it("fill column takes remaining space after fixed columns", () => {
+    const fillCols: ColumnDef[] = [
+      { header: "A", width: 5 },
+      { header: "B", width: "fill" },
+    ];
+    // width=20, 1 gap → contentWidth=19
+    // fixed: 5, remaining: 14 → fill=14
+    const table = new SortedTable({ columns: fillCols, rows: [["x", "y"]], maxHeight: 10 }, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
+    }
+    // Make sure the fill column got substantial width (not just 1)
+    // B's content "y" should be padded, so the row should have space after "x"
+    expect(lines[1]).toMatch(/x {4,}/);
+  });
+
+  it("fill column collapses to 1 char min when no space remains", () => {
+    const tightCols: ColumnDef[] = [
+      { header: "A", width: 18 },
+      { header: "B", width: "fill" },
+    ];
+    // width=20, 1 gap → contentWidth=19
+    // fixed: 18, remaining: 1 → fill=1 (min)
+    const table = new SortedTable({ columns: tightCols, rows: [["aaa", "bbb"]], maxHeight: 10 }, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
+    }
+  });
+
+  it("throws when more than one fill column is specified", () => {
+    const badCols: ColumnDef[] = [
+      { header: "A", width: "fill" },
+      { header: "B", width: "fill" },
+    ];
+    expect(() => new SortedTable({ columns: badCols, rows: [], maxHeight: 10 }, makeTheme())).toThrow(
+      "Cannot have more than one fill column"
+    );
+  });
+
+  it("throws on invalid width string (not number, N%, or fill)", () => {
+    const badCols: ColumnDef[] = [
+      { header: "A", width: "abc" },
+    ];
+    expect(() => new SortedTable({ columns: badCols, rows: [], maxHeight: 10 }, makeTheme())).toThrow(
+      'Invalid column width: "abc"'
+    );
+  });
+
+  it("handles mix of fixed, percentage, and fill columns", () => {
+    const mixedCols: ColumnDef[] = [
+      { header: "Fixed", width: 10 },
+      { header: "Pct", width: "25%" },
+      { header: "Fill", width: "fill" },
+    ];
+    // width=60, 2 gaps → contentWidth=58
+    // fixed: 10, 25% of 58 = 14, remaining: 58 - 10 - 14 = 34 → fill=34
+    const table = new SortedTable({ columns: mixedCols, rows: [["a", "b", "c"]], maxHeight: 10 }, makeTheme());
+    const lines = table.render(60);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(60);
+    }
   });
 
   describe("sort indicators", () => {
