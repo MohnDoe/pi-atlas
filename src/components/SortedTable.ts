@@ -1,5 +1,6 @@
-import { matchesKey, type Component } from "@earendil-works/pi-tui";
+import { matchesKey, type Component, type TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { MarqueeText } from "./MarqueeText.js";
 
 export interface ColumnDef {
   header: string;
@@ -23,9 +24,9 @@ export interface SortedTableConfig {
   maxHeight: number;
   sort?: SortConfig;
   cursor?: CursorOptions;
-  /** Called when the table needs an animation frame (e.g., for marquee scrolling).
-   *  The caller should trigger a re-render (e.g., via TUI.requestRender()). */
-  requestFrame?: () => void;
+  /** TUI reference for driving marquee animation. When provided, MarqueeText
+   *  instances call tui.requestRender() to advance their animation. */
+  tui?: TUI;
 }
 
 export class SortedTable implements Component {
@@ -42,9 +43,8 @@ export class SortedTable implements Component {
   private cachedWidth = -1;
   private cursorPrefix: string;
   private padPrefix: string;
-  private tick = 0;
-  private requestFrame?: () => void;
-  private marqueeTimer: ReturnType<typeof setInterval> | undefined;
+  private tui?: TUI;
+  private marqueeCells: Map<string, MarqueeText> = new Map();
 
   constructor(config: SortedTableConfig, theme: Theme) {
     const fillCount = config.columns.filter((c) => c.width === "fill").length;
@@ -64,7 +64,7 @@ export class SortedTable implements Component {
     this.sort = config.sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
 
-    this.requestFrame = config.requestFrame;
+    this.tui = config.tui;
 
     const cursorOpts = config.cursor;
     const cursorEnabled = cursorOpts?.enabled ?? true;
@@ -125,19 +125,10 @@ export class SortedTable implements Component {
     return line + " ".repeat(width - visLen);
   }
 
-  /** Start/stop the animation timer based on marquee state */
-  private updateMarqueeTimer(hasMarquee: boolean): void {
-    if (hasMarquee && !this.marqueeTimer && this.requestFrame) {
-      this.marqueeTimer = setInterval(() => this.requestFrame?.(), 50);
-    } else if (!hasMarquee && this.marqueeTimer) {
-      clearInterval(this.marqueeTimer);
-      this.marqueeTimer = undefined;
-    }
-  }
-
   render(width: number): string[] {
     const colWidths = this.resolveWidths(width);
 
+    // Bypass cache when focused row has active marquee columns
     const hasMarquee =
       this.focusedRow >= 0 &&
       this.columns.some(
@@ -148,8 +139,6 @@ export class SortedTable implements Component {
       this.cachedLines = null;
       this.cachedWidth = -1;
     }
-
-    this.updateMarqueeTimer(hasMarquee);
 
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
@@ -186,8 +175,7 @@ export class SortedTable implements Component {
         const raw = data[j] ?? "";
         let val: string;
         if (i === this.focusedRow && this.columns[j].marquee && raw.length > colWidths[j]) {
-          const offset = Math.floor(this.tick / 3) % raw.length;
-          val = (raw + raw).slice(offset, offset + colWidths[j]);
+          val = this.marqueeText(i, j, raw, colWidths[j]);
         } else {
           val = raw.slice(0, colWidths[j]);
         }
@@ -203,8 +191,10 @@ export class SortedTable implements Component {
       lines.push(row);
     }
 
-    if (hasMarquee) {
-      this.tick++;
+    if (hasMarquee && !this.tui) {
+      // Without a TUI (e.g., in tests), advance ticks manually since the timer
+      // won't fire. With a TUI, MarqueeText's internal timer handles it.
+      this.marqueeCells.forEach((mt) => mt.advance());
     }
 
     this.cachedLines = lines;
@@ -216,7 +206,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "up")) {
       if (this.focusedRow > 0) {
         this.focusedRow--;
-        this.tick = 0;
+        this.cleanupMarquee();
         this.followFocus();
         this.invalidate();
       }
@@ -225,7 +215,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "down")) {
       if (this.focusedRow < this.rows.length - 1) {
         this.focusedRow++;
-        this.tick = 0;
+        this.cleanupMarquee();
         this.followFocus();
         this.invalidate();
       }
@@ -240,12 +230,24 @@ export class SortedTable implements Component {
     }
   }
 
+  private marqueeText(row: number, col: number, text: string, width: number): string {
+    const key = `${row}-${col}`;
+    let mt = this.marqueeCells.get(key);
+    if (!mt) {
+      mt = new MarqueeText(text, this.tui);
+      this.marqueeCells.set(key, mt);
+    }
+    return mt.render(width)[0];
+  }
+
+  private cleanupMarquee(): void {
+    this.marqueeCells.forEach((mt) => mt.destroy());
+    this.marqueeCells.clear();
+  }
+
   invalidate(): void {
     this.cachedLines = null;
     this.cachedWidth = -1;
-    if (this.marqueeTimer) {
-      clearInterval(this.marqueeTimer);
-      this.marqueeTimer = undefined;
-    }
+    this.cleanupMarquee();
   }
 }

@@ -1,4 +1,4 @@
-import { Container, matchesKey, type Component, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, matchesKey, type Component, type TUI, Spacer, Text } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { StatsSummary } from "../types";
 import { RangeSelector } from "./RangeSelector";
@@ -30,7 +30,7 @@ export class Dashboard extends Container {
     private terminalRows: number,
     private updateLabel?: string | null,
     onClose?: () => void,
-    private requestFrame?: () => void,
+    private tui?: TUI,
   ) {
     super();
     this.onClose = onClose ?? null;
@@ -69,7 +69,7 @@ export class Dashboard extends Container {
         contentHeight,
       ),
       new Languages(summary.languages, this.theme, this.langPalette),
-      new Models(summary.models, this.theme, this.modelPalette, this.requestFrame),
+      new Models(summary.models, this.theme, this.modelPalette, this.tui),
       new Projects(summary.projects, this.theme),
       new Usage(
         summary.tools,
