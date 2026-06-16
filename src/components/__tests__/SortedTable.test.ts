@@ -208,4 +208,14 @@ describe("SortedTable", () => {
       expect(visLen).toBe(20);
     }
   });
+
+  it("throws when more than one fill column is specified", () => {
+    const badCols: ColumnDef[] = [
+      { header: "A", width: "fill" },
+      { header: "B", width: "fill" },
+    ];
+    expect(() => new SortedTable(badCols, [], 10, makeTheme())).toThrow(
+      "Cannot have more than one fill column"
+    );
+  });
 });
