@@ -486,10 +486,11 @@ describe("SortedTable", () => {
       let lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ ABC");
 
-      // Advance 600ms = 12 timer ticks → offset=floor(12/3)%6=4 → "EFA" (wraps)
+      // Advance 600ms = 12 timer ticks → offset=floor(12/3)%11=4 → "EF "
+      // (5-space gap after text; trailing space stripped by trimEnd)
       vi.advanceTimersByTime(600);
       lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ EFA");
+      expect(strip(lines[1])).toContain("▶ EF");
     });
 
     it("resets marquee when cursor moves to a different row", () => {

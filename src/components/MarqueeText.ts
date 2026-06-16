@@ -32,8 +32,11 @@ export class MarqueeText implements Component {
       }, 50);
     }
 
-    const offset = Math.floor(this.tickCounter / 3) % this.text.length;
-    const visible = (this.text + this.text).slice(offset, offset + width);
+    // Gap separates end of text from its beginning when wrapping
+    const gap = " ".repeat(5);
+    const extended = this.text + gap;
+    const offset = Math.floor(this.tickCounter / 3) % extended.length;
+    const visible = (extended + extended).slice(offset, offset + width);
     return [visible];
   }
 

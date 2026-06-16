@@ -47,9 +47,10 @@ describe("MarqueeText", () => {
     const mt = new MarqueeText("ABCDEF", tui);
     mt.render(3);
 
-    // Advance 600ms = 12 timer ticks → offset=floor(12/3)%6=4 → "EFA"
+    // Advance 600ms = 12 timer ticks → offset=floor(12/3)%11=4 → "EF "
+    // (5-space gap after text shows first gap space at position 6)
     vi.advanceTimersByTime(600);
-    expect(mt.render(3)[0]).toBe("EFA");
+    expect(mt.render(3)[0]).toBe("EF ");
   });
 
   it("resets marquee to start", () => {
