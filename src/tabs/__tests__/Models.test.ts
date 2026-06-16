@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Models } from "../Models";
+import { ModelStat } from "../../types";
 
 describe("Models", () => {
   const mockTui = makeMockTUI();
 
-  const models = [
-    { model: "claude-sonnet-4-20250514", cost: 150.5, calls: 42 },
-    { model: "gemini-2.5-pro", cost: 85.25, calls: 28 },
-    { model: "gpt-4o", cost: 0.75, calls: 5 },
+  const models: ModelStat[] = [
+    { model: "claude-sonnet-4-20250514", provider: "anthropic", cost: 150.5, calls: 42 },
+    { model: "gemini-2.5-pro", provider: "Google", cost: 85.25, calls: 28 },
+    { model: "gpt-4o", provider: "OpenAI", cost: 0.75, calls: 5 },
   ];
 
   it("renders data rows with formatted model names and costs", () => {
@@ -18,9 +19,13 @@ describe("Models", () => {
     const text = lines.join("\n");
     // formatModelName strips date suffix and capitalizes
     expect(text).toContain("Claude Sonnet 4");
+    expect(text).toContain("anthropic");
     expect(text).toContain("Gemini 2.5 Pro");
+    expect(text).toContain("Google");
+    expect(text).toContain("Gpt 4o");
+    expect(text).toContain("OpenAI");
     // formatCost
-    expect(text).toContain("$150.50");
+    expect(text).toContain("$150.5");
     expect(text).toContain("$0.75");
   });
 
