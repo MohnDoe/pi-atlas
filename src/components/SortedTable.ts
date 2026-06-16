@@ -18,6 +18,7 @@ export class SortedTable implements Component {
   private theme: Theme;
   private sort?: SortConfig;
   private scrollOffset = 0;
+  private focusedRow = -1;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
@@ -27,6 +28,7 @@ export class SortedTable implements Component {
     this.maxHeight = maxHeight;
     this.theme = theme;
     this.sort = sort;
+    this.focusedRow = this.rows.length > 0 ? 0 : -1;
   }
 
   private get visibleRows(): number {
@@ -76,6 +78,9 @@ export class SortedTable implements Component {
       row = row.trimEnd();
       const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
+      if (i === this.focusedRow) {
+        row = this.theme.bg("accent", row);
+      }
       lines.push(row);
     }
 
@@ -86,17 +91,27 @@ export class SortedTable implements Component {
 
   handleInput(data: string): void {
     if (matchesKey(data, "up")) {
-      if (this.scrollOffset > 0) {
-        this.scrollOffset--;
+      if (this.focusedRow > 0) {
+        this.focusedRow--;
+        this.followFocus();
         this.invalidate();
       }
       return;
     }
     if (matchesKey(data, "down")) {
-      if (this.scrollOffset < this.maxScroll) {
-        this.scrollOffset++;
+      if (this.focusedRow < this.rows.length - 1) {
+        this.focusedRow++;
+        this.followFocus();
         this.invalidate();
       }
+    }
+  }
+
+  private followFocus(): void {
+    if (this.focusedRow < this.scrollOffset) {
+      this.scrollOffset = this.focusedRow;
+    } else if (this.focusedRow >= this.scrollOffset + this.visibleRows) {
+      this.scrollOffset = this.focusedRow - this.visibleRows + 1;
     }
   }
 
