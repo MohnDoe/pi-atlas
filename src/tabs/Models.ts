@@ -51,8 +51,10 @@ export class Models extends Container {
           20,
           this.theme,
           {
-            column: 3,
-            direction: "desc",
+            sort: {
+              column: 3,
+              direction: "desc",
+            },
           },
         );
       }

@@ -168,8 +168,7 @@ describe("SortedTable", () => {
   describe("sort indicators", () => {
     it("shows ▲ on the sorted column header when direction is asc", () => {
       const table = new SortedTable(columns, rows, 10, makeTheme(), {
-        column: 0,
-        direction: "asc",
+        sort: { column: 0, direction: "asc" },
       });
       const lines = table.render(80);
       const header = lines[0];
@@ -180,8 +179,7 @@ describe("SortedTable", () => {
 
     it("shows ▼ on the sorted column header when direction is desc", () => {
       const table = new SortedTable(columns, rows, 10, makeTheme(), {
-        column: 1,
-        direction: "desc",
+        sort: { column: 1, direction: "desc" },
       });
       const lines = table.render(80);
       const header = lines[0];
@@ -197,8 +195,7 @@ describe("SortedTable", () => {
         { header: "Edits", width: 10 },
       ];
       const table = new SortedTable(tightCols, rows, 10, makeTheme(), {
-        column: 0,
-        direction: "asc",
+        sort: { column: 0, direction: "asc" },
       });
       const lines = table.render(80);
       const header = lines[0];
@@ -214,8 +211,7 @@ describe("SortedTable", () => {
         { header: "Edits", width: 10 },
       ];
       const table = new SortedTable(tightCols, rows, 10, makeTheme(), {
-        column: 0,
-        direction: "asc",
+        sort: { column: 0, direction: "asc" },
       });
       const lines = table.render(80);
       const header = lines[0];
@@ -346,7 +342,7 @@ describe("SortedTable", () => {
     });
 
     it("hides cursor when disabled", () => {
-      const table = new SortedTable(columns, rows, 10, makeTheme(), undefined, { enabled: false });
+      const table = new SortedTable(columns, rows, 10, makeTheme(), { cursor: { enabled: false } });
       const lines = table.render(80);
 
       // No cursor prefix on any row
@@ -358,8 +354,8 @@ describe("SortedTable", () => {
     });
 
     it("uses custom cursor char", () => {
-      const table = new SortedTable(columns, rows, 10, makeTheme(), undefined, {
-        char: "▸",
+      const table = new SortedTable(columns, rows, 10, makeTheme(), {
+        cursor: { char: "▸" },
       });
       const lines = table.render(80);
 

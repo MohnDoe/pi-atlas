@@ -16,6 +16,11 @@ export interface CursorOptions {
   char?: string;
 }
 
+export interface SortedTableOptions {
+  sort?: SortConfig;
+  cursor?: CursorOptions;
+}
+
 export class SortedTable implements Component {
   static readonly DEFAULT_CURSOR_CHAR = "▶";
   static readonly CURSOR_SUFFIX = " ";
@@ -31,16 +36,17 @@ export class SortedTable implements Component {
   private cursorPrefix: string;
   private padPrefix: string;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, sort?: SortConfig, cursorOptions?: CursorOptions) {
+  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, options?: SortedTableOptions) {
     this.columns = columns;
     this.rows = rows;
     this.maxHeight = maxHeight;
     this.theme = theme;
-    this.sort = sort;
+    this.sort = options?.sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
 
-    const cursorEnabled = cursorOptions?.enabled ?? true;
-    const cursorChar = cursorOptions?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
+    const cursorOpts = options?.cursor;
+    const cursorEnabled = cursorOpts?.enabled ?? true;
+    const cursorChar = cursorOpts?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
     this.cursorPrefix = cursorEnabled ? cursorChar + SortedTable.CURSOR_SUFFIX : "";
     this.padPrefix = cursorEnabled ? " ".repeat(this.cursorPrefix.length) : "";
   }
