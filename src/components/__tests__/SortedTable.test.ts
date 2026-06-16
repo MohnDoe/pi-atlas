@@ -193,4 +193,19 @@ describe("SortedTable", () => {
     // B's content "y" should be padded, so the row should have space after "x"
     expect(lines[1]).toMatch(/x {4,}/);
   });
+
+  it("fill column collapses to 1 char min when no space remains", () => {
+    const tightCols: ColumnDef[] = [
+      { header: "A", width: 18 },
+      { header: "B", width: "fill" },
+    ];
+    // width=20, 1 gap → contentWidth=19
+    // fixed: 18, remaining: 1 → fill=1 (min)
+    const table = new SortedTable(tightCols, [["aaa", "bbb"]], 10, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
+    }
+  });
 });
