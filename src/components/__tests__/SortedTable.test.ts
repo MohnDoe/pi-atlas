@@ -150,4 +150,15 @@ describe("SortedTable", () => {
     // First visible row should show Lang3 (scroll offset 3)
     expect(lines[1]).toContain("Lang3");
   });
+
+  // --- Flexible width tests ---
+
+  it("renders each line at exactly the specified width (visible chars)", () => {
+    const table = new SortedTable(columns, rows, 10, makeTheme());
+    const lines = table.render(80);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(80);
+    }
+  });
 });
