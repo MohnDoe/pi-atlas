@@ -175,4 +175,22 @@ describe("SortedTable", () => {
       expect(visLen).toBe(20);
     }
   });
+
+  it("fill column takes remaining space after fixed columns", () => {
+    const fillCols: ColumnDef[] = [
+      { header: "A", width: 5 },
+      { header: "B", width: "fill" },
+    ];
+    // width=20, 1 gap → contentWidth=19
+    // fixed: 5, remaining: 14 → fill=14
+    const table = new SortedTable(fillCols, [["x", "y"]], 10, makeTheme());
+    const lines = table.render(20);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(20);
+    }
+    // Make sure the fill column got substantial width (not just 1)
+    // B's content "y" should be padded, so the row should have space after "x"
+    expect(lines[1]).toMatch(/x {4,}/);
+  });
 });
