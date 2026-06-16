@@ -4,6 +4,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 export interface ColumnDef {
   header: string;
   width: number | string;
+  marquee?: boolean;
 }
 
 export interface SortConfig {
@@ -38,6 +39,7 @@ export class SortedTable implements Component {
   private cachedWidth = -1;
   private cursorPrefix: string;
   private padPrefix: string;
+  private tick = 0;
 
   constructor(config: SortedTableConfig, theme: Theme) {
     const fillCount = config.columns.filter(c => c.width === "fill").length;
@@ -117,9 +119,19 @@ export class SortedTable implements Component {
   }
 
   render(width: number): string[] {
+    const colWidths = this.resolveWidths(width);
+
+    const hasMarquee = this.focusedRow >= 0 && this.columns.some((col, j) =>
+      col.marquee && (this.rows[this.focusedRow]?.[j]?.length ?? 0) > colWidths[j]
+    );
+
+    if (hasMarquee) {
+      this.cachedLines = null;
+      this.cachedWidth = -1;
+    }
+
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
-    const colWidths = this.resolveWidths(width);
     const lines: string[] = [];
     const gap = " ";
 
@@ -150,7 +162,14 @@ export class SortedTable implements Component {
       let row = "";
       const data = this.rows[i];
       for (let j = 0; j < this.columns.length; j++) {
-        const val = (data[j] ?? "").slice(0, colWidths[j]);
+        const raw = data[j] ?? "";
+        let val: string;
+        if (i === this.focusedRow && this.columns[j].marquee && raw.length > colWidths[j]) {
+          const offset = Math.floor(this.tick / 3) % raw.length;
+          val = (raw + raw).slice(offset, offset + colWidths[j]);
+        } else {
+          val = raw.slice(0, colWidths[j]);
+        }
         row += val.padEnd(colWidths[j]) + gap;
       }
       row = row.trimEnd();
@@ -163,6 +182,10 @@ export class SortedTable implements Component {
       lines.push(row);
     }
 
+    if (hasMarquee) {
+      this.tick++;
+    }
+
     this.cachedLines = lines;
     this.cachedWidth = width;
     return lines;
@@ -172,6 +195,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "up")) {
       if (this.focusedRow > 0) {
         this.focusedRow--;
+        this.tick = 0;
         this.followFocus();
         this.invalidate();
       }
@@ -180,6 +204,7 @@ export class SortedTable implements Component {
     if (matchesKey(data, "down")) {
       if (this.focusedRow < this.rows.length - 1) {
         this.focusedRow++;
+        this.tick = 0;
         this.followFocus();
         this.invalidate();
       }

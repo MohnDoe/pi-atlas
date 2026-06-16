@@ -442,4 +442,25 @@ describe("SortedTable", () => {
       expect(lines[2].startsWith("  ")).toBe(true);
     });
   });
+
+  describe("marquee", () => {
+    it("scrolls overflowing text on focused row", () => {
+      const cols: ColumnDef[] = [
+        { header: "Name", width: 5, marquee: true },
+      ];
+      const rows = [["Hello World!"]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10 }, makeTheme());
+
+      // tick=0, offset=0 → "Hello" (first 5 chars)
+      let lines = table.render(20);
+      const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+      expect(strip(lines[1])).toContain("▶ Hello");
+
+      // tick=3, offset=1 → "ello " (chars 1-5), then trimEnd strips trailing space
+      lines = table.render(20);
+      lines = table.render(20);
+      lines = table.render(20);
+      expect(strip(lines[1])).toContain("▶ ello");
+    });
+  });
 });
