@@ -61,7 +61,7 @@ export class SortedTable implements Component {
       }
       header += headerText.slice(0, col.width).padEnd(col.width) + gap;
     }
-    header = header.trimEnd();
+    header = "  " + header.trimEnd();
     const visLen = header.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
     if (visLen > width) header = header.slice(0, width);
     lines.push(this.theme.bold(this.theme.fg("accent", header)));
