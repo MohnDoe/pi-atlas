@@ -1,9 +1,9 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
+import { Container, Text } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
-import { formatCost, formatNumber, formatModelName } from "../format";
+import { SortedTable } from "../components/SortedTable.js";
+import { formatCost, formatModelName, formatNumber } from "../format";
 import { ModelStat } from "../types";
-import { RankedBarList } from "../components/RankedBarList";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
@@ -24,21 +24,30 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
-      const title = this.theme.bold("Models");
-      const subtitle = this.theme.fg("muted", "by cost");
-      const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
-      this.addChild(new Text(title + gap + subtitle, 0, 0));
-      this.addChild(new Spacer(1));
-
       this.addChild(
-        new RankedBarList(
-          this.models.map((m) => ({
-            name: formatModelName(m.model),
-            primaryValue: m.cost,
-            mainValueText: formatCost(m.cost),
-            secondaryValueText: formatNumber(m.calls) + " calls",
-            color: this.palette.getColor(m.provider || ""),
-          })),
+        new SortedTable(
+          [
+            {
+              header: "Model",
+              width: 30,
+            },
+            {
+              header: "Provider",
+              width: 12,
+            },
+            { header: "Calls", width: 6 },
+            {
+              header: "Cost",
+              width: 7,
+            },
+          ],
+          this.models.map((m) => [
+            formatModelName(m.model),
+            m.provider ?? "Unknown",
+            formatNumber(m.calls),
+            formatCost(m.cost),
+          ]),
+          20,
           this.theme,
         ),
       );
