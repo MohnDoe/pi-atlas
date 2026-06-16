@@ -588,4 +588,33 @@ describe("SortedTable", () => {
       expect(strip(lines[1])).toContain("▶ ello World!!!");
     });
   });
+
+  describe("setRows", () => {
+    it("updates data and clamps focusedRow", () => {
+      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+
+      // Move to row 2 (JSON)
+      table.handleInput("\x1b[B");
+      table.handleInput("\x1b[B");
+
+      table.setRows([
+        ["Go", "300", "8"],
+        ["Rust", "500", "12"],
+      ]);
+
+      // focusedRow was 2, now clamped to 1 (last row of new data)
+      const lines = table.render(80);
+      expect(lines.length).toBe(3); // header + 2 rows
+      expect(lines[1]).toContain("Go");
+      expect(lines[2]).toContain("Rust");
+    });
+
+    it("invalidates render cache", () => {
+      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      table.render(80);
+      table.setRows([["New", "1", "1"]]);
+      const lines = table.render(80);
+      expect(lines[1]).toContain("New");
+    });
+  });
 });

@@ -26,6 +26,12 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
+      const rows = this.models.map((m) => [
+        formatModelName(m.model),
+        m.provider ?? "Unknown",
+        formatNumber(m.calls),
+        formatCost(m.cost),
+      ]);
       if (!this.table) {
         this.table = new SortedTable(
           {
@@ -35,18 +41,15 @@ export class Models extends Container {
               { header: "Calls", width: 6 },
               { header: "Cost", width: 8 },
             ],
-            rows: this.models.map((m) => [
-              formatModelName(m.model),
-              m.provider ?? "Unknown",
-              formatNumber(m.calls),
-              formatCost(m.cost),
-            ]),
+            rows,
             maxHeight: 20,
             sort: { column: 3, direction: "desc" },
             tui: this.tui,
           },
           this.theme,
         );
+      } else {
+        this.table.setRows(rows);
       }
       this.addChild(this.table);
     } else {

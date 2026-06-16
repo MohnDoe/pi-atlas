@@ -263,4 +263,13 @@ export class SortedTable implements Component {
     this.cleanupMarquee();
     this.lastRenderWidth = -1;
   }
+
+  setRows(rows: string[][]): void {
+    this.rows = rows;
+    if (this.focusedRow >= rows.length) {
+      this.focusedRow = rows.length > 0 ? rows.length - 1 : -1;
+    }
+    this.scrollOffset = 0;
+    this.invalidate();
+  }
 }
