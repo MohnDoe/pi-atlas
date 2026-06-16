@@ -218,4 +218,20 @@ describe("SortedTable", () => {
       "Cannot have more than one fill column"
     );
   });
+
+  it("handles mix of fixed, percentage, and fill columns", () => {
+    const mixedCols: ColumnDef[] = [
+      { header: "Fixed", width: 10 },
+      { header: "Pct", width: "25%" },
+      { header: "Fill", width: "fill" },
+    ];
+    // width=60, 2 gaps → contentWidth=58
+    // fixed: 10, 25% of 58 = 14, remaining: 58 - 10 - 14 = 34 → fill=34
+    const table = new SortedTable(mixedCols, [["a", "b", "c"]], 10, makeTheme());
+    const lines = table.render(60);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBe(60);
+    }
+  });
 });
