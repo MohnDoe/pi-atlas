@@ -16,7 +16,10 @@ export interface CursorOptions {
   char?: string;
 }
 
-export interface SortedTableOptions {
+export interface SortedTableConfig {
+  columns: ColumnDef[];
+  rows: string[][];
+  maxHeight: number;
   sort?: SortConfig;
   cursor?: CursorOptions;
 }
@@ -36,15 +39,15 @@ export class SortedTable implements Component {
   private cursorPrefix: string;
   private padPrefix: string;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme, options?: SortedTableOptions) {
-    this.columns = columns;
-    this.rows = rows;
-    this.maxHeight = maxHeight;
+  constructor(config: SortedTableConfig, theme: Theme) {
+    this.columns = config.columns;
+    this.rows = config.rows;
+    this.maxHeight = config.maxHeight;
     this.theme = theme;
-    this.sort = options?.sort;
+    this.sort = config.sort;
     this.focusedRow = this.rows.length > 0 ? 0 : -1;
 
-    const cursorOpts = options?.cursor;
+    const cursorOpts = config.cursor;
     const cursorEnabled = cursorOpts?.enabled ?? true;
     const cursorChar = cursorOpts?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
     this.cursorPrefix = cursorEnabled ? cursorChar + SortedTable.CURSOR_SUFFIX : "";

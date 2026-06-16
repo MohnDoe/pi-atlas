@@ -27,35 +27,23 @@ export class Models extends Container {
     if (!this.isEmpty) {
       if (!this.table) {
         this.table = new SortedTable(
-          [
-            {
-              header: "Model",
-              width: 30,
-            },
-            {
-              header: "Provider",
-              width: 12,
-            },
-            { header: "Calls", width: 6 },
-            {
-              header: "Cost",
-              width: 7,
-            },
-          ],
-          this.models.map((m) => [
-            formatModelName(m.model),
-            m.provider ?? "Unknown",
-            formatNumber(m.calls),
-            formatCost(m.cost),
-          ]),
-          20,
-          this.theme,
           {
-            sort: {
-              column: 3,
-              direction: "desc",
-            },
+            columns: [
+              { header: "Model", width: 30 },
+              { header: "Provider", width: 12 },
+              { header: "Calls", width: 6 },
+              { header: "Cost", width: 7 },
+            ],
+            rows: this.models.map((m) => [
+              formatModelName(m.model),
+              m.provider ?? "Unknown",
+              formatNumber(m.calls),
+              formatCost(m.cost),
+            ]),
+            maxHeight: 20,
+            sort: { column: 3, direction: "desc" },
           },
+          this.theme,
         );
       }
       this.addChild(this.table);
