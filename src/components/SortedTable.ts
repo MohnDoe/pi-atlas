@@ -6,30 +6,62 @@ export interface ColumnDef {
   width: number | string;
 }
 
+export interface SortConfig {
+  column: number;
+  direction: "asc" | "desc";
+}
+
+export interface CursorOptions {
+  enabled?: boolean;
+  char?: string;
+}
+
+export interface SortedTableConfig {
+  columns: ColumnDef[];
+  rows: string[][];
+  maxHeight: number;
+  sort?: SortConfig;
+  cursor?: CursorOptions;
+}
+
 export class SortedTable implements Component {
+  static readonly DEFAULT_CURSOR_CHAR = "▶";
+  static readonly CURSOR_SUFFIX = " ";
   private columns: ColumnDef[];
   private rows: string[][];
   private maxHeight: number;
   private theme: Theme;
+  private sort?: SortConfig;
   private scrollOffset = 0;
+  private focusedRow = -1;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
+  private cursorPrefix: string;
+  private padPrefix: string;
 
-  constructor(columns: ColumnDef[], rows: string[][], maxHeight: number, theme: Theme) {
-    const fillCount = columns.filter(c => c.width === "fill").length;
+  constructor(config: SortedTableConfig, theme: Theme) {
+    const fillCount = config.columns.filter(c => c.width === "fill").length;
     if (fillCount > 1) throw new Error("Cannot have more than one fill column");
 
-    for (const col of columns) {
+    for (const col of config.columns) {
       const w = col.width;
       if (typeof w === "string" && w !== "fill" && !/^\d+%$/.test(w)) {
         throw new Error(`Invalid column width: "${w}"`);
       }
     }
 
-    this.columns = columns;
-    this.rows = rows;
-    this.maxHeight = maxHeight;
+    this.columns = config.columns;
+    this.rows = config.rows;
+    this.maxHeight = config.maxHeight;
     this.theme = theme;
+    this.sort = config.sort;
+    this.focusedRow = this.rows.length > 0 ? 0 : -1;
+
+    const cursorOpts = config.cursor;
+    const cursorEnabled = cursorOpts?.enabled ?? true;
+    const cursorChar = cursorOpts?.char ?? SortedTable.DEFAULT_CURSOR_CHAR;
+    this.cursorPrefix = cursorEnabled ? cursorChar + SortedTable.CURSOR_SUFFIX : "";
+    this.padPrefix = cursorEnabled ? " ".repeat(this.cursorPrefix.length) : "";
   }
 
   private get visibleRows(): number {
@@ -98,10 +130,19 @@ export class SortedTable implements Component {
     // Header row
     let header = "";
     for (let i = 0; i < this.columns.length; i++) {
-      header += this.columns[i].header.slice(0, colWidths[i]).padEnd(colWidths[i]) + gap;
+      const col = this.columns[i];
+      const cw = colWidths[i];
+      let headerText = col.header;
+      if (this.sort && this.sort.column === i) {
+        const indicator = this.sort.direction === "asc" ? " ▲" : " ▼";
+        const maxHeaderLen = cw - indicator.length;
+        headerText = headerText.slice(0, maxHeaderLen) + indicator;
+      }
+      header += headerText.slice(0, cw).padEnd(cw) + gap;
     }
-    header = header.trimEnd();
-    lines.push(this.theme.bold(this.theme.fg("accent", this.padToWidth(header, width))));
+    header = this.padPrefix + header.trimEnd();
+    header = this.padToWidth(header, width);
+    lines.push(this.theme.bold(this.theme.fg("accent", header)));
 
     // Data rows
     const end = Math.min(this.scrollOffset + this.visibleRows, this.rows.length);
@@ -113,7 +154,13 @@ export class SortedTable implements Component {
         row += val.padEnd(colWidths[j]) + gap;
       }
       row = row.trimEnd();
-      lines.push(this.padToWidth(row, width));
+      const prefix = i === this.focusedRow ? this.cursorPrefix : this.padPrefix;
+      row = this.padToWidth(row, width - prefix.length);
+      row = prefix + row;
+      if (i === this.focusedRow) {
+        row = this.theme.bg("selectedBg", row);
+      }
+      lines.push(row);
     }
 
     this.cachedLines = lines;
@@ -123,17 +170,27 @@ export class SortedTable implements Component {
 
   handleInput(data: string): void {
     if (matchesKey(data, "up")) {
-      if (this.scrollOffset > 0) {
-        this.scrollOffset--;
+      if (this.focusedRow > 0) {
+        this.focusedRow--;
+        this.followFocus();
         this.invalidate();
       }
       return;
     }
     if (matchesKey(data, "down")) {
-      if (this.scrollOffset < this.maxScroll) {
-        this.scrollOffset++;
+      if (this.focusedRow < this.rows.length - 1) {
+        this.focusedRow++;
+        this.followFocus();
         this.invalidate();
       }
+    }
+  }
+
+  private followFocus(): void {
+    if (this.focusedRow < this.scrollOffset) {
+      this.scrollOffset = this.focusedRow;
+    } else if (this.focusedRow >= this.scrollOffset + this.visibleRows) {
+      this.scrollOffset = this.focusedRow - this.visibleRows + 1;
     }
   }
 
