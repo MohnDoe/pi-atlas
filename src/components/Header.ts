@@ -12,11 +12,15 @@ export class Header implements Component {
     private theme: Theme,
     private rangeSelector: RangeSelector,
   ) {
-    this.rangeBox = new BorderBox({
-      child: this.rangeSelector,
-      title: "Range (r)",
-      rounded: true,
-    });
+    this.rangeBox = new BorderBox(
+      {
+        child: this.rangeSelector,
+        title: "Range (r)",
+        rounded: true,
+        color: "dim",
+      },
+      theme,
+    );
   }
 
   render(width: number): string[] {

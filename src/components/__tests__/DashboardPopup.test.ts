@@ -8,7 +8,7 @@ describe("DashboardPopup", () => {
   it("renders box-drawing border around content", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
 
@@ -33,7 +33,7 @@ describe("DashboardPopup", () => {
   it("all lines have same width", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
 
@@ -47,7 +47,7 @@ describe("DashboardPopup", () => {
   it("renders content at inner width (width - 2)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Render at 60: inner content gets 58
     const lines = popup.render(60);
@@ -67,7 +67,7 @@ describe("DashboardPopup", () => {
     const dash = new Dashboard(summaries, makeTheme(), 24, null, () => {
       closed = true;
     });
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     popup.handleInput("\x1b"); // escape
     expect(closed).toBe(true);
@@ -76,7 +76,7 @@ describe("DashboardPopup", () => {
   it("re-renders after handleInput changes state (cache invalidation)", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Render once to populate caches
     popup.render(80);
@@ -95,7 +95,7 @@ describe("DashboardPopup", () => {
   it("delegates invalidate to inner Dashboard", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Render once to populate cache
     popup.render(80);
@@ -113,7 +113,7 @@ describe("DashboardPopup", () => {
   it("caches rendered output and invalidates on width change", () => {
     const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     const lines80 = popup.render(80);
     const lines60 = popup.render(60);
@@ -134,7 +134,7 @@ describe("DashboardPopup", () => {
     };
     const summaries = [summary, summary, summary, summary];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Languages tab
     popup.handleInput("\x1b[C"); // right arrow
@@ -154,7 +154,7 @@ describe("DashboardPopup", () => {
     };
     const summaries = [summary, summary, summary, summary];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Models tab
     popup.handleInput("\x1b[C"); // → Languages
@@ -175,7 +175,7 @@ describe("DashboardPopup", () => {
     };
     const summaries = [summary, summary, summary, summary];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     // Navigate to Projects+Tools tab
     popup.handleInput("\x1b[C"); // → Languages
@@ -200,7 +200,7 @@ describe("DashboardPopup", () => {
     };
     const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
     const dash = new Dashboard(summaries, makeTheme(), 24);
-    const popup = new DashboardPopup(dash);
+    const popup = new DashboardPopup(dash, makeTheme());
 
     const lines = popup.render(80);
     const text = lines.join("\n");

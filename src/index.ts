@@ -85,7 +85,7 @@ export default function (pi: ExtensionAPI) {
           done(undefined),
         );
         // Wrap in popup border only when using overlay mode
-        const component = usePopup ? new DashboardPopup(dashboard) : dashboard;
+        const component = usePopup ? new DashboardPopup(dashboard, theme) : dashboard;
         return {
           render: (w: number) => component.render(w),
           handleInput: (d: string) => {

@@ -1,7 +1,7 @@
 import { type Component } from "@earendil-works/pi-tui";
 import { Dashboard } from "./Dashboard";
 import { BorderBox } from "./BorderBox";
-import chalk from "chalk";
+import { Theme } from "@earendil-works/pi-coding-agent";
 
 /**
  * Wraps Dashboard in a rounded border for popup/overlay display.
@@ -10,10 +10,14 @@ import chalk from "chalk";
 export class DashboardPopup implements Component {
   private borderBox: BorderBox;
 
-  constructor(dashboard: Dashboard) {
-    this.borderBox = new BorderBox({
-      child: dashboard,
-    });
+  constructor(dashboard: Dashboard, theme: Theme) {
+    this.borderBox = new BorderBox(
+      {
+        child: dashboard,
+        color: "text",
+      },
+      theme,
+    );
   }
 
   render(width: number): string[] {

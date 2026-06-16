@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Component } from "@earendil-works/pi-tui";
 import { BorderBox } from "../BorderBox";
+import { makeTheme } from "../../__tests__/components.fixtures";
 
 /** Simple mock child component that returns fixed lines. */
 class MockChild implements Component {
@@ -21,16 +22,13 @@ class MockChild implements Component {
 
 /** Strip ANSI escapes and test theme tags to get visible length. */
 function vLen(s: string): number {
-  return s
-    .replace(/\x1b\[[0-9;]*m/g, "")
-    .replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "")
-    .length;
+  return s.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[/]?(?:b|fg:[^>]+|bg:[^>]+)>/g, "").length;
 }
 
 describe("BorderBox", () => {
   it("renders child content wrapped in rounded borders, padded to width", () => {
     const child = new MockChild(["Hello", "World"]);
-    const box = new BorderBox({ child });
+    const box = new BorderBox({ child }, makeTheme());
     const lines = box.render(10);
 
     expect(lines.length).toBe(4);
@@ -53,7 +51,7 @@ describe("BorderBox", () => {
 
   it("embeds title in the top border", () => {
     const child = new MockChild(["content"]);
-    const box = new BorderBox({ child, title: "Stats" });
+    const box = new BorderBox({ child, title: "Stats" }, makeTheme());
     const lines = box.render(20);
 
     // Top border should contain "Stats" with decoration
@@ -62,7 +60,7 @@ describe("BorderBox", () => {
 
   it("embeds footer in the bottom border", () => {
     const child = new MockChild(["content"]);
-    const box = new BorderBox({ child, footer: "Esc close" });
+    const box = new BorderBox({ child, footer: "Esc close" }, makeTheme());
     const lines = box.render(22);
 
     expect(lines[lines.length - 1]).toMatch(/╰─\sEsc close\s─/);
@@ -70,7 +68,7 @@ describe("BorderBox", () => {
 
   it("uses straight corners when rounded=false", () => {
     const child = new MockChild(["x"]);
-    const box = new BorderBox({ child, rounded: false });
+    const box = new BorderBox({ child, rounded: false }, makeTheme());
     const lines = box.render(6);
 
     expect(lines[0]).toMatch(/^┌/);
@@ -81,7 +79,7 @@ describe("BorderBox", () => {
 
   it("delegates handleInput to child", () => {
     const child = new MockChild([]);
-    const box = new BorderBox({ child });
+    const box = new BorderBox({ child }, makeTheme());
 
     box.handleInput("r");
 
@@ -90,7 +88,7 @@ describe("BorderBox", () => {
 
   it("caches render output and invalidates on width change or explicit call", () => {
     const child = new MockChild(["line"]);
-    const box = new BorderBox({ child });
+    const box = new BorderBox({ child }, makeTheme());
 
     const first = box.render(20);
     expect(box.render(20)).toBe(first); // cached

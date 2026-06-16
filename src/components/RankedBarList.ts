@@ -15,7 +15,10 @@ export class RankedBarList implements Component {
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(private items: RankedBarItem[], private theme: Theme) {}
+  constructor(
+    private items: RankedBarItem[],
+    private theme: Theme,
+  ) {}
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) {
@@ -32,9 +35,7 @@ export class RankedBarList implements Component {
 
     const total = this.items.reduce((sum, item) => sum + item.primaryValue, 0);
 
-    const highestItem = total > 0
-      ? (this.items[0].primaryValue * 100) / total
-      : 0;
+    const highestItem = total > 0 ? (this.items[0].primaryValue * 100) / total : 0;
 
     for (const item of this.items) {
       let pct = 0;
