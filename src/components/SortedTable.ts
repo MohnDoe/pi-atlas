@@ -76,6 +76,8 @@ export class SortedTable implements Component {
         row += val.padEnd(this.columns[j].width) + gap;
       }
       row = row.trimEnd();
+      const cursor = i === this.focusedRow ? "▶ " : "  ";
+      row = cursor + row;
       const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
       if (i === this.focusedRow) {

@@ -327,5 +327,22 @@ describe("SortedTable", () => {
       table.handleInput("\x1b[B");
       table.handleInput("\x1b[A");
     });
+
+    it("shows cursor triangle on focused row and alignment on others", () => {
+      const table = new SortedTable(columns, rows, 10, makeTheme());
+
+      // Default: first row focused
+      let lines = table.render(80);
+      expect(lines[1].startsWith("▶ ")).toBe(true);
+      expect(lines[2].startsWith("  ")).toBe(true);
+      expect(lines[3].startsWith("  ")).toBe(true);
+
+      // Move down: second row focused
+      table.handleInput("\x1b[B");
+      lines = table.render(80);
+      expect(lines[1].startsWith("  ")).toBe(true);
+      expect(lines[2].startsWith("▶ ")).toBe(true);
+      expect(lines[3].startsWith("  ")).toBe(true);
+    });
   });
 });
