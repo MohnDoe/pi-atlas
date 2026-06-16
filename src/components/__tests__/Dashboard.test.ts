@@ -166,8 +166,8 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Models");
-    expect(text).toContain("by cost");
+    expect(text).toContain("Model");
+    expect(text).toContain("Provider");
   });
 
   it("formats model names in Models tab", () => {
