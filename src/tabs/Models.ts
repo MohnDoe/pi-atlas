@@ -29,10 +29,10 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: "Model", width: 30 },
+              { header: "Model", width: "fill" },
               { header: "Provider", width: 12 },
               { header: "Calls", width: 6 },
-              { header: "Cost", width: 7 },
+              { header: "Cost", width: 8 },
             ],
             rows: this.models.map((m) => [
               formatModelName(m.model),
