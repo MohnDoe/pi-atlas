@@ -444,6 +444,8 @@ describe("SortedTable", () => {
   });
 
   describe("marquee", () => {
+    const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
     it("scrolls overflowing text on focused row", () => {
       const cols: ColumnDef[] = [
         { header: "Name", width: 5, marquee: true },
@@ -453,7 +455,6 @@ describe("SortedTable", () => {
 
       // tick=0, offset=0 → "Hello" (first 5 chars)
       let lines = table.render(20);
-      const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
       expect(strip(lines[1])).toContain("▶ Hello");
 
       // tick=3, offset=1 → "ello " (chars 1-5), then trimEnd strips trailing space
@@ -461,6 +462,23 @@ describe("SortedTable", () => {
       lines = table.render(20);
       lines = table.render(20);
       expect(strip(lines[1])).toContain("▶ ello");
+    });
+
+    it("wraps around when reaching end of content", () => {
+      const cols: ColumnDef[] = [
+        { header: "Col", width: 3, marquee: true },
+      ];
+      const rows = [["ABCDEF"]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10 }, makeTheme());
+
+      // tick=0, offset=0 → "ABC"
+      let lines = table.render(20);
+      expect(strip(lines[1])).toContain("▶ ABC");
+
+      // tick=12 → offset=floor(12/3)%6=4 → "EFA" (wraps)
+      for (let i = 0; i < 12; i++) table.render(20);
+      lines = table.render(20);
+      expect(strip(lines[1])).toContain("▶ EFA");
     });
   });
 });
