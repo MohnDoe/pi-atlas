@@ -79,7 +79,7 @@ export class SortedTable implements Component {
       const rowVisLen = row.replace(/\x1b\[[0-9;]*m/g, "").replace(/<[^>]+>/g, "").length;
       if (rowVisLen > width) row = row.slice(0, width);
       if (i === this.focusedRow) {
-        row = this.theme.bg("accent", row);
+        row = this.theme.bg("selectedBg", row);
       }
       lines.push(row);
     }

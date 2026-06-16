@@ -237,11 +237,11 @@ describe("SortedTable", () => {
   describe("cursor navigation", () => {
     function highlightTheme() {
       return makeTheme({
-        bg: (color: string, text: string) => color === "accent" ? `[[H]]${text}[[/H]]` : text,
+        bg: (color: string, text: string) => color === "selectedBg" ? `[[H]]${text}[[/H]]` : text,
       });
     }
 
-    it("highlights the first row with accent background by default", () => {
+    it("highlights the first row with selectedBg background by default", () => {
       const table = new SortedTable(columns, rows, 10, highlightTheme());
       const lines = table.render(80);
 
