@@ -1,20 +1,22 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, visibleWidth, Text } from "@earendil-works/pi-tui";
+import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
-import { formatCost, formatNumber, formatModelName } from "../format";
+import { SortedTable } from "../components/SortedTable.js";
+import { formatCost, formatModelName, formatNumber } from "../format";
 import { ModelStat } from "../types";
-import { RankedBarList } from "../components/RankedBarList";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
 export class Models extends Container {
   private isEmpty: boolean;
   private theme: Theme;
+  private table: SortedTable | null = null;
 
   constructor(
     private models: ModelStat[],
     theme: Theme,
     private palette: ColorPalette,
+    private tui: TUI,
   ) {
     super();
     this.theme = theme;
@@ -24,32 +26,40 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
-      const title = this.theme.bold("Models");
-      const subtitle = this.theme.fg("muted", "by cost");
-      const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
-      this.addChild(new Text(title + gap + subtitle, 0, 0));
-      this.addChild(new Spacer(1));
-
-      this.addChild(
-        new RankedBarList(
-          this.models.map((m) => ({
-            name: formatModelName(m.model),
-            primaryValue: m.cost,
-            mainValueText: formatCost(m.cost),
-            secondaryValueText: formatNumber(m.calls) + " calls",
-            color: this.palette.getColor(m.provider || ""),
-          })),
+      const rows = this.models.map((m) => [
+        formatModelName(m.model),
+        m.provider ?? "Unknown",
+        formatNumber(m.calls),
+        formatCost(m.cost),
+      ]);
+      if (!this.table) {
+        this.table = new SortedTable(
+          {
+            columns: [
+              { header: "Model", width: "fill", marquee: true },
+              { header: "Provider", width: 12 },
+              { header: "Calls", width: 6 },
+              { header: "Cost", width: 8 },
+            ],
+            rows,
+            maxHeight: 20,
+            sort: { column: 3, direction: "desc" },
+            tui: this.tui,
+          },
           this.theme,
-        ),
-      );
+        );
+      } else {
+        this.table.setRows(rows);
+      }
+      this.addChild(this.table);
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
     return super.render(width);
   }
 
-  handleInput(_data: string): void {
-    this.invalidate();
+  handleInput(data: string): void {
+    this.table?.handleInput(data);
   }
 
   invalidate(): void {
