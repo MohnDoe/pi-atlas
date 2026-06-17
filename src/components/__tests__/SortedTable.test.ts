@@ -597,5 +597,25 @@ describe("SortedTable", () => {
       lines = table.render(15);
       expect(strip(lines[1])).toContain("▶ ello World!!!");
     });
+
+    it("clears marquee timers on invalidate", () => {
+      const cols: ColumnDef[] = [
+        { header: cell.header("Name"), width: 5 },
+      ];
+      const rows = [[cell.marquee("Hello World!", mockTui)]];
+      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+
+      // Render with focus on row 0 + content overflow → marquee timer starts
+      table.render(20);
+      expect(vi.getTimerCount()).toBe(1);
+
+      // Invalidate propagates to all cells → MarqueeCell clears interval
+      table.invalidate();
+      expect(vi.getTimerCount()).toBe(0);
+
+      // Re-render works cleanly (no stale state)
+      const lines = table.render(20);
+      expect(strip(lines[1])).toContain("▶ Hello");
+    });
   });
 });
