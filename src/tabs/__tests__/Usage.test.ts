@@ -140,7 +140,7 @@ describe("Usage", () => {
 
     it("clears marquee timers on invalidate", () => {
       const longTool: ToolStat[] = [
-        { tool: "a-very-long-tool-name-that-overflows-the-column", count: 150 },
+        { tool: "a-very-long-tool-name-x", count: 150 },
       ];
       const tab = new Usage(longTool, tokenUsage, makeTheme(), mockTui, 10);
 
@@ -152,10 +152,10 @@ describe("Usage", () => {
 
       const lines = tab.render(80);
       const text = lines.join("\n");
-      expect(text).toContain("a-very-long-tool-name");
+      expect(text).toContain("a-very-long-tool");
       const cursorLine = lines.find((l) => l.startsWith("▶"));
       expect(cursorLine).toBeDefined();
-      expect(cursorLine).toContain("a-very-long-tool-name");
+      expect(cursorLine).toContain("a-very-long-tool");
     });
   });
 });

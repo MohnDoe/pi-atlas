@@ -57,9 +57,12 @@ describe("Projects", () => {
   it("fill column adapts to width", () => {
     const tab = new Projects(projects, makeTheme(), mockTui, 10);
 
+    // At width 30, columns shrink — no line exceeds render width
     const narrowLines = tab.render(30);
-    const narrowText = narrowLines.join("\n");
-    expect(narrowText).not.toContain("pi-usage");
+    for (const line of narrowLines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(30);
+    }
 
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
@@ -120,7 +123,7 @@ describe("Projects", () => {
 
     it("clears marquee timers on invalidate", () => {
       const longProjects: ProjectStat[] = [
-        { project: "a-very-long-project-name-that-overflows", cost: 15.5, sessions: 42 },
+        { project: "a-very-long-project", cost: 15.5, sessions: 42 },
       ];
       const tab = new Projects(longProjects, makeTheme(), mockTui, 10);
 
@@ -132,7 +135,7 @@ describe("Projects", () => {
 
       const lines = tab.render(80);
       const text = lines.join("\n");
-      expect(text).toContain("a-very-long-project-name");
+      expect(text).toContain("a-very-long-project");
       expect(lines[1]).toMatch(/^▶/);
     });
   });

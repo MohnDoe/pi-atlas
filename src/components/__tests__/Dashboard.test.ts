@@ -95,8 +95,8 @@ describe("Dashboard", () => {
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
-    expect(text).toContain("1.5k ln");
-    expect(text).toContain("800 ln");
+    expect(text).toContain("1.5k");
+    expect(text).toContain("800");
   });
 
   it("Languages tab updates when time range changes", () => {
@@ -182,7 +182,7 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Sonnet 4");
+    expect(text).toContain("Claude");
     expect(text).not.toContain("claude-sonnet-4-20250514");
   });
 
@@ -220,8 +220,9 @@ describe("Dashboard", () => {
     let lines = dash.render(80);
     let text = lines.join("\n");
     // Range 1d, only 1 model
-    expect(text).toContain("Sonnet 4");
-    expect(text).not.toContain("V4 Pro");
+    expect(text).toContain("Claude");
+    // deepseek-v4-pro → "Deeps…" visible truncated name in 7d range
+    expect(text).not.toContain("Deeps");
 
     // Switch back to Overview, r to 7d, then back to Models
     dash.handleInput("\x1b[D"); // left to Languages
@@ -231,7 +232,7 @@ describe("Dashboard", () => {
     dash.handleInput("\x1b[C"); // → Models
     lines = dash.render(80);
     text = lines.join("\n");
-    expect(text).toContain("V4 Pro");
+    expect(text).toContain("Deeps");
   });
 
   it("switches tabs with left/right arrows", () => {

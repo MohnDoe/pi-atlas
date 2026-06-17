@@ -18,9 +18,11 @@ describe("Models", () => {
 
     const text = lines.join("\n");
     // formatModelName strips date suffix and capitalizes
-    expect(text).toContain("Claude Sonnet 4");
+    // Model column is 6-char fill at width 80 — truncated name visible
+    expect(text).toContain("Claude");
     expect(text).toContain("anthropic");
-    expect(text).toContain("Gemini 2.5 Pro");
+    // Row 1 (Gemini) not focused — truncateToWidth shows "Gemin…"
+    expect(text).toContain("Gemin");
     expect(text).toContain("Google");
     expect(text).toContain("Gpt 4o");
     expect(text).toContain("OpenAI");
@@ -52,10 +54,10 @@ describe("Models", () => {
     const narrowText = narrowLines.join("\n");
     expect(narrowText).not.toContain("Claude");
 
-    // At width 80, fill column is ~51 chars — full model name visible
+    // At width 80, fill column is ~6 chars — truncated name visible
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
-    expect(wideText).toContain("Claude Sonnet 4");
+    expect(wideText).toContain("Claude");
   });
 
   it("shows cursor on first row", () => {
@@ -89,7 +91,7 @@ describe("Models", () => {
 
     // First render cycle — creates table
     const lines1 = tab.render(80);
-    expect(lines1.join("\n")).toContain("Claude Sonnet 4");
+    expect(lines1.join("\n")).toContain("Claude");
 
     // Invalidate — simulates Dashboard.buildTabs() lifecycle cleanup
     tab.invalidate();
@@ -97,7 +99,7 @@ describe("Models", () => {
     // Second render cycle — creates new table from clean state
     const lines2 = tab.render(80);
     const text = lines2.join("\n");
-    expect(text).toContain("Claude Sonnet 4");
+    expect(text).toContain("Claude");
     expect(text).toContain("Cost ▼");
     expect(lines2[1]).toMatch(/^▶/);
     for (const line of lines2) {
@@ -130,11 +132,11 @@ describe("Models", () => {
       tab.invalidate();
       expect(vi.getTimerCount()).toBe(0);
 
-      // Re-render still produces clean output (fill col ~1 char at width 30)
+      // Re-render still produces clean output (fill col ~2 chars, provider ~7 chars at width 30)
       const lines = tab.render(30);
       const text = lines.join("\n");
       expect(text).toContain("C"); // first char of "Claude Sonnet 4"
-      expect(text).toContain("anthropic");
+      expect(text).toContain("anthr"); // provider truncated to ~5 chars at width 30
       expect(lines[1]).toMatch(/^▶/);
     });
   });

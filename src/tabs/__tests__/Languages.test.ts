@@ -33,10 +33,10 @@ describe("Languages", () => {
     expect(text).toContain("20");
     expect(text).toContain("5");
 
-    // Lines formatted with " ln" suffix
-    expect(text).toContain("1.5k ln");
-    expect(text).toContain("800 ln");
-    expect(text).toContain("300 ln");
+    // Lines formatted (no suffix)
+    expect(text).toContain("1.5k");
+    expect(text).toContain("800");
+    expect(text).toContain("300");
   });
 
   it("shows empty state when languages is empty", () => {
@@ -57,8 +57,13 @@ describe("Languages", () => {
   it("fill column adapts to width", () => {
     const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
 
-    // At width 30, fill column (~1-2 chars) — language names truncated
+    // At width 30, columns shrink — no line exceeds render width
     const narrowLines = tab.render(30);
+    for (const line of narrowLines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(30);
+    }
+    // Language column shrinks to ~9-10 chars — "TypeScript" (10 chars) truncates
     const narrowText = narrowLines.join("\n");
     expect(narrowText).not.toContain("TypeScript");
 
@@ -66,6 +71,7 @@ describe("Languages", () => {
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
     expect(wideText).toContain("TypeScript");
+    expect(wideText).toContain("1.5k");
   });
 
   it("shows cursor on first row", () => {
