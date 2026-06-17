@@ -39,7 +39,8 @@ describe("Models", () => {
     const tab = new Models(models, makeTheme(), testPalette(), mockTui);
     const lines = tab.render(50);
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(50);
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(50);
     }
   });
 
@@ -78,7 +79,8 @@ describe("Models", () => {
     tab.invalidate();
     const lines = tab.render(60); // should re-render at new width
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(60);
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(60);
     }
   });
 });
