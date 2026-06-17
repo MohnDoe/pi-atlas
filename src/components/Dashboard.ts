@@ -60,6 +60,11 @@ export class Dashboard extends Container {
     const contentHeight = Math.max(5, this.terminalRows - Dashboard.CHROME_ROWS);
     const summary = this.currentSummary;
 
+    // Invalidate old tabs — cleans up marquee timers, caches, etc.
+    for (const tab of this.tabs) {
+      tab.invalidate?.();
+    }
+
     this.tabs = [
       new Overview(
         {

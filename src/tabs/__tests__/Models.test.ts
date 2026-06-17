@@ -83,4 +83,26 @@ describe("Models", () => {
       expect(visLen).toBeLessThanOrEqual(60);
     }
   });
+
+  it("supports re-render after invalidation (lifecycle path)", () => {
+    const tab = new Models(models, makeTheme(), testPalette(), mockTui);
+
+    // First render cycle — creates table
+    const lines1 = tab.render(80);
+    expect(lines1.join("\n")).toContain("Claude Sonnet 4");
+
+    // Invalidate — simulates Dashboard.buildTabs() lifecycle cleanup
+    tab.invalidate();
+
+    // Second render cycle — creates new table from clean state
+    const lines2 = tab.render(80);
+    const text = lines2.join("\n");
+    expect(text).toContain("Claude Sonnet 4");
+    expect(text).toContain("Cost ▼");
+    expect(lines2[1]).toMatch(/^▶/);
+    for (const line of lines2) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(80);
+    }
+  });
 });

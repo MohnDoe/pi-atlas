@@ -27,6 +27,9 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
+      // Clean up old table's marquee timers before creating a new one
+      this.table?.invalidate();
+
       const rows = this.models.map((m) => [
         cell.marquee(formatModelName(m.model), this.tui),
         cell.text(m.provider ?? "Unknown"),
@@ -61,5 +64,6 @@ export class Models extends Container {
 
   invalidate(): void {
     super.invalidate();
+    this.table?.invalidate();
   }
 }
