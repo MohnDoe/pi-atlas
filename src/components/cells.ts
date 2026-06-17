@@ -3,19 +3,19 @@ import type { TUI } from "@earendil-works/pi-tui";
 import { MarqueeText } from "./MarqueeText.js";
 
 export interface CellState {
-  isFocused: boolean;
-  sortDirection: "asc" | "desc" | null;
+  isFocused?: boolean;
+  sortDirection?: "asc" | "desc" | null;
 }
 
 export interface CellComponent {
-  render(width: number, state: CellState): string;
+  render(width: number, state?: CellState): string;
   invalidate(): void;
 }
 
 class TextCell implements CellComponent {
   constructor(private content: string) {}
 
-  render(width: number, _state: CellState): string {
+  render(width: number, _state?: CellState): string {
     return truncateToWidth(this.content, width, "");
   }
 
@@ -27,11 +27,11 @@ class TextCell implements CellComponent {
 class HeaderCell implements CellComponent {
   constructor(private content: string) {}
 
-  render(width: number, state: CellState): string {
+  render(width: number, state?: CellState): string {
     const indicator =
-      state.sortDirection === "asc"
+      state?.sortDirection === "asc"
         ? " ▲"
-        : state.sortDirection === "desc"
+        : state?.sortDirection === "desc"
           ? " ▼"
           : "";
     const contentWidth = Math.max(0, width - indicator.length);
@@ -52,8 +52,8 @@ class MarqueeCell implements CellComponent {
     private tui: TUI,
   ) {}
 
-  render(width: number, state: CellState): string {
-    if (state.isFocused && this.content.length > width) {
+  render(width: number, state?: CellState): string {
+    if ((state?.isFocused ?? false) && this.content.length > width) {
       if (!this.marquee) {
         this.marquee = new MarqueeText(this.content, this.tui);
       }
