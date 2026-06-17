@@ -1,12 +1,14 @@
 /**
  * Integration test: Dashboard → Models → SortedTable keyboard interaction.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
 import { Dashboard } from "../Dashboard";
 
 const mockTui = makeMockTUI();
+
+const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 describe("Dashboard → Models → SortedTable arrow key integration", () => {
   /** Check if any line contains "▶" and a model name substring. */
@@ -135,5 +137,66 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     lines = dash.render(80);
 
     expect(cursorOnModel(lines, "Gamma Model")).toBe(true);
+  });
+
+  describe("marquee animation persists across render cycles", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Extract the full visible text of the focused (▶) row. */
+    function focusedRowText(lines: string[]): string {
+      for (const line of lines) {
+        if (line.includes("▶")) {
+          return strip(line);
+        }
+      }
+      return "";
+    }
+
+    it("marquee advances on successive renders (not stuck at offset 0)", () => {
+      // A model name long enough to overflow the ~27-char Model column at width=80
+      const longModel = "A-Very-Long-Model-Name-That-Overflows-And-Should-Scroll";
+      const summary = {
+        ...makeSummary(),
+        models: [
+          { model: longModel, cost: 10, calls: 100, provider: "p1" },
+        ],
+      };
+      const dash = new Dashboard(
+        [summary, summary, summary, summary],
+        makeTheme(), 24, null, mockTui,
+      );
+
+      // Navigate to Models tab
+      dash.handleInput("\x1b[C"); // → Languages
+      dash.handleInput("\x1b[C"); // → Models
+
+      // First render — marquee starts at offset 0
+      let lines = dash.render(80);
+      const render1 = focusedRowText(lines);
+      expect(render1).toContain("A Very Long");
+
+      // Advance 150ms = 1 timer tick → marquee text should scroll
+      vi.advanceTimersByTime(150);
+      lines = dash.render(80);
+      const render2 = focusedRowText(lines);
+      expect(render2).not.toBe("");
+
+      // Content must have scrolled — slice differs from render1
+      expect(render2).not.toBe(render1);
+
+      // Advance another 150ms = 2nd tick → should scroll again
+      vi.advanceTimersByTime(150);
+      lines = dash.render(80);
+      const render3 = focusedRowText(lines);
+      expect(render3).not.toBe("");
+      expect(render3).not.toBe(render1);
+      expect(render3).not.toBe(render2);
+    });
   });
 });
