@@ -27,20 +27,38 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
-      const rows = this.models.map((m) => [
-        cell.marquee(formatModelName(m.model), this.tui),
-        cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
-        cell.text(this.theme.fg("muted", formatNumber(m.calls))),
-        cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
-      ]);
+      const totalCost = this.models.reduce((sum, item) => sum + item.cost, 0);
+      const highestItem = totalCost > 0 ? (this.models[0].cost * 100) / totalCost : 0;
+      const rows = this.models.map((m) => {
+        let pct = 0;
+        let barPct = 0;
+        if (totalCost > 0) {
+          pct = (m.cost * 100) / totalCost;
+          barPct = (pct * 100) / highestItem;
+        }
+        return [
+          cell.marquee(formatModelName(m.model), this.tui),
+          cell.text(this.theme.fg("dim", m.provider ?? "Unknown")),
+          cell.text(this.theme.fg("muted", formatNumber(m.calls))),
+          cell.text(
+            m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free"),
+          ),
+          m.cost > 0
+            ? cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), (s) =>
+                this.theme.fg("dim", s),
+              )
+            : cell.text(""),
+        ];
+      });
       if (!this.table) {
         this.table = new SortedTable(
           {
             columns: [
               { header: cell.header("Model"), width: "fill" },
-              { header: cell.header("Provider"), width: 12 },
+              { header: cell.header("Provider"), width: 16 },
               { header: cell.header("Calls"), width: 6 },
-              { header: cell.header("Cost"), width: 8 },
+              { header: cell.header("Cost"), width: 7 },
+              { header: cell.header("Cost %"), width: 20 },
             ],
             rows,
             maxHeight: 20,
