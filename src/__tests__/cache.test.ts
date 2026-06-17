@@ -140,6 +140,62 @@ describe("cache read/write", () => {
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).toBeNull();
   });
+
+  it("serializes and deserializes modelToProvider Map", async () => {
+    const d = emptyDay("2026-06-08");
+    d.modelToProvider.set("claude-sonnet-4", "anthropic");
+    d.modelToProvider.set("gpt-4o", "openai");
+    const days: DayAgg[] = [d];
+    await writeCache(cachePath, "sig-mtp", days);
+
+    // Read raw cache JSON — modelToProvider should not be empty {}
+    const payload = await readCache(cachePath);
+    expect(payload).toBeDefined();
+    expect(payload!.days).toHaveLength(1);
+    expect(payload!.days[0].modelToProvider).toEqual({
+      "claude-sonnet-4": "anthropic",
+      "gpt-4o": "openai",
+    });
+
+    // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
+    const sesDir = join(tmpDir, "sessions");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(join(sesDir, "dummy.jsonl"), JSON.stringify({
+      type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/p",
+    }) + "\n");
+    const sig = await computeSignature(sesDir);
+    await writeFile(cachePath, JSON.stringify({
+      signature: sig,
+      generatedAt: new Date().toISOString(),
+      days: [{
+        date: "2026-06-08",
+        cost: 0,
+        inTok: 0,
+        outTok: 0,
+        crTok: 0,
+        cwTok: 0,
+        userMsgs: 0,
+        asstMsgs: 0,
+        toolResults: 0,
+        sessionIds: [],
+        langLines: {},
+        langEdits: {},
+        modelCost: {},
+        modelCount: {},
+        providerCost: {},
+        providerCount: {},
+        modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
+        projectCost: {},
+        projectSessions: {},
+        toolCount: {},
+      }],
+    }));
+    const loaded = await loadAggregate(cachePath, sesDir);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
+    expect(loaded[0].modelToProvider.get("gpt-4o")).toBe("openai");
+    expect(loaded[0].modelToProvider.size).toBe(2);
+  });
 });
 
 describe("loadAggregate", () => {

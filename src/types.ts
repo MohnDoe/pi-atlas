@@ -77,9 +77,10 @@ export interface CachePayload {
   days: SerializedDayAgg[];
 }
 
-export interface SerializedDayAgg extends Omit<DayAgg, "sessionIds" | "projectSessions"> {
+export interface SerializedDayAgg extends Omit<DayAgg, "sessionIds" | "projectSessions" | "modelToProvider"> {
   sessionIds: string[];
   projectSessions: Record<string, string[]>;
+  modelToProvider: Record<string, string>;
 }
 
 export interface TextBlock {

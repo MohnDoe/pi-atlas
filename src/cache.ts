@@ -51,6 +51,7 @@ function serializeDay(d: DayAgg): SerializedDayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]]),
     ),
+    modelToProvider: Object.fromEntries(d.modelToProvider),
   };
 }
 
@@ -61,6 +62,7 @@ function deserializeDay(s: SerializedDayAgg): DayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)]),
     ),
+    modelToProvider: new Map(Object.entries(s.modelToProvider)),
   };
 }
 
