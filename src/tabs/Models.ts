@@ -32,13 +32,13 @@ export class Models extends Container {
   private buildRows(): void {
     if (this.isEmpty) return;
     const totalCost = this.models.reduce((sum, item) => sum + item.cost, 0);
-    const highestItem = totalCost > 0 ? (this.models[0].cost * 100) / totalCost : 0;
+    const maxCost = Math.max(...this.models.map((m) => m.cost), 0);
     this.rows = this.models.map((m) => {
       let pct = 0;
       let barPct = 0;
       if (totalCost > 0) {
         pct = (m.cost * 100) / totalCost;
-        barPct = (pct * 100) / highestItem;
+        barPct = maxCost > 0 ? (m.cost / maxCost) * 100 : 0;
       }
       return [
         cell.marquee(formatModelName(m.model), this.tui),
