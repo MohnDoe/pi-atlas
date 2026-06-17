@@ -34,9 +34,9 @@ export class Projects extends Container {
       const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
       return [
         cell.marquee(p.project, this.tui),
-        cell.text(String(p.sessions)),
+        cell.bar(barPct, chalk.white, "transparent"),
         cell.text(p.cost > 0 ? this.theme.bold(formatCost(p.cost)) : this.theme.fg("dim", "Free")),
-        cell.bar(barPct, chalk.white, (s) => this.theme.fg("dim", s)),
+        cell.text(String(p.sessions)),
       ];
     });
   }
@@ -48,10 +48,10 @@ export class Projects extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Project"), width: "fill" },
-              { header: cell.header("Sessions"), width: 10 },
+              { header: cell.header("Project"), width: 20 },
+              { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Cost"), width: 8 },
-              { header: cell.header("Share %"), width: 20 },
+              { header: cell.header("Sessions"), width: 10 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,

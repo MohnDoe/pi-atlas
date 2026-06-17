@@ -43,16 +43,10 @@ export class Models extends Container {
       }
       return [
         cell.marquee(formatModelName(m.model), this.tui),
-        cell.text(this.theme.fg("dim", m.provider ?? "Unknown")),
+        cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
         cell.text(this.theme.fg("muted", formatNumber(m.calls))),
-        cell.text(
-          m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free"),
-        ),
-        m.cost > 0
-          ? cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), (s) =>
-              this.theme.fg("dim", s),
-            )
-          : cell.text(""),
+        cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
+        cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), "transparent"),
       ];
     });
   }

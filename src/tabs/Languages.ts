@@ -36,11 +36,9 @@ export class Languages extends Container {
       const barPct = maxLines > 0 ? (l.lines / maxLines) * 100 : 0;
       return [
         cell.marquee(l.language, this.tui),
+        cell.bar(barPct, this.palette.getColor(l.language), "transparent"),
         cell.text(l.edits > 0 ? String(l.edits) : this.theme.fg("dim", "0")),
-        cell.text(formatNumber(l.lines) + " ln"),
-        cell.bar(barPct, this.palette.getColor(l.language), (s) =>
-          this.theme.fg("dim", s),
-        ),
+        cell.text(this.theme.bold(formatNumber(l.lines))),
       ];
     });
   }
@@ -52,10 +50,10 @@ export class Languages extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Language"), width: "fill" },
+              { header: cell.header("Language"), width: 20 },
+              { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Edits"), width: 8 },
               { header: cell.header("Lines"), width: 8 },
-              { header: cell.header("Share %"), width: 20 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,

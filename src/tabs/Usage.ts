@@ -50,8 +50,8 @@ export class Usage extends Container {
       const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
       return [
         cell.marquee(t.tool, this.tui),
-        cell.text(String(t.count)),
-        cell.bar(barPct, chalk.white, (s) => this.theme.fg("dim", s)),
+        cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
+        cell.text(formatNumber(t.count)),
       ];
     });
   }
@@ -84,9 +84,9 @@ export class Usage extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Tool"), width: "fill" },
+              { header: cell.header("Tool"), width: 20 },
+              { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Calls"), width: 7 },
-              { header: cell.header("Share %"), width: 40 },
             ],
             rows: this.rows,
             maxHeight: this.tableHeight,
