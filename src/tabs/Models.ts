@@ -1,6 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette.js";
+import { cell } from "../components/cells.js";
 import { SortedTable } from "../components/SortedTable.js";
 import { formatCost, formatModelName, formatNumber } from "../format";
 import { ModelStat } from "../types";
@@ -27,30 +28,26 @@ export class Models extends Container {
     this.clear();
     if (!this.isEmpty) {
       const rows = this.models.map((m) => [
-        formatModelName(m.model),
-        m.provider ?? "Unknown",
-        formatNumber(m.calls),
-        formatCost(m.cost),
+        cell.marquee(formatModelName(m.model), this.tui),
+        cell.text(m.provider ?? "Unknown"),
+        cell.text(formatNumber(m.calls)),
+        cell.text(formatCost(m.cost)),
       ]);
-      if (!this.table) {
-        this.table = new SortedTable(
-          {
-            columns: [
-              { header: "Model", width: "fill", marquee: true },
-              { header: "Provider", width: 12 },
-              { header: "Calls", width: 6 },
-              { header: "Cost", width: 8 },
-            ],
-            rows,
-            maxHeight: 20,
-            sort: { column: 3, direction: "desc" },
-            tui: this.tui,
-          },
-          this.theme,
-        );
-      } else {
-        this.table.setRows(rows);
-      }
+      this.table = new SortedTable(
+        {
+          columns: [
+            { header: cell.header("Model"), width: "fill" },
+            { header: cell.header("Provider"), width: 12 },
+            { header: cell.header("Calls"), width: 6 },
+            { header: cell.header("Cost"), width: 8 },
+          ],
+          rows,
+          maxHeight: 20,
+          sort: { column: 3, direction: "desc" },
+          tui: this.tui,
+        },
+        this.theme,
+      );
       this.addChild(this.table);
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
