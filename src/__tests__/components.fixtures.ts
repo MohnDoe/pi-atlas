@@ -29,5 +29,8 @@ export function testPalette(): ColorPalette {
  * that exercise MarqueeText or SortedTable marquee behavior.
  */
 export function makeMockTUI(): TUI {
-  return { requestRender() {} } as TUI;
+  return {
+    requestRender() {},
+    terminal: { get rows() { return 24; }, get columns() { return 80; } },
+  } as TUI;
 }

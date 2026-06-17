@@ -20,7 +20,7 @@ import { Usage } from "../tabs/Usage";
 
 export class Dashboard extends Container {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
-  private static readonly CHROME_ROWS = 11;
+  private static readonly CHROME_ROWS = 8;
 
   private tabBar: TabBar;
   private header: Header;
@@ -30,11 +30,12 @@ export class Dashboard extends Container {
   private rangeLabels: string[];
   private langPalette: ColorPalette;
   private modelPalette: ColorPalette;
+  private contentHeight = 0;
 
   constructor(
     private summaries: StatsSummary[],
     private theme: Theme,
-    private terminalRows: number,
+    private usePopup: boolean,
     private updateLabel: string | null,
     private tui: TUI,
     onClose?: () => void,
@@ -47,7 +48,17 @@ export class Dashboard extends Container {
     this.rangeLabels = ["Today", "Last 7 days", "Last 30 days", "All time"];
     this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
     this.header = new Header(this.theme, this.rangeSelector);
+    this.contentHeight = this.computeContentHeight();
     this.buildTabs();
+  }
+
+  /** Compute the available content height from current terminal dimensions. */
+  private computeContentHeight(): number {
+    const termHeight = this.tui.terminal.rows;
+    const dashRows = this.usePopup
+      ? Math.floor(termHeight * 0.8) - 2
+      : termHeight;
+    return Math.max(5, dashRows - Dashboard.CHROME_ROWS);
   }
 
   private get currentSummary(): StatsSummary {
@@ -57,7 +68,7 @@ export class Dashboard extends Container {
   }
 
   private buildTabs(): void {
-    const contentHeight = Math.max(5, this.terminalRows - Dashboard.CHROME_ROWS);
+    const contentHeight = this.contentHeight;
     const summary = this.currentSummary;
 
     // Invalidate old tabs — cleans up marquee timers, caches, etc.
@@ -81,7 +92,7 @@ export class Dashboard extends Container {
         contentHeight,
       ),
       new Languages(summary.languages, this.theme, this.langPalette),
-      new Models(summary.models, this.theme, this.modelPalette, this.tui),
+      new Models(summary.models, this.theme, this.modelPalette, this.tui, contentHeight),
       new Projects(summary.projects, this.theme),
       new Usage(
         summary.tools,
@@ -128,6 +139,13 @@ export class Dashboard extends Container {
     const updateText = this.updateLabel ? this.theme.fg("dim", this.updateLabel) : "";
     const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
     this.addChild(new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0));
+
+    // Recompute content height — rebuild tabs if terminal was resized
+    const newContentHeight = this.computeContentHeight();
+    if (newContentHeight !== this.contentHeight) {
+      this.contentHeight = newContentHeight;
+      this.buildTabs();
+    }
 
     return super.render(width);
   }

@@ -19,6 +19,7 @@ export class Models extends Container {
     theme: Theme,
     private palette: ColorPalette,
     private tui: TUI,
+    private maxHeight: number,
   ) {
     super();
     this.theme = theme;
@@ -70,7 +71,7 @@ export class Models extends Container {
               { header: cell.header("Cost %"), width: 20 },
             ],
             rows: this.rows,
-            maxHeight: 20,
+            maxHeight: this.maxHeight,
             sort: { column: 3, direction: "desc" },
             tui: this.tui,
           },
