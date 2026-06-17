@@ -1,6 +1,7 @@
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { ChalkInstance } from "chalk";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { renderBar } from "./shared/Bar.js";
 
 export class UsageRow implements Component {
   constructor(
@@ -38,14 +39,10 @@ export class UsageRow implements Component {
     // Line 2: progress bar - [percentage]
     const pctString = this.theme.fg("dim", `${pct.toFixed(2)}%`);
     const pctStringWidth = visibleWidth(pctString);
-    // const pctStringWidth = 6; // always same size as XX.XX%
     const secondLineGap = "  ";
 
     const barWidth = width - pctStringWidth - visibleWidth(secondLineGap);
-
-    const filled = Math.round((barPct / 100) * barWidth);
-    const bar =
-      this.color("■".repeat(filled)) + this.theme.fg("dim", "■".repeat(barWidth - filled));
+    const bar = renderBar(barWidth, barPct, this.color, (s) => this.theme.fg("dim", s));
 
     return [
       nameStr + firstLineGap + valueStr,

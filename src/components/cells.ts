@@ -1,6 +1,7 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { TUI } from "@earendil-works/pi-tui";
 import { MarqueeText } from "./MarqueeText.js";
+import { renderBar } from "./shared/Bar.js";
 
 export interface CellState {
   isFocused?: boolean;
@@ -68,6 +69,22 @@ class MarqueeCell implements CellComponent {
   }
 }
 
+class BarCell implements CellComponent {
+  constructor(
+    private fillPct: number,
+    private filledStyle: (text: string) => string,
+    private emptyStyle: (text: string) => string,
+  ) {}
+
+  render(width: number, _state?: CellState): string {
+    return renderBar(width, this.fillPct, this.filledStyle, this.emptyStyle);
+  }
+
+  invalidate(): void {
+    // No internal cache
+  }
+}
+
 export const cell = {
   text(content: string): CellComponent {
     return new TextCell(content);
@@ -79,5 +96,13 @@ export const cell = {
 
   marquee(content: string, tui: TUI): CellComponent {
     return new MarqueeCell(content, tui);
+  },
+
+  bar(
+    fillPct: number,
+    filledStyle: (text: string) => string,
+    emptyStyle: (text: string) => string,
+  ): CellComponent {
+    return new BarCell(fillPct, filledStyle, emptyStyle);
   },
 };
