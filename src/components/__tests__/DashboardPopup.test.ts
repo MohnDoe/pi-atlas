@@ -188,7 +188,7 @@ describe("DashboardPopup", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Projects");
-    expect(text).toContain("by cost");
+    expect(text).toContain("$15.50");
   });
 
   it("shows empty state through popup when no session data", () => {

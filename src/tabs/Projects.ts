@@ -1,48 +1,79 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
+import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import chalk from "chalk";
-import { RankedBarList } from "../components/RankedBarList";
+import { cell, type CellComponent } from "../components/cells.js";
+import { SortedTable } from "../components/SortedTable.js";
 import { formatCost, formatNumber } from "../format";
-import type { ProjectStat } from "../types";
+import { ProjectStat } from "../types";
+
+const EMPTY_MESSAGE = "No projects data for this time range";
 
 export class Projects extends Container {
+  private isEmpty: boolean;
+  private theme: Theme;
+  private table: SortedTable | null = null;
+  private rows: CellComponent[][] = [];
+
   constructor(
     private projects: ProjectStat[],
-    private theme: Theme,
+    theme: Theme,
+    private tui: TUI,
+    private maxHeight: number,
   ) {
     super();
+    this.theme = theme;
+    this.isEmpty = projects.length === 0;
+    this.buildRows();
+  }
+
+  /** Build row cells once in constructor. Data is stable per Projects instance. */
+  private buildRows(): void {
+    if (this.isEmpty) return;
+    const maxCost = Math.max(...this.projects.map((p) => p.cost), 0);
+    this.rows = this.projects.map((p) => {
+      const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+      return [
+        cell.marquee(p.project, this.tui),
+        cell.text(String(p.sessions)),
+        cell.text(p.cost > 0 ? this.theme.bold(formatCost(p.cost)) : this.theme.fg("dim", "Free")),
+        cell.bar(barPct, chalk.white, (s) => this.theme.fg("dim", s)),
+      ];
+    });
   }
 
   render(width: number): string[] {
     this.clear();
-    if (this.projects.length > 0) {
-      const title = this.theme.bold("Projects");
-      const subtitle = this.theme.fg("muted", "by cost");
-      const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
-      this.addChild(new Text(title + gap + subtitle, 0, 0));
-      this.addChild(new Spacer(1));
-      this.addChild(new RankedBarList(
-        this.projects.map((p) => ({
-          name: p.project,
-          primaryValue: p.cost,
-          mainValueText: formatCost(p.cost),
-          secondaryValueText: formatNumber(p.sessions) + " sessions",
-          color: chalk.white,
-        })),
-        this.theme,
-      ));
+    if (!this.isEmpty) {
+      if (!this.table) {
+        this.table = new SortedTable(
+          {
+            columns: [
+              { header: cell.header("Project"), width: "fill" },
+              { header: cell.header("Sessions"), width: 10 },
+              { header: cell.header("Cost"), width: 8 },
+              { header: cell.header("Share %"), width: 20 },
+            ],
+            rows: this.rows,
+            maxHeight: this.maxHeight,
+            sort: { column: 2, direction: "desc" },
+            tui: this.tui,
+          },
+          this.theme,
+        );
+      }
+      this.addChild(this.table);
     } else {
-      this.addChild(new Text(this.theme.fg("muted", "No projects data for this time range.")));
+      this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
-
     return super.render(width);
   }
 
-  handleInput(_data: string): void {
-    this.invalidate();
+  handleInput(data: string): void {
+    this.table?.handleInput(data);
   }
 
   invalidate(): void {
     super.invalidate();
+    this.table?.invalidate();
   }
 }

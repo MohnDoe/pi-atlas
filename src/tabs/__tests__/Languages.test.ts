@@ -1,70 +1,147 @@
-import { describe, expect, it } from "vitest";
-import { testPalette, makeTheme } from "../../__tests__/components.fixtures";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Languages } from "../Languages";
+import { LangStat } from "../../types";
 
 describe("Languages", () => {
-  const languages = [
+  const mockTui = makeMockTUI();
+
+  const languages: LangStat[] = [
     { language: "TypeScript", lines: 1500, edits: 45 },
     { language: "Python", lines: 800, edits: 20 },
     { language: "JSON", lines: 300, edits: 5 },
   ];
 
-  it("renders ranked table with  data rows", () => {
-    const tab = new Languages(languages, makeTheme(), testPalette());
+  it("renders data rows with formatted values", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(80);
-
     const text = lines.join("\n");
 
-    // Data rows
+    // Headers
+    expect(text).toContain("Language");
+    expect(text).toContain("Edits");
+    expect(text).toContain("Lines");
+    expect(text).toContain("Share %");
+
+    // Language names
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
+
+    // Edits
+    expect(text).toContain("45");
+    expect(text).toContain("20");
+    expect(text).toContain("5");
+
+    // Lines formatted with " ln" suffix
     expect(text).toContain("1.5k ln");
     expect(text).toContain("800 ln");
     expect(text).toContain("300 ln");
-    expect(text).toContain("45 edits");
-    expect(text).toContain("20 edits");
-    expect(text).toContain("5 edits");
-
-    // Fits within width
-    for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(80);
-    }
   });
 
-  it("caches render output and invalidate clears cache", () => {
-    const tab = new Languages(languages, makeTheme(), testPalette());
-
-    // Render at width 80
-    const first = tab.render(80);
-    // Same width should return cached (same identity)
-    const second = tab.render(80);
-    expect(second).toStrictEqual(first);
-
-    // Invalidate + re-render at same width should produce fresh output
-    tab.invalidate();
-    const afterInvalidate = tab.render(80);
-    // Should still contain data
-    expect(afterInvalidate.length).toBe(first.length);
-    expect(afterInvalidate.join("\n")).toContain("TypeScript");
+  it("shows empty state when languages is empty", () => {
+    const tab = new Languages([], makeTheme(), testPalette(), mockTui, 10);
+    const text = tab.render(80).join("\n");
+    expect(text).toContain("No language data for this time range");
   });
 
-  it("re-renders at new width after invalidate", () => {
-    const tab = new Languages(languages, makeTheme(), testPalette());
-
-    tab.render(80);
-    tab.invalidate();
+  it("renders within width", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(50);
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(50);
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(50);
     }
   });
 
-  it("renders empty state message when languages is empty", () => {
-    const tab = new Languages([], makeTheme(), testPalette());
+  it("fill column adapts to width", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
+
+    // At width 30, fill column (~1-2 chars) — language names truncated
+    const narrowLines = tab.render(30);
+    const narrowText = narrowLines.join("\n");
+    expect(narrowText).not.toContain("TypeScript");
+
+    // At width 80, fill column is spacious — full names visible
+    const wideLines = tab.render(80);
+    const wideText = wideLines.join("\n");
+    expect(wideText).toContain("TypeScript");
+  });
+
+  it("shows cursor on first row", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
+    const lines = tab.render(80);
+    // First data row (line 1, after header) should start with cursor
+    expect(lines[1]).toMatch(/^▶/);
+  });
+
+  it("shows sort indicator on Lines column", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(80);
     const text = lines.join("\n");
+    // Lines is column 2, sort direction "desc" → ▼
+    expect(text).toContain("Lines ▼");
+  });
 
-    expect(text).toContain("No language data for this time range");
+  it("invalidates render cache", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
+    tab.render(80);
+    tab.invalidate();
+    const lines = tab.render(60);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("supports re-render after invalidation (lifecycle path)", () => {
+    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
+
+    const lines1 = tab.render(80);
+    expect(lines1.join("\n")).toContain("TypeScript");
+
+    tab.invalidate();
+
+    const lines2 = tab.render(80);
+    const text = lines2.join("\n");
+    expect(text).toContain("TypeScript");
+    expect(text).toContain("Lines ▼");
+    expect(lines2[1]).toMatch(/^▶/);
+    for (const line of lines2) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(80);
+    }
+  });
+
+  describe("marquee lifecycle", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("clears marquee timers on invalidate", () => {
+      const longNames: LangStat[] = [
+        { language: "TypeScript with a very long name that should overflow", lines: 1500, edits: 45 },
+      ];
+      const tab = new Languages(longNames, makeTheme(), testPalette(), mockTui, 10);
+
+      // Render at narrow width where language name overflows fill column
+      // → MarqueeCell starts timer on focused row
+      tab.render(30);
+      expect(vi.getTimerCount()).toBe(1);
+
+      // Invalidate propagates: Languages → SortedTable → cells → MarqueeCell → clearInterval
+      tab.invalidate();
+      expect(vi.getTimerCount()).toBe(0);
+
+      // Re-render at wider width so fill column has room for the name
+      const lines = tab.render(80);
+      const text = lines.join("\n");
+      expect(text).toContain("TypeScript");
+      expect(lines[1]).toMatch(/^▶/);
+    });
   });
 });

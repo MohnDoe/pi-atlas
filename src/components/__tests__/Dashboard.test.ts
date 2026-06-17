@@ -92,8 +92,6 @@ describe("Dashboard", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Languages");
-    expect(text).toContain("by lines written");
-
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
@@ -269,7 +267,6 @@ describe("Dashboard", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Projects");
-    expect(text).toContain("by cost");
   });
 
   it("Projects tab shows empty states when no data", () => {

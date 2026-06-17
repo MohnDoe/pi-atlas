@@ -91,9 +91,9 @@ export class Dashboard extends Container {
         this.theme,
         contentHeight,
       ),
-      new Languages(summary.languages, this.theme, this.langPalette),
+      new Languages(summary.languages, this.theme, this.langPalette, this.tui, contentHeight),
       new Models(summary.models, this.theme, this.modelPalette, this.tui, contentHeight),
-      new Projects(summary.projects, this.theme),
+      new Projects(summary.projects, this.theme, this.tui, contentHeight),
       new Usage(
         summary.tools,
         {
@@ -104,6 +104,8 @@ export class Dashboard extends Container {
           cacheWrite: summary.totalCacheWriteTokens,
         },
         this.theme,
+        this.tui,
+        contentHeight,
       ),
     ];
   }
