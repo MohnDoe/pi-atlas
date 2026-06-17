@@ -16,6 +16,14 @@ interface TokenUsageStat {
   cacheWrite: StatsSummary["totalCacheWriteTokens"];
 }
 
+const TOOL_NAME_MAX_LENGTH = 120;
+
+/** Strip ANSI escape sequences from a string. */
+function stripAnsi(text: string): string {
+  if (!text.includes("\u001B") && !text.includes("\u009B")) return text;
+  return text.replace(/[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g, "");
+}
+
 const EMPTY_MESSAGE = "No tools data for this time range";
 
 export class Usage extends Container {
@@ -49,7 +57,7 @@ export class Usage extends Container {
     this.rows = this.tools.map((t) => {
       const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
       return [
-        cell.marquee(t.tool, this.tui),
+        cell.marquee(stripAnsi(t.tool).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
         cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
         cell.text(formatNumber(t.count)),
       ];
