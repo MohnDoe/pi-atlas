@@ -29,11 +29,7 @@ class HeaderCell implements CellComponent {
 
   render(width: number, state?: CellState): string {
     const indicator =
-      state?.sortDirection === "asc"
-        ? " ▲"
-        : state?.sortDirection === "desc"
-          ? " ▼"
-          : "";
+      state?.sortDirection === "asc" ? " ▲" : state?.sortDirection === "desc" ? " ▼" : "";
     const contentWidth = Math.max(0, width - indicator.length);
     const truncated = truncateToWidth(this.content, contentWidth, "");
     return truncated + indicator;

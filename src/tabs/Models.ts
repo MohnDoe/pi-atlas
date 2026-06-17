@@ -29,9 +29,9 @@ export class Models extends Container {
     if (!this.isEmpty) {
       const rows = this.models.map((m) => [
         cell.marquee(formatModelName(m.model), this.tui),
-        cell.text(m.provider ?? "Unknown"),
-        cell.text(formatNumber(m.calls)),
-        cell.text(formatCost(m.cost)),
+        cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
+        cell.text(this.theme.fg("muted", formatNumber(m.calls))),
+        cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
       ]);
       if (!this.table) {
         this.table = new SortedTable(
