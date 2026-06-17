@@ -6,6 +6,8 @@ How the engineering skills should consume this repo's domain documentation when 
 
 - **`CONTEXT.md`** at the repo root
 - **`docs/adr/`** — read ADRs that touch the area you're about to work in
+- **`node_modules/@earendil-works/pi-tui/README.md`** — pi-tui framework docs (Component interface, built-in components, rendering pipeline). Always read before designing or modifying TUI components.
+- **`node_modules/@earendil-works/pi-tui/dist/index.d.ts`** — pi-tui type declarations for exact API signatures.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
