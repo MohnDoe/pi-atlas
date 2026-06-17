@@ -34,9 +34,9 @@ export class Projects extends Container {
       const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
       return [
         cell.marquee(p.project, this.tui),
-        cell.bar(barPct, chalk.white, "transparent"),
+        cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
+        cell.text(this.theme.fg("muted", formatNumber(p.sessions))),
         cell.text(p.cost > 0 ? this.theme.bold(formatCost(p.cost)) : this.theme.fg("dim", "Free")),
-        cell.text(String(p.sessions)),
       ];
     });
   }
@@ -50,12 +50,12 @@ export class Projects extends Container {
             columns: [
               { header: cell.header("Project"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
+              { header: cell.header("Sessions"), width: 14 },
               { header: cell.header("Cost"), width: 8 },
-              { header: cell.header("Sessions"), width: 10 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,
-            sort: { column: 2, direction: "desc" },
+            sort: { column: 3, direction: "desc" },
             tui: this.tui,
           },
           this.theme,

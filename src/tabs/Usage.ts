@@ -21,7 +21,10 @@ const TOOL_NAME_MAX_LENGTH = 120;
 /** Strip ANSI escape sequences from a string. */
 function stripAnsi(text: string): string {
   if (!text.includes("\u001B") && !text.includes("\u009B")) return text;
-  return text.replace(/[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g, "");
+  return text.replace(
+    /[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g,
+    "",
+  );
 }
 
 const EMPTY_MESSAGE = "No tools data for this time range";
@@ -59,7 +62,7 @@ export class Usage extends Container {
       return [
         cell.marquee(stripAnsi(t.tool).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
         cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
-        cell.text(formatNumber(t.count)),
+        cell.text(this.theme.bold(formatNumber(t.count))),
       ];
     });
   }
@@ -94,11 +97,11 @@ export class Usage extends Container {
             columns: [
               { header: cell.header("Tool"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
-              { header: cell.header("Calls"), width: 7 },
+              { header: cell.header("Calls"), width: 12 },
             ],
             rows: this.rows,
             maxHeight: this.tableHeight,
-            sort: { column: 1, direction: "desc" },
+            sort: { column: 2, direction: "desc" },
             tui: this.tui,
           },
           this.theme,
