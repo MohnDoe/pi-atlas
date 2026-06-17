@@ -27,30 +27,31 @@ export class Models extends Container {
   render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
-      // Clean up old table's marquee timers before creating a new one
-      this.table?.invalidate();
-
       const rows = this.models.map((m) => [
         cell.marquee(formatModelName(m.model), this.tui),
         cell.text(m.provider ?? "Unknown"),
         cell.text(formatNumber(m.calls)),
         cell.text(formatCost(m.cost)),
       ]);
-      this.table = new SortedTable(
-        {
-          columns: [
-            { header: cell.header("Model"), width: "fill" },
-            { header: cell.header("Provider"), width: 12 },
-            { header: cell.header("Calls"), width: 6 },
-            { header: cell.header("Cost"), width: 8 },
-          ],
-          rows,
-          maxHeight: 20,
-          sort: { column: 3, direction: "desc" },
-          tui: this.tui,
-        },
-        this.theme,
-      );
+      if (!this.table) {
+        this.table = new SortedTable(
+          {
+            columns: [
+              { header: cell.header("Model"), width: "fill" },
+              { header: cell.header("Provider"), width: 12 },
+              { header: cell.header("Calls"), width: 6 },
+              { header: cell.header("Cost"), width: 8 },
+            ],
+            rows,
+            maxHeight: 20,
+            sort: { column: 3, direction: "desc" },
+            tui: this.tui,
+          },
+          this.theme,
+        );
+      } else {
+        this.table.setRows(rows);
+      }
       this.addChild(this.table);
     } else {
       this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));

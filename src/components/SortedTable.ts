@@ -202,4 +202,19 @@ export class SortedTable implements Component {
       }
     }
   }
+
+  setRows(rows: CellComponent[][]): void {
+    // Invalidate old cells before discarding
+    for (const row of this.rows) {
+      for (const c of row) {
+        c.invalidate();
+      }
+    }
+    this.rows = rows;
+    if (this.focusedRow >= rows.length) {
+      this.focusedRow = rows.length > 0 ? rows.length - 1 : -1;
+    }
+    this.scrollOffset = 0;
+    this.invalidate();
+  }
 }
