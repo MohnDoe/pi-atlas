@@ -1,4 +1,6 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import type { TUI } from "@earendil-works/pi-tui";
+import { MarqueeText } from "./MarqueeText.js";
 
 export interface CellState {
   isFocused: boolean;
@@ -42,6 +44,34 @@ class HeaderCell implements CellComponent {
   }
 }
 
+class MarqueeCell implements CellComponent {
+  private marquee: MarqueeText | undefined;
+
+  constructor(
+    private content: string,
+    private tui: TUI,
+  ) {}
+
+  render(width: number, state: CellState): string {
+    if (state.isFocused && this.content.length > width) {
+      if (!this.marquee) {
+        this.marquee = new MarqueeText(this.content, this.tui);
+      }
+      return this.marquee.render(width)[0];
+    }
+
+    // Unfocused or content fits — truncate with ellipsis
+    return truncateToWidth(this.content, width, "…");
+  }
+
+  invalidate(): void {
+    if (this.marquee) {
+      this.marquee.destroy();
+      this.marquee = undefined;
+    }
+  }
+}
+
 export const cell = {
   text(content: string): CellComponent {
     return new TextCell(content);
@@ -49,5 +79,9 @@ export const cell = {
 
   header(content: string): CellComponent {
     return new HeaderCell(content);
+  },
+
+  marquee(content: string, tui: TUI): CellComponent {
+    return new MarqueeCell(content, tui);
   },
 };

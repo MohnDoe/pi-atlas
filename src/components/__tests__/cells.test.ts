@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { makeMockTUI } from "../../__tests__/components.fixtures.js";
 import { cell } from "../cells.js";
 
 describe("cell.text", () => {
@@ -57,5 +58,74 @@ describe("cell.header", () => {
     const c = cell.header("Hello World");
     const result = c.render(5, { isFocused: false, sortDirection: null });
     expect(result).toBe(truncateToWidth("Hello World", 5, ""));
+  });
+});
+
+describe("cell.marquee", () => {
+  let tui: ReturnType<typeof makeMockTUI>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    tui = makeMockTUI();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows scrolling content when focused", () => {
+    const c = cell.marquee("Hello World", tui);
+    const result = c.render(5, { isFocused: true, sortDirection: null });
+    // tick=0, offset=0 → first 5 chars
+    expect(result).toBe("Hello");
+  });
+
+  it("shows ellipsis when unfocused with overflow", () => {
+    const c = cell.marquee("Hello World", tui);
+    const result = c.render(5, { isFocused: false, sortDirection: null });
+    expect(result).toBe(truncateToWidth("Hello World", 5, "…"));
+  });
+
+  it("shows full content when unfocused without overflow", () => {
+    const c = cell.marquee("Hi", tui);
+    const result = c.render(10, { isFocused: false, sortDirection: null });
+    expect(result).toBe("Hi");
+  });
+
+  it("clears interval on invalidate", () => {
+    const c = cell.marquee("Hello World", tui);
+    c.render(5, { isFocused: true, sortDirection: null }); // starts timer
+    expect(vi.getTimerCount()).toBe(1);
+    c.invalidate();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("creates new marquee on render after invalidate", () => {
+    const c = cell.marquee("Hello World", tui);
+    c.render(5, { isFocused: true, sortDirection: null });
+    c.invalidate();
+    // After invalidate, focused render should start fresh
+    const result = c.render(5, { isFocused: true, sortDirection: null });
+    expect(result).toBe("Hello");
+  });
+
+  it("advances marquee tick via timer", () => {
+    const c = cell.marquee("Hello World", tui);
+    c.render(5, { isFocused: true, sortDirection: null }); // tick=0
+
+    vi.advanceTimersByTime(150); // 1 tick
+    const result = c.render(5, { isFocused: true, sortDirection: null });
+    expect(result).toBe("ello ");
+  });
+
+  it("handles empty content", () => {
+    const c = cell.marquee("", tui);
+    const result = c.render(5, { isFocused: true, sortDirection: null });
+    expect(result).toBe("");
+  });
+
+  it("invalidate does not throw when no marquee has been created", () => {
+    const c = cell.marquee("Hello", tui);
+    expect(() => c.invalidate()).not.toThrow();
   });
 });
