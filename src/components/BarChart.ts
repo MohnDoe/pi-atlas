@@ -140,13 +140,17 @@ export class BarChart implements Component {
     for (let i = 0; i < plotData.length; i++) {
       const lbl = formatLabel(plotData[i].date, i, plotData, this.range);
       const cellW = colW + BAR_GAP;
-      // Skip label if it doesn't fit its cell (prevents overflow)
-      if (lbl.length > 0 && lbl.length + 2 <= cellW) {
-        // Label + space + ─ filler to maintain bar alignment
-        const fill = cellW - lbl.length - 2;
-        labelLine += " " + lbl + " " + "─".repeat(fill);
+      if (lbl.length > 0) {
+        if (lbl.length + 2 <= cellW) {
+          // Standard: space + label + space + filler dashes
+          const fill = cellW - lbl.length - 2;
+          labelLine += " " + lbl + " " + "─".repeat(fill);
+        } else {
+          // Tight: label trimmed to fit with remaining filler
+          labelLine += lbl + "─".repeat(Math.max(0, cellW - lbl.length));
+        }
       } else {
-        // Empty or too-long label: continuous ─ baseline
+        // Empty label: continuous ─ baseline
         labelLine += "─".repeat(cellW);
       }
     }
