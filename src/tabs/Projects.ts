@@ -34,7 +34,7 @@ export class Projects extends Container {
       const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
       return [
         cell.marquee(p.project, this.tui),
-        cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
+        cell.bar(barPct, (s) => s, "transparent"),
         cell.text(this.theme.fg("muted", formatNumber(p.sessions))),
         cell.text(p.cost > 0 ? this.theme.bold(formatCost(p.cost)) : this.theme.fg("dim", "Free")),
       ];

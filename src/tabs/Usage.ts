@@ -53,7 +53,7 @@ export class Usage extends Container {
       const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
       return [
         cell.marquee(stripAnsi(t.tool).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
-        cell.bar(barPct, (s) => this.theme.fg("text", s), "transparent"),
+        cell.bar(barPct, (s) => s, "transparent"),
         cell.text(this.theme.bold(formatNumber(t.count))),
       ];
     });
@@ -78,7 +78,6 @@ export class Usage extends Container {
               {
                 label: {
                   text: "Input",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(this.tokenUsage.input)),
@@ -98,7 +97,6 @@ export class Usage extends Container {
               {
                 label: {
                   text: "Output",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(this.tokenUsage.output)),
@@ -118,7 +116,6 @@ export class Usage extends Container {
               {
                 label: {
                   text: "Cache Read",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(this.tokenUsage.cacheRead)),
@@ -138,7 +135,6 @@ export class Usage extends Container {
               {
                 label: {
                   text: "Cache Write",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(this.tokenUsage.cacheWrite)),
