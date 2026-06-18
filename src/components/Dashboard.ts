@@ -60,9 +60,7 @@ export class Dashboard extends Container {
   /** Compute the available content height from current terminal dimensions. */
   private computeContentHeight(): number {
     const termHeight = this.tui.terminal.rows;
-    const dashRows = this.usePopup
-      ? Math.floor(termHeight * 0.8) - 2
-      : termHeight;
+    const dashRows = this.usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
     return Math.max(5, dashRows - Dashboard.CHROME_ROWS);
   }
 
@@ -89,7 +87,6 @@ export class Dashboard extends Container {
           totalTokens: summary.totalTokens,
           daysActive: summary.daysActive,
           avgCostPerDay: summary.avgCostPerDay,
-          todayCost: summary.todayCost,
         },
         summary.dailySpend,
         rangeKey,
