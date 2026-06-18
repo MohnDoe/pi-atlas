@@ -24,31 +24,34 @@ function padLine(line: string, targetWidth: number): string {
   return line + " ".repeat(padNeeded);
 }
 
+interface BorderLineOptions {
+  left: string;
+  right: string;
+  innerWidth: number;
+  width: number;
+  borderColor?: (s: string) => string;
+  text?: string;
+}
 /** Build a border line with optional embedded text (title/footer). */
-function borderLine(
-  left: string,
-  right: string,
-  innerWidth: number,
-  width: number,
-  borderColor: (s: string) => string = (s) => s,
-  text?: string,
-): string {
-  left = borderColor(left);
-  right = borderColor(right);
-  const border = borderColor("─");
-  if (!text) {
-    return padLine(`${left}${border.repeat(innerWidth)}${right}`, width);
+function borderLine(opts: BorderLineOptions): string {
+  if (opts.borderColor !== undefined) {
+    opts.left = opts.borderColor(opts.left);
+    opts.right = opts.borderColor(opts.right);
+  }
+  const border = opts.borderColor !== undefined ? opts.borderColor("─") : "─";
+  if (!opts.text) {
+    return padLine(`${opts.left}${border.repeat(opts.innerWidth)}${opts.right}`, opts.width);
   }
 
-  const decor = `${border} ${text} ${border}`;
+  const decor = `${border} ${opts.text} ${border}`;
   const decorLen = visibleWidth(decor);
-  const fill = Math.max(0, innerWidth - decorLen);
+  const fill = Math.max(0, opts.innerWidth - decorLen);
 
-  const truncated = fill === 0 ? truncate(text, innerWidth - 4) : text;
+  const truncated = fill === 0 ? truncate(opts.text, opts.innerWidth - 4) : opts.text;
   const finalDecor = `${border} ${truncated} ${border}`;
-  const finalFill = Math.max(0, innerWidth - visibleWidth(finalDecor));
+  const finalFill = Math.max(0, opts.innerWidth - visibleWidth(finalDecor));
 
-  return padLine(`${left}${finalDecor}${border.repeat(finalFill)}${right}`, width);
+  return padLine(`${opts.left}${finalDecor}${border.repeat(finalFill)}${opts.right}`, opts.width);
 }
 
 export class BorderBox implements Component {
@@ -84,10 +87,18 @@ export class BorderBox implements Component {
     const r = "│";
 
     const lines: string[] = [];
+    const borderColor = this.color ? (s: string) => this.theme.fg(this.color, s) : undefined;
 
     // Top border (with optional title)
     lines.push(
-      borderLine(tl, tr, innerWidth, width, (s) => this.theme.fg(this.color, s), this.title),
+      borderLine({
+        left: tl,
+        right: tr,
+        innerWidth,
+        width,
+        borderColor,
+        text: this.title,
+      }),
     );
 
     // Content lines
@@ -101,7 +112,14 @@ export class BorderBox implements Component {
 
     // Bottom border (with optional footer)
     lines.push(
-      borderLine(bl, br, innerWidth, width, (s) => this.theme.fg(this.color, s), this.footer),
+      borderLine({
+        left: bl,
+        right: br,
+        innerWidth,
+        width,
+        borderColor: (s) => this.theme.fg(this.color, s),
+        text: this.footer,
+      }),
     );
 
     this.cache = { lines, width };
