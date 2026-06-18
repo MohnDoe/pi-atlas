@@ -109,7 +109,14 @@ export class BarChart implements Component {
     for (let i = 0; i < this.data.length; i++) {
       const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
       const cellW = colW + BAR_GAP;
-      labelLine += lbl.padEnd(cellW).slice(0, cellW);
+      if (lbl.length > 0) {
+        // Label + space + ─ filler to maintain bar alignment
+        const fill = Math.max(0, cellW - lbl.length - 2);
+        labelLine += " " + lbl + " " + "─".repeat(fill);
+      } else {
+        // Empty label: continuous ─ baseline
+        labelLine += "─".repeat(cellW);
+      }
     }
     lines.push(labelLine);
 

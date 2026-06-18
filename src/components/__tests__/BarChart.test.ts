@@ -158,14 +158,17 @@ describe("BarChart", () => {
     }
   });
 
-  it("x-axis has bottom corner connecting y-axis separator", () => {
+  it("x-axis has bottom └ corner and ─ filler between labels", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     // Last line is the x-axis label row
     const labelLine = lines[lines.length - 1];
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
-    // Should have └─ at the y-axis position (corner + horizontal line)
-    expect(visible).toContain("└─");
+    // └ at the y-axis position (corner)
+    expect(visible).toContain("└");
+    // ─ extends between labels (Mon followed by space+─ before next label)
+    expect(visible).toContain("Mon ─");
+    expect(visible).toContain("Tue ─");
   });
 
   it("invalidates cache", () => {
