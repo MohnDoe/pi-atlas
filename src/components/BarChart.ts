@@ -29,7 +29,7 @@ const SPREAD_MAX_HEIGHT = 14;
 
 export class BarChart implements Component {
   private data: DaySpend[];
-  private range: string;
+  private range: TimeRange;
   private maxHeight: number;
   private theme: Theme;
   private yAxisSpacing: number | undefined;
