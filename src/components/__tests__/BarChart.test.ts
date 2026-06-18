@@ -158,6 +158,16 @@ describe("BarChart", () => {
     }
   });
 
+  it("x-axis has bottom corner connecting y-axis separator", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    // Last line is the x-axis label row
+    const labelLine = lines[lines.length - 1];
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
+    // Should have └─ at the y-axis position (corner + horizontal line)
+    expect(visible).toContain("└─");
+  });
+
   it("invalidates cache", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     chart.render(80);

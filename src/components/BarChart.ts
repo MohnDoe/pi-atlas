@@ -99,12 +99,12 @@ export class BarChart implements Component {
       lines.push(line);
     }
 
-    // X-axis labels with y-axis padding
-    let labelLine = " ".repeat(yAxisW);
+    // X-axis labels with y-axis bottom corner
+    let labelLine = " ".repeat(yLabelPad + 1) + "└─";
     for (let i = 0; i < this.data.length; i++) {
       const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
       const cellW = colW + BAR_GAP;
-      labelLine += this.theme.fg("dim", lbl.padEnd(cellW).slice(0, cellW));
+      labelLine += lbl.padEnd(cellW).slice(0, cellW);
     }
     lines.push(labelLine);
 
