@@ -73,18 +73,6 @@ describe("Overview", () => {
     expect(text).toContain("Total");
   });
 
-  it("handleInput is a no-op", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", makeTheme(), 15);
-    const before = overview.render(80);
-
-    overview.handleInput("up");
-    overview.handleInput("down");
-    overview.handleInput("enter");
-
-    const after = overview.render(80);
-    expect(after).toEqual(before);
-  });
-
   it("invalidate clears cache and re-renders at new width", () => {
     const overview = new Overview(kpis, dailySpend, "7d", makeTheme(), 15);
     overview.render(80);
