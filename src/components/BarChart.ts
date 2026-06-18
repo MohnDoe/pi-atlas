@@ -5,19 +5,49 @@ import { MONTH_NAMES, formatCost } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** Minimum bar area height (rows) — prevents degenerate chart at tiny maxHeight. */
+const MIN_BAR_AREA = 3;
+/** Padding rows subtracted from maxHeight: 1 for x-axis labels + 1 for top padding. */
+const CHART_VERTICAL_PADDING = 2;
+/** Minimum column width per bar — prevents invisible bars on narrow terminals. */
+const MIN_COL_WIDTH = 2;
+/** Floor cost to avoid divide-by-zero when computing bar proportions. */
+const COST_FLOOR = 0.01;
+/** Threshold for half-block character: barH extension beyond integer row. */
+const HALF_BLOCK_THRESHOLD = 0.5;
+/** Y-axis separator string " │ " — space, box-drawing line, space. */
+const Y_AXIS_SEPARATOR = " │ ";
+/** Y-axis separator width in characters. */
+const Y_SEP_WIDTH = 3;
+/** Space between bar columns in characters. */
+const BAR_GAP = 1;
+
+/** Auto-density: every row when barAreaH ≤ this. */
+const DENSE_MAX_HEIGHT = 6;
+/** Auto-density: every other row when barAreaH ≤ this. Otherwise every 3rd. */
+const SPREAD_MAX_HEIGHT = 14;
+
 export class BarChart implements Component {
   private data: DaySpend[];
   private range: string;
   private maxHeight: number;
   private theme: Theme;
+  private yAxisSpacing: number | undefined;
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
-  constructor(data: DaySpend[], range: string, maxHeight: number, theme: Theme) {
+  constructor(
+    data: DaySpend[],
+    range: string,
+    maxHeight: number,
+    theme: Theme,
+    yAxisSpacing?: number,
+  ) {
     this.data = data;
     this.range = range;
     this.maxHeight = maxHeight;
     this.theme = theme;
+    this.yAxisSpacing = yAxisSpacing;
   }
 
   render(width: number): string[] {
@@ -29,17 +59,17 @@ export class BarChart implements Component {
       return this.cachedLines;
     }
 
-    const barAreaH = Math.max(3, this.maxHeight - 2);
-    const maxCost = Math.max(...this.data.map((d) => d.cost), 0.01);
+    const barAreaH = Math.max(MIN_BAR_AREA, this.maxHeight - CHART_VERTICAL_PADDING);
+    const maxCost = Math.max(...this.data.map((d) => d.cost), COST_FLOOR);
 
-    // Auto-density y-axis labels
-    const step = barAreaH <= 6 ? 1 : barAreaH <= 14 ? 2 : 3;
+    const step = this.yAxisSpacing != null ? Math.max(1, this.yAxisSpacing) : densityStep(barAreaH);
     const yLabelPad = computeLabelWidth(maxCost, barAreaH, step);
-    const yAxisW = yLabelPad + 3; // label + " │ "
+    const yAxisW = yLabelPad + Y_SEP_WIDTH;
 
     // Available width for bars
     const availW = width - yAxisW;
-    const colW = Math.max(2, Math.floor((availW - this.data.length) / this.data.length));
+    const totalGaps = this.data.length * BAR_GAP;
+    const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / this.data.length));
 
     const lines: string[] = [];
 
@@ -50,21 +80,21 @@ export class BarChart implements Component {
       const isLabelRow = row === 0 || row % step === 0;
       if (isLabelRow) {
         const val = (row / (barAreaH - 1)) * maxCost;
-        line += formatCost(val).padStart(yLabelPad) + " │ ";
+        line += formatCost(val).padStart(yLabelPad) + Y_AXIS_SEPARATOR;
       } else {
-        line += " ".repeat(yLabelPad) + " │ ";
+        line += " ".repeat(yLabelPad) + Y_AXIS_SEPARATOR;
       }
 
       for (const d of this.data) {
         const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
-        if (barH > row + 0.5) {
+        if (barH > row + HALF_BLOCK_THRESHOLD) {
           line += this.theme.fg("accent", "█".repeat(colW));
         } else if (barH > row) {
           line += this.theme.fg("accent", "▌".repeat(colW));
         } else {
           line += " ".repeat(colW);
         }
-        line += " ";
+        line += " ".repeat(BAR_GAP);
       }
       lines.push(line);
     }
@@ -73,7 +103,7 @@ export class BarChart implements Component {
     let labelLine = " ".repeat(yAxisW);
     for (let i = 0; i < this.data.length; i++) {
       const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
-      const cellW = colW + 1;
+      const cellW = colW + BAR_GAP;
       labelLine += this.theme.fg("dim", lbl.padEnd(cellW).slice(0, cellW));
     }
     lines.push(labelLine);
@@ -87,6 +117,12 @@ export class BarChart implements Component {
     this.cachedLines = null;
     this.cachedWidth = -1;
   }
+}
+
+function densityStep(barAreaH: number): number {
+  if (barAreaH <= DENSE_MAX_HEIGHT) return 1;
+  if (barAreaH <= SPREAD_MAX_HEIGHT) return 2;
+  return 3;
 }
 
 function computeLabelWidth(maxCost: number, barAreaH: number, step: number): number {

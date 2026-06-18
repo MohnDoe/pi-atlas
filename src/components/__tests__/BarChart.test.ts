@@ -146,6 +146,18 @@ describe("BarChart", () => {
     }
   });
 
+  it("yAxisSpacing overrides auto-density", () => {
+    // barAreaH = 15-2 = 13, auto would be step=2 (every other)
+    // but yAxisSpacing=1 forces every row
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme(), 1);
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1);
+    // Every bar row should have $ labels (step=1)
+    for (const line of barLines) {
+      expect(line).toContain("$");
+    }
+  });
+
   it("invalidates cache", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     chart.render(80);
