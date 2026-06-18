@@ -6,7 +6,7 @@ import { KpiCards, KpiData } from "../components/KpiCards";
 
 const KPI_CARDS_HEIGHT = 4 * 2;
 const SPACER_HEIGHT = 1;
-const BAR_CHART_MAX_HEIGHT = 12;
+const BAR_CHART_MAX_HEIGHT = 18;
 
 export class Overview implements Component {
   private kpiCards: KpiCards;

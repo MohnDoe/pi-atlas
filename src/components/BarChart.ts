@@ -79,6 +79,7 @@ export class BarChart implements Component {
       // Y-axis: right-aligned cost label + │ separator
       const isLabelRow = row === 0 || row % step === 0;
       if (isLabelRow) {
+        // Compute the actual cost value for this Y-axis label row
         const val = (row / (barAreaH - 1)) * maxCost;
         line += formatCost(val).padStart(yLabelPad) + Y_AXIS_SEPARATOR;
       } else {
@@ -86,12 +87,16 @@ export class BarChart implements Component {
       }
 
       for (const d of this.data) {
+        // Normalised bar height on the 0..barAreaH scale
         const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
         if (barH > row + HALF_BLOCK_THRESHOLD) {
+          // Bar fills this row entirely — use full block
           line += this.theme.fg("accent", "█".repeat(colW));
         } else if (barH > row) {
-          line += this.theme.fg("accent", "▌".repeat(colW));
+          // Bar partially fills this row — use half block
+          line += this.theme.fg("accent", "▄".repeat(colW));
         } else {
+          // No bar at this row
           line += " ".repeat(colW);
         }
         line += " ".repeat(BAR_GAP);
