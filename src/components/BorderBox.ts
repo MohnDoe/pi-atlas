@@ -7,6 +7,8 @@ export interface BorderBoxOptions {
   footer?: string;
   rounded?: boolean;
   color?: ThemeColor;
+  paddingX?: number;
+  paddingY?: number;
 }
 
 /** Truncate a string to fit maxLen visible chars, appending "…" if needed. */
@@ -61,6 +63,8 @@ export class BorderBox implements Component {
   private readonly title?: string;
   private readonly footer?: string;
   private readonly color: ThemeColor = "border";
+  private readonly paddingX: number = 0;
+  private readonly paddingY: number = 0;
 
   constructor(
     opts: BorderBoxOptions,
@@ -71,13 +75,16 @@ export class BorderBox implements Component {
     this.title = opts.title;
     this.footer = opts.footer;
     this.color = opts.color || this.color;
+    this.paddingX = opts.paddingX ?? 0;
+    this.paddingY = opts.paddingY ?? 0;
   }
 
   render(width: number): string[] {
     if (this.cache && this.cache.width === width) return this.cache.lines;
 
     const innerWidth = Math.max(1, width - 2);
-    const childLines = this.child.render(innerWidth);
+    const childInnerWidth = Math.max(1, innerWidth - 2 * this.paddingX);
+    const childLines = this.child.render(childInnerWidth);
 
     const tl = this.rounded ? "╭" : "┌";
     const tr = this.rounded ? "╮" : "┐";
@@ -101,13 +108,37 @@ export class BorderBox implements Component {
       }),
     );
 
+    // Shared helper for bordered lines (blank or content)
+    const borderedLine = (inner: string): string => {
+      return padLine(
+        this.theme.fg(this.color, l) + inner + this.theme.fg(this.color, r),
+        width,
+      );
+    };
+
+    // Y-padding blank line (uniform fill)
+    const blankInner = " ".repeat(innerWidth);
+
+    // PaddingY top (only when child has content)
+    if (this.paddingY > 0 && childLines.length > 0) {
+      for (let i = 0; i < this.paddingY; i++) {
+        lines.push(borderedLine(blankInner));
+      }
+    }
+
     // Content lines
     for (const line of childLines) {
-      const padNeeded = Math.max(0, innerWidth - visibleWidth(line));
-      const padded = line + " ".repeat(padNeeded);
-      const lineWithLRBorders =
-        this.theme.fg(this.color, l) + padded + this.theme.fg(this.color, r);
-      lines.push(padLine(lineWithLRBorders, width));
+      const childPad = Math.max(0, childInnerWidth - visibleWidth(line));
+      const padded =
+        " ".repeat(this.paddingX) + line + " ".repeat(childPad + this.paddingX);
+      lines.push(borderedLine(padded));
+    }
+
+    // PaddingY bottom (only when child has content)
+    if (this.paddingY > 0 && childLines.length > 0) {
+      for (let i = 0; i < this.paddingY; i++) {
+        lines.push(borderedLine(blankInner));
+      }
     }
 
     // Bottom border (with optional footer)
