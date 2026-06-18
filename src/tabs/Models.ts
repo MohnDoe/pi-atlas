@@ -43,8 +43,8 @@ export class Models extends Container {
       }
       return [
         cell.marquee(formatModelName(m.model), this.tui),
-        cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), "transparent"),
         cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
+        cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), "transparent"),
         cell.text(this.theme.fg("muted", formatNumber(m.calls))),
         cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
       ];
@@ -59,8 +59,8 @@ export class Models extends Container {
           {
             columns: [
               { header: cell.header("Model"), width: "fill" },
-              { header: cell.header("Cost %"), width: 32 },
               { header: cell.header("Provider"), width: 16 },
+              { header: cell.header("Cost %"), width: 32 },
               { header: cell.header("Calls"), width: 10 },
               { header: cell.header("Cost"), width: 12 },
             ],
