@@ -3,7 +3,7 @@ import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 
 interface Label {
   text: string;
-  color: ThemeColor;
+  color?: ThemeColor;
 }
 
 interface Value {
@@ -24,7 +24,15 @@ export class StatCard implements Component {
     private theme: Theme,
   ) {
     this.box = new Box(1, 0);
-    this.box.addChild(new Text(this.theme.fg(params.label.color, params.label.text), 0, 0));
+    this.box.addChild(
+      new Text(
+        params.label.color
+          ? this.theme.fg(params.label.color, params.label.text)
+          : params.label.text,
+        0,
+        0,
+      ),
+    );
     this.box.addChild(new Text(this.theme.fg(params.value.color, params.value.text), 0, 0));
   }
 

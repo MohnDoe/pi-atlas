@@ -34,7 +34,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Total cost",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatCost(kpis.totalCost)),
@@ -54,7 +53,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Sessions",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(kpis.sessionCount)),
@@ -74,7 +72,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Messages",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(kpis.totalMessages)),
@@ -100,7 +97,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Active days",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(kpis.daysActive)),
@@ -120,7 +116,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Avg/Day",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatCost(kpis.avgCostPerDay)),
@@ -140,7 +135,6 @@ export class KpiCards implements Component {
               {
                 label: {
                   text: "Tokens",
-                  color: "text",
                 },
                 value: {
                   text: this.theme.bold(formatNumber(kpis.totalTokens)),
