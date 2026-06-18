@@ -58,9 +58,9 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Model"), width: "fill" },
+              { header: cell.header("Model"), width: 32 },
               { header: cell.header("Provider"), width: 16 },
-              { header: cell.header("Cost %"), width: 32 },
+              { header: cell.header("Cost %"), width: "fill" },
               { header: cell.header("Calls"), width: 10 },
               { header: cell.header("Cost"), width: 12 },
             ],
