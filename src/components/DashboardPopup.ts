@@ -16,6 +16,7 @@ export class DashboardPopup implements Component {
         title: theme.bold("Pi Usage") + " " + theme.fg("muted", "v0.1"),
         child: dashboard,
         color: "text",
+        paddingX: 1,
       },
       theme,
     );

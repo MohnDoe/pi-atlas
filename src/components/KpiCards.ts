@@ -30,6 +30,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {
@@ -49,6 +50,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {
@@ -68,6 +70,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {
@@ -93,6 +96,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {
@@ -112,6 +116,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {
@@ -131,6 +136,7 @@ export class KpiCards implements Component {
           {
             rounded: false,
             color: "borderMuted",
+            paddingX: 1,
             child: new StatCard(
               {
                 label: {

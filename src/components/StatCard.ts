@@ -20,7 +20,7 @@ interface StatCardParams {
 
 export class StatCard implements Component {
   private box: Box;
-  private DEFAULT_PADDING_X = 1;
+  private DEFAULT_PADDING_X = 0;
   private DEFAULT_PADDING_Y = 0;
 
   constructor(
