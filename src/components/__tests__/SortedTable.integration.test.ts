@@ -5,15 +5,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
 import { Dashboard } from "../Dashboard";
+import { SortedTable } from "../SortedTable";
+import { allRanges, mapAllSummaries } from "./Dashboard.test";
+import { StatsSummary, TimeRange } from "../../types";
 
+const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();
 
 const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 describe("Dashboard → Models → SortedTable arrow key integration", () => {
-  /** Check if any line contains "▶" and a model name substring. */
+  /** Check if any line contains cursor and a model name substring. */
   function cursorOnModel(lines: string[], model: string): boolean {
-    return lines.some((l) => l.includes("▶") && l.includes(model));
+    return lines.some((l) => l.includes(CURSOR) && l.includes(model));
   }
 
   it("initial cursor on first model", () => {
@@ -25,8 +29,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     // Navigate to Models tab
@@ -49,8 +56,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -75,8 +85,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -107,15 +120,19 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
         { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
       ],
     };
-    const dash = new Dashboard(
-      [summary1d, summaryAll, summaryAll, summaryAll],
-      makeTheme(), false, null, mockTui,
-    );
+
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", summary1d],
+      ["7d", summaryAll],
+      ["30d", summaryAll],
+      ["All", summaryAll],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Models, switch to 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("r");      // All → 1d
+    dash.handleInput("r"); // All → 1d
     let lines = dash.render(80);
     // 1d: only Alpha Model
     expect(cursorOnModel(lines, "Alpha")).toBe(true);
@@ -148,10 +165,10 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       vi.useRealTimers();
     });
 
-    /** Extract the full visible text of the focused (▶) row. */
+    /** Extract the full visible text of the focused row. */
     function focusedRowText(lines: string[]): string {
       for (const line of lines) {
-        if (line.includes("▶")) {
+        if (line.includes(CURSOR)) {
           return strip(line);
         }
       }
@@ -163,13 +180,14 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       const longModel = "A-Very-Long-Model-Name-That-Overflows-And-Should-Scroll";
       const summary = {
         ...makeSummary(),
-        models: [
-          { model: longModel, cost: 10, calls: 100, provider: "p1" },
-        ],
+        models: [{ model: longModel, cost: 10, calls: 100, provider: "p1" }],
       };
       const dash = new Dashboard(
-        [summary, summary, summary, summary],
-        makeTheme(), false, null, mockTui,
+        mapAllSummaries(allRanges, summary),
+        makeTheme(),
+        false,
+        null,
+        mockTui,
       );
 
       // Navigate to Models tab

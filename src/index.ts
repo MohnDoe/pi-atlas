@@ -72,7 +72,7 @@ export default function (pi: ExtensionAPI) {
 
       // Phase 2: Show dashboard (handles empty state internally)
       const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-      const summaries = ranges.map((r) => summarize(days, r));
+      const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const dashboard = new Dashboard(summaries, theme, usePopup, updateLabel, tui, () =>

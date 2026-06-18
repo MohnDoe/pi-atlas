@@ -4,6 +4,7 @@ import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { cell } from "../cells";
 import { ColumnDef, SortedTable, type SortConfig } from "../SortedTable";
 
+const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();
 
 describe("SortedTable", () => {
@@ -418,7 +419,7 @@ describe("SortedTable", () => {
 
       // Default: first row focused
       let lines = table.render(80);
-      expect(lines[1].startsWith("▶ ")).toBe(true);
+      expect(lines[1].startsWith(CURSOR + " ")).toBe(true);
       expect(lines[2].startsWith("  ")).toBe(true);
       expect(lines[3].startsWith("  ")).toBe(true);
 
@@ -426,7 +427,7 @@ describe("SortedTable", () => {
       table.handleInput("\x1b[B");
       lines = table.render(80);
       expect(lines[1].startsWith("  ")).toBe(true);
-      expect(lines[2].startsWith("▶ ")).toBe(true);
+      expect(lines[2].startsWith(CURSOR + " ")).toBe(true);
       expect(lines[3].startsWith("  ")).toBe(true);
     });
 
@@ -436,7 +437,7 @@ describe("SortedTable", () => {
 
       // No cursor prefix on any row
       for (const line of lines) {
-        expect(line.startsWith("▶ ")).toBe(false);
+        expect(line.startsWith(CURSOR + " ")).toBe(false);
       }
       // Header should not be padded either
       expect(lines[0].startsWith("  ")).toBe(false);
@@ -473,12 +474,12 @@ describe("SortedTable", () => {
 
       // tick=0, offset=0 → "Hello" (first 5 chars)
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ Hello");
+      expect(strip(lines[1])).toContain(`${CURSOR} Hello`);
 
       // Advance 150ms = 1 timer tick → offset=1 → "ello "
       vi.advanceTimersByTime(150);
       lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ ello");
+      expect(strip(lines[1])).toContain(`${CURSOR} ello`);
     });
 
     it("wraps around when reaching end of content", () => {
@@ -490,13 +491,13 @@ describe("SortedTable", () => {
 
       // tick=0, offset=0 → "ABC"
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ ABC");
+      expect(strip(lines[1])).toContain(`${CURSOR} ABC`);
 
       // Advance 600ms = 4 timer ticks → offset=4
       // With 6 chars + 5-space gap = 11 virtual chars, offset=4 → "EF " (3 chars for width 3)
       vi.advanceTimersByTime(600);
       lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ EF");
+      expect(strip(lines[1])).toContain(`${CURSOR} EF`);
     });
 
     it("resets marquee when cursor moves to a different row", () => {
@@ -510,14 +511,14 @@ describe("SortedTable", () => {
       table.render(20);
       vi.advanceTimersByTime(150); // tick=3, offset=1 → "ello "
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ ello");
+      expect(strip(lines[1])).toContain(`${CURSOR} ello`);
 
       // Move to row 1 — tick resets (cells call invalidate on handleInput)
       table.handleInput("\x1b[B");
       vi.advanceTimersByTime(0);
       lines = table.render(20);
       // Row 1 is now focused, marquee starts from beginning
-      expect(strip(lines[2])).toContain("▶ Anoth");
+      expect(strip(lines[2])).toContain(`${CURSOR} Anoth`);
     });
 
     it("non-marquee columns truncate on focused row while marquee columns scroll", () => {
@@ -531,14 +532,14 @@ describe("SortedTable", () => {
       // tick=0: marquee shows "ABCDEFGHIJ"
       let lines = table.render(30);
       const r1 = strip(lines[1]);
-      expect(r1).toContain("▶ ABCDEFGHIJ");
+      expect(r1).toContain(`${CURSOR} ABCDEFGHIJ`);
       expect(r1).toContain("XYZ");
 
       // Advance 150ms = 1 tick → offset=1 → "BCDEFGHIJK"
       vi.advanceTimersByTime(150);
       lines = table.render(30);
       const r1b = strip(lines[1]);
-      expect(r1b).toContain("▶ BCDEFGHIJK");
+      expect(r1b).toContain(`${CURSOR} BCDEFGHIJK`);
       // Fixed column content never changes
       expect(r1b).toContain("XYZ");
       // The marquee column changed
@@ -554,7 +555,7 @@ describe("SortedTable", () => {
 
       // Focused row 0 — marquee starts at "Longi" (no ellipsis when focused)
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ Longi");
+      expect(strip(lines[1])).toContain(`${CURSOR} Longi`);
 
       // Move cursor to row 1 — row 0 becomes unfocused, shows ellipsis
       table.handleInput("\x1b[B");
@@ -565,13 +566,13 @@ describe("SortedTable", () => {
       expect(unfocused).not.toContain("ongis"); // would appear if marquee was active
 
       // Focused row 1 shows "Long " at offset 0 (exactly 5 chars)
-      expect(strip(lines[2])).toContain("▶ Long");
+      expect(strip(lines[2])).toContain(`${CURSOR} Long`);
 
       // Advance ticks — unfocused row stays same (with ellipsis), focused advances
       vi.advanceTimersByTime(300); // 2 ticks, offset=2
       lines = table.render(20);
       expect(strip(lines[1])).toContain("  Long…"); // unchanged
-      expect(strip(lines[2])).toContain("▶ ng T"); // focused advanced
+      expect(strip(lines[2])).toContain(`${CURSOR} ng T`); // focused advanced
     });
 
     it("starts marquee after resize from wide to narrow", () => {
@@ -590,12 +591,12 @@ describe("SortedTable", () => {
       // the render width changes. Since we create cells with marquee,
       // they manage their own lifecycle.
       lines = table.render(15);
-      expect(strip(lines[1])).toContain("▶ Hello World!!");
+      expect(strip(lines[1])).toContain(`${CURSOR} Hello World!!`);
 
       // Advance 150ms = 1 tick → offset=1 → "ello World!!!!"
       vi.advanceTimersByTime(150);
       lines = table.render(15);
-      expect(strip(lines[1])).toContain("▶ ello World!!!");
+      expect(strip(lines[1])).toContain(`${CURSOR} ello World!!!`);
     });
 
     it("clears marquee timers on invalidate", () => {
@@ -615,7 +616,7 @@ describe("SortedTable", () => {
 
       // Re-render works cleanly (no stale state)
       const lines = table.render(20);
-      expect(strip(lines[1])).toContain("▶ Hello");
+      expect(strip(lines[1])).toContain(`${CURSOR} Hello`);
     });
   });
 });
