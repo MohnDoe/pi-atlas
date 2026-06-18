@@ -97,6 +97,80 @@ describe("BarChart", () => {
     expect(visible).toContain("Apr");
   });
 
+  it("y-axis shows cost labels with separator", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    const text = lines.join("\n");
+    // Y-axis has $ labels
+    expect(text).toContain("$0.00");
+    expect(text).toContain("$3.00");
+    // Y-axis separator present
+    expect(text).toContain("│");
+  });
+
+  it("y-axis auto-dense: every row when barAreaH ≤ 6", () => {
+    // barAreaH = maxHeight - 2 = 5, so step=1
+    const chart = new BarChart(dailySpend, "7d", 7, makeTheme());
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1); // exclude x-axis label line
+    // All bar rows should have a dot separator or label content
+    for (const line of barLines) {
+      expect(line).toContain("│");
+    }
+  });
+
+  it("y-axis auto-dense: every-other row when barAreaH ≤ 14", () => {
+    // barAreaH = maxHeight - 2 = 10, so step=2
+    const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1);
+    // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
+    // But bottom row 0 always has label
+    expect(barLines[barLines.length - 1]).toContain("$0.00");
+    expect(barLines[0]).not.toMatch(/\$\d/); // top row no label
+  });
+
+  it("y-axis labels are right-aligned", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    const text = lines.join("\n");
+    // Labels should have a space before the separator
+    expect(text).toMatch(/  │/);
+  });
+
+  it("still renders within width with y-axis reserved", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(40);
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it("yAxisSpacing overrides auto-density", () => {
+    // barAreaH = 15-2 = 13, auto would be step=2 (every other)
+    // but yAxisSpacing=1 forces every row
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme(), 1);
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1);
+    // Every bar row should have $ labels (step=1)
+    for (const line of barLines) {
+      expect(line).toContain("$");
+    }
+  });
+
+  it("x-axis has bottom └ corner and ─ filler between labels", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    // Last line is the x-axis label row
+    const labelLine = lines[lines.length - 1];
+    const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
+    // └ at the y-axis position (corner)
+    expect(visible).toContain("└");
+    // ─ extends between labels (Mon followed by space+─ before next label)
+    expect(visible).toContain("Mon ─");
+    expect(visible).toContain("Tue ─");
+  });
+
   it("invalidates cache", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     chart.render(80);

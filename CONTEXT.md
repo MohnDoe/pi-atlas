@@ -52,7 +52,7 @@ A compact stat display on the Overview tab showing a single metric: muted label 
 _Avoid_: Metric tile, stat box
 
 **Bar Chart**:
-An ASCII-art visualization of daily spend on the Overview tab. Vertical bars using block characters (█▌), auto-scaled so the tallest day fills the available height. Other bars are proportional. X-axis labels adapt to the selected Time Range: day-of-week for 7d, calendar day every 5th entry for 30d, month labels when month changes for All.
+An ASCII-art visualization of daily spend on the Overview tab. Vertical bars using block characters (█▌), auto-scaled so the tallest day fills the available height. Other bars are proportional. Y-axis labels show formatted cost values on the left, separated by a \`│\` line. Labels are auto-spaced based on chart height (every row if ≤6, every other if ≤14, every 3rd otherwise) and always include a $0.00 baseline. X-axis labels adapt to the selected Time Range: day-of-week for 7d, calendar day every 5th entry for 30d, month labels when month changes for All.
 _Avoid_: Sparkline, histogram
 
 **SortedTable**:
