@@ -5,7 +5,7 @@ import { cell, type CellComponent } from "../components/cells.js";
 import { SortedTable } from "../components/SortedTable.js";
 import { GridRow } from "../components/shared/GridRow.js";
 import { StatCard } from "../components/StatCard.js";
-import { formatNumber } from "../format";
+import { formatNumber, stripAnsi } from "../format";
 import type { StatsSummary, ToolStat } from "../types";
 
 interface TokenUsageStat {
@@ -17,17 +17,6 @@ interface TokenUsageStat {
 }
 
 const TOOL_NAME_MAX_LENGTH = 120;
-
-/** Strip ANSI escape sequences and control characters from a string. */
-function stripAnsi(text: string): string {
-  // First strip ANSI sequences
-  let clean = text.replace(
-    /[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g,
-    "",
-  );
-  // Then strip control characters that can break terminal rendering
-  return clean.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
-}
 
 const EMPTY_MESSAGE = "No tools data for this time range";
 
