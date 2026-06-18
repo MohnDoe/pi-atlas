@@ -27,6 +27,32 @@ const DENSE_MAX_HEIGHT = 6;
 /** Auto-density: every other row when barAreaH ≤ this. Otherwise every 3rd. */
 const SPREAD_MAX_HEIGHT = 14;
 
+/** Minimum number of bars — prevents degenerate chart at tiny widths. */
+const MIN_BARS = 2;
+
+/**
+ * Aggregate data into at most `target` buckets by grouping consecutive days.
+ * Costs are summed per bucket; date is set to the first day in each group.
+ */
+function aggregateDays(data: DaySpend[], target: number): DaySpend[] {
+  if (data.length <= target) return data;
+  const n = data.length;
+  const q = Math.floor(n / target);
+  const r = n % target;
+  const result: DaySpend[] = [];
+  let idx = 0;
+  for (let i = 0; i < target; i++) {
+    const size = i < r ? q + 1 : q;
+    let cost = 0;
+    for (let j = 0; j < size; j++) {
+      cost += data[idx + j].cost;
+    }
+    result.push({ date: data[idx].date, cost });
+    idx += size;
+  }
+  return result;
+}
+
 export class BarChart implements Component {
   private data: DaySpend[];
   private range: TimeRange;
@@ -68,8 +94,13 @@ export class BarChart implements Component {
 
     // Available width for bars
     const availW = width - yAxisW;
-    const totalGaps = this.data.length * BAR_GAP;
-    const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / this.data.length));
+
+    // Downsample if too many bars for the available width
+    const maxBars = Math.max(MIN_BARS, Math.floor(availW / (MIN_COL_WIDTH + BAR_GAP)));
+    const plotData = this.data.length > maxBars ? aggregateDays(this.data, maxBars) : this.data;
+
+    const totalGaps = plotData.length * BAR_GAP;
+    const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / plotData.length));
 
     const lines: string[] = [];
 
@@ -86,7 +117,7 @@ export class BarChart implements Component {
         line += " ".repeat(yLabelPad) + Y_AXIS_SEPARATOR;
       }
 
-      for (const d of this.data) {
+      for (const d of plotData) {
         // Normalised bar height on the 0..barAreaH scale
         const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
         if (barH > row + HALF_BLOCK_THRESHOLD) {
@@ -106,15 +137,16 @@ export class BarChart implements Component {
 
     // X-axis labels with y-axis bottom corner
     let labelLine = " ".repeat(yLabelPad + 1) + "└─";
-    for (let i = 0; i < this.data.length; i++) {
-      const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
+    for (let i = 0; i < plotData.length; i++) {
+      const lbl = formatLabel(plotData[i].date, i, plotData, this.range);
       const cellW = colW + BAR_GAP;
-      if (lbl.length > 0) {
+      // Skip label if it doesn't fit its cell (prevents overflow)
+      if (lbl.length > 0 && lbl.length + 2 <= cellW) {
         // Label + space + ─ filler to maintain bar alignment
-        const fill = Math.max(0, cellW - lbl.length - 2);
+        const fill = cellW - lbl.length - 2;
         labelLine += " " + lbl + " " + "─".repeat(fill);
       } else {
-        // Empty label: continuous ─ baseline
+        // Empty or too-long label: continuous ─ baseline
         labelLine += "─".repeat(cellW);
       }
     }
