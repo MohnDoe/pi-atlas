@@ -1,4 +1,12 @@
 import { readFileSync } from "node:fs";
+
+/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
+function sanitizeToolName(name: string): string {
+  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
+  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
+  return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+}
+
 import type {
   AssistantMessageBody,
   DayAgg,
@@ -109,7 +117,7 @@ export function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
   const day = emptyDay("");
   day.toolResults = 1;
   if (msg.toolName) {
-    day.toolCount[msg.toolName] = 1;
+    day.toolCount[sanitizeToolName(msg.toolName)] = 1;
   }
   return day;
 }
@@ -147,7 +155,8 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall") {
-        day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
+        const sanitized = sanitizeToolName(block.name);
+        day.toolCount[sanitized] = (day.toolCount[sanitized] ?? 0) + 1;
 
         if (block.name === "edit" || block.name === "write") {
           mergeDay(

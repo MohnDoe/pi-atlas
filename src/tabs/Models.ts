@@ -43,16 +43,10 @@ export class Models extends Container {
       }
       return [
         cell.marquee(formatModelName(m.model), this.tui),
-        cell.text(this.theme.fg("dim", m.provider ?? "Unknown")),
+        cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
+        cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), "transparent"),
         cell.text(this.theme.fg("muted", formatNumber(m.calls))),
-        cell.text(
-          m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free"),
-        ),
-        m.cost > 0
-          ? cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), (s) =>
-              this.theme.fg("dim", s),
-            )
-          : cell.text(""),
+        cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
       ];
     });
   }
@@ -64,15 +58,15 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Model"), width: "fill" },
+              { header: cell.header("Model"), width: 32 },
               { header: cell.header("Provider"), width: 16 },
-              { header: cell.header("Calls"), width: 6 },
-              { header: cell.header("Cost"), width: 7 },
-              { header: cell.header("Cost %"), width: 20 },
+              { header: cell.header("Cost %"), width: "fill" },
+              { header: cell.header("Calls"), width: 10 },
+              { header: cell.header("Cost"), width: 12 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,
-            sort: { column: 3, direction: "desc" },
+            sort: { column: 4, direction: "desc" },
             tui: this.tui,
           },
           this.theme,

@@ -111,6 +111,21 @@ export class SortedTable implements Component {
       resolved[fillIdx] = Math.max(1, remaining);
     }
 
+    // Pass 4: overflow — if total > contentWidth, shrink non-fill proportionally
+    const totalAllocated = resolved.reduce((sum, w) => sum + w, 0);
+    if (totalAllocated > contentWidth) {
+      const scale = contentWidth / totalAllocated;
+      let nonFillSum = 0;
+      for (let i = 0; i < resolved.length; i++) {
+        if (i === fillIdx) continue;
+        resolved[i] = Math.max(1, Math.floor(resolved[i] * scale));
+        nonFillSum += resolved[i];
+      }
+      if (fillIdx >= 0) {
+        resolved[fillIdx] = Math.max(1, contentWidth - nonFillSum);
+      }
+    }
+
     return resolved;
   }
 

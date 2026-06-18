@@ -73,7 +73,7 @@ class BarCell implements CellComponent {
   constructor(
     private fillPct: number,
     private filledStyle: (text: string) => string,
-    private emptyStyle: (text: string) => string,
+    private emptyStyle: "transparent" | ((text: string) => string),
   ) {}
 
   render(width: number, _state?: CellState): string {
@@ -101,7 +101,7 @@ export const cell = {
   bar(
     fillPct: number,
     filledStyle: (text: string) => string,
-    emptyStyle: (text: string) => string,
+    emptyStyle: "transparent" | ((text: string) => string),
   ): CellComponent {
     return new BarCell(fillPct, filledStyle, emptyStyle);
   },

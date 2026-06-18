@@ -34,9 +34,9 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     dash.handleInput("\x1b[C"); // → Models
     const lines = dash.render(80);
 
-    // formatModelName: "alpha-model" → "Alpha Model"
-    expect(cursorOnModel(lines, "Alpha Model")).toBe(true);
-    expect(cursorOnModel(lines, "Beta Model")).toBe(false);
+    // Model column is 6-char fill at width 80 — only first word visible
+    expect(cursorOnModel(lines, "Alpha")).toBe(true);
+    expect(cursorOnModel(lines, "Beta")).toBe(false);
   });
 
   it("down arrow moves cursor to next row via Dashboard dispatch", () => {
@@ -61,8 +61,8 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     dash.handleInput("\x1b[B");
     const lines = dash.render(80);
     // Cursor moves from row 0 to row 1
-    expect(cursorOnModel(lines, "Beta Model")).toBe(true);
-    expect(cursorOnModel(lines, "Alpha Model")).toBe(false);
+    expect(cursorOnModel(lines, "Beta")).toBe(true);
+    expect(cursorOnModel(lines, "Alpha")).toBe(false);
   });
 
   it("up arrow moves cursor up", () => {
@@ -89,9 +89,9 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     dash.handleInput("\x1b[A");
     const lines = dash.render(80);
 
-    expect(cursorOnModel(lines, "Beta Model")).toBe(true);
-    expect(cursorOnModel(lines, "Alpha Model")).toBe(false);
-    expect(cursorOnModel(lines, "Gamma Model")).toBe(false);
+    expect(cursorOnModel(lines, "Beta")).toBe(true);
+    expect(cursorOnModel(lines, "Alpha")).toBe(false);
+    expect(cursorOnModel(lines, "Gamma")).toBe(false);
   });
 
   it("arrow keys work across range switches", () => {
@@ -118,7 +118,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     dash.handleInput("r");      // All → 1d
     let lines = dash.render(80);
     // 1d: only Alpha Model
-    expect(cursorOnModel(lines, "Alpha Model")).toBe(true);
+    expect(cursorOnModel(lines, "Alpha")).toBe(true);
 
     // Switch back to All
     // Current range index = 0 (1d), need to cycle to 3 (All)
@@ -136,7 +136,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     dash.handleInput("\x1b[B");
     lines = dash.render(80);
 
-    expect(cursorOnModel(lines, "Gamma Model")).toBe(true);
+    expect(cursorOnModel(lines, "Gamma")).toBe(true);
   });
 
   describe("marquee animation persists across render cycles", () => {
@@ -178,8 +178,9 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
 
       // First render — marquee starts at offset 0
       let lines = dash.render(80);
+      // Model column is 6-char fill — marquee starts at offset 0
       const render1 = focusedRowText(lines);
-      expect(render1).toContain("A Very Long");
+      expect(render1).toContain("A Very");
 
       // Advance 150ms = 1 timer tick → marquee text should scroll
       vi.advanceTimersByTime(150);

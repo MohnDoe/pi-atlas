@@ -84,6 +84,19 @@ describe("parseToolResultMessage", () => {
     expect(day.toolResults).toBe(1);
     expect(day.toolCount).toEqual({});
   });
+
+  it("strips control characters from toolName", () => {
+    const msg: ToolResultMessageBody = {
+      role: "toolResult",
+      toolName: "ls -la agent/\n</parameter",
+      toolCallId: "c1",
+    };
+    const day = parseToolResultMessage(msg);
+    expect(day.toolResults).toBe(1);
+    // Newline and XML fragments removed — only printable chars survive
+    expect(Object.keys(day.toolCount)[0]).toBe("ls -la agent/</parameter");
+    expect(day.toolCount["ls -la agent/</parameter"]).toBe(1);
+  });
 });
 
 describe("detectLanguage", () => {
@@ -215,6 +228,24 @@ describe("parseAssistantMessage", () => {
     const day = parseAssistantMessage(msg);
     expect(day.toolCount["read"]).toBe(2);
     expect(day.toolCount["bash"]).toBe(1);
+  });
+
+  it("strips control characters from tool call names", () => {
+    const msg: AssistantMessageBody = {
+      role: "assistant",
+      content: [
+        {
+          type: "toolCall",
+          id: "c1",
+          name: "ls -la agent/\n</parameter",
+          arguments: { command: "ls -la agent/" },
+        },
+      ],
+    };
+    const day = parseAssistantMessage(msg);
+    // Names with newlines are sanitized — only printable chars survive
+    expect(day.toolCount["ls -la agent/</parameter"]).toBe(1);
+    expect(day.toolCount["ls -la agent/\n</parameter"]).toBeUndefined();
   });
 
   it("detects language from edit/write tool calls", () => {

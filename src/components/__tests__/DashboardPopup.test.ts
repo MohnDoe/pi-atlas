@@ -165,7 +165,8 @@ describe("DashboardPopup", () => {
     const lines = popup.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Sonnet 4");
+    // Model column narrow in popup — only prefix visible
+    expect(text).toContain("Clau");
     expect(text).toContain("12.34");
     expect(text).toContain("150");
   });
@@ -188,7 +189,7 @@ describe("DashboardPopup", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Projects");
-    expect(text).toContain("by cost");
+    expect(text).toContain("$15.50");
   });
 
   it("shows empty state through popup when no session data", () => {
