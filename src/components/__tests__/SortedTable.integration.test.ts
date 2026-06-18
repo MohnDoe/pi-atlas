@@ -8,6 +8,24 @@ import { Dashboard } from "../Dashboard";
 
 const mockTui = makeMockTUI();
 
+const allRanges = ["1d", "7d", "30d", "All"] as const;
+
+function mapAll(summary: ReturnType<typeof makeSummary>) {
+  return new Map(allRanges.map((r) => [r, { ...summary }]));
+}
+
+function mapMixed(
+  summary1d: ReturnType<typeof makeSummary>,
+  summaryOther: ReturnType<typeof makeSummary>,
+) {
+  return new Map([
+    ["1d", summary1d],
+    ["7d", summaryOther],
+    ["30d", summaryOther],
+    ["All", summaryOther],
+  ]);
+}
+
 const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 describe("Dashboard → Models → SortedTable arrow key integration", () => {
@@ -25,7 +43,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
+      mapAll(summary),
       makeTheme(), false, null, mockTui,
     );
 
@@ -49,7 +67,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
+      mapAll(summary),
       makeTheme(), false, null, mockTui,
     );
 
@@ -75,7 +93,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary, summary, summary, summary],
+      mapAll(summary),
       makeTheme(), false, null, mockTui,
     );
 
@@ -108,7 +126,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      [summary1d, summaryAll, summaryAll, summaryAll],
+      mapMixed(summary1d, summaryAll),
       makeTheme(), false, null, mockTui,
     );
 
@@ -168,7 +186,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
         ],
       };
       const dash = new Dashboard(
-        [summary, summary, summary, summary],
+        mapAll(summary),
         makeTheme(), false, null, mockTui,
       );
 

@@ -17,7 +17,7 @@ export class Overview implements Component {
   constructor(
     kpis: KpiData,
     dailySpend: DaySpend[],
-    rangeLabel: string,
+    rangeKey: string,
     theme: Theme,
     maxHeight: number,
   ) {
@@ -26,7 +26,7 @@ export class Overview implements Component {
       BAR_CHART_MAX_HEIGHT,
       maxHeight - KPI_CARDS_HEIGHT - SPACER_HEIGHT,
     );
-    this.barChart = new BarChart(dailySpend, rangeLabel, chartHeight, theme);
+    this.barChart = new BarChart(dailySpend, rangeKey, chartHeight, theme);
   }
 
   render(width: number): string[] {

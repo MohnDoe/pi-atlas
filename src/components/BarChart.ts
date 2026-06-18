@@ -149,7 +149,6 @@ function computeLabelWidth(maxCost: number, barAreaH: number, step: number): num
 
 function formatLabel(dateStr: string, index: number, data: DaySpend[], range: string): string {
   const d = new Date(dateStr + "T00:00:00Z");
-  //FIX: fix range text
   if (range === "1d" || range === "7d") {
     return DAY_NAMES[d.getUTCDay()];
   }

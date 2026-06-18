@@ -86,7 +86,7 @@ describe("JSONL → Dashboard", () => {
 
     // Summarize for all ranges
     const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-    const summaries = ranges.map((r) => summarize(days, r));
+    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     // Render dashboard
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
@@ -153,7 +153,7 @@ describe("JSONL → Dashboard", () => {
     const map = parseFile(filePath);
     const days = daysFromMap(map);
     const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-    const summaries = ranges.map((r) => summarize(days, r));
+    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     // Navigate to Languages tab (index 1)

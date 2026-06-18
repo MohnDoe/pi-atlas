@@ -8,7 +8,7 @@ import {
 } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { StatsSummary } from "../types";
-import { RangeSelector } from "./RangeSelector";
+import { RangeSelector, type RangeOption } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 import { Header } from "./Header";
 import { Overview } from "../tabs/Overview";
@@ -27,13 +27,13 @@ export class Dashboard extends Container {
   private rangeSelector: RangeSelector;
   private onClose: (() => void) | null = null;
   private tabs: Component[] = [];
-  private rangeLabels: string[];
+  private rangeOptions: RangeOption[];
   private langPalette: ColorPalette;
   private modelPalette: ColorPalette;
   private contentHeight = 0;
 
   constructor(
-    private summaries: StatsSummary[],
+    private summaries: Map<string, StatsSummary>,
     private theme: Theme,
     private usePopup: boolean,
     private updateLabel: string | null,
@@ -45,8 +45,13 @@ export class Dashboard extends Container {
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Usage"], theme, 0);
-    this.rangeLabels = ["Today", "Last 7 days", "Last 30 days", "All time"];
-    this.rangeSelector = new RangeSelector(theme, this.rangeLabels, this.rangeLabels.length - 1);
+    this.rangeOptions = [
+      { label: "Today", value: "1d" },
+      { label: "Last 7 days", value: "7d" },
+      { label: "Last 30 days", value: "30d" },
+      { label: "All time", value: "All" },
+    ];
+    this.rangeSelector = new RangeSelector(theme, this.rangeOptions, this.rangeOptions.length - 1);
     this.header = new Header(this.theme, this.rangeSelector);
     this.contentHeight = this.computeContentHeight();
     this.buildTabs();
@@ -62,14 +67,13 @@ export class Dashboard extends Container {
   }
 
   private get currentSummary(): StatsSummary {
-    return (
-      this.summaries[this.rangeSelector.selectedIndex] ?? this.summaries[this.summaries.length - 1]
-    );
+    return this.summaries.get(this.rangeSelector.selectedValue) ?? this.summaries.get("All")!;
   }
 
   private buildTabs(): void {
     const contentHeight = this.contentHeight;
     const summary = this.currentSummary;
+    const rangeKey = this.rangeSelector.selectedValue;
 
     // Invalidate old tabs — cleans up marquee timers, caches, etc.
     for (const tab of this.tabs) {
@@ -85,9 +89,10 @@ export class Dashboard extends Container {
           totalTokens: summary.totalTokens,
           daysActive: summary.daysActive,
           avgCostPerDay: summary.avgCostPerDay,
+          todayCost: summary.todayCost,
         },
         summary.dailySpend,
-        this.rangeLabels[this.rangeSelector.selectedIndex],
+        rangeKey,
         this.theme,
         contentHeight,
       ),
@@ -118,7 +123,7 @@ export class Dashboard extends Container {
     this.addChild(this.tabBar);
     this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
 
-    const allEmpty = this.summaries.every((s) => s.sessionCount === 0);
+    const allEmpty = [...this.summaries.values()].every((s) => s.sessionCount === 0);
 
     if (allEmpty) {
       this.addChild(new Spacer(1));
@@ -168,7 +173,7 @@ export class Dashboard extends Container {
     // r key: cycle range with wrap-around
     if (data === "r") {
       this.rangeSelector.selectedIndex =
-        (this.rangeSelector.selectedIndex + 1) % this.rangeLabels.length;
+        (this.rangeSelector.selectedIndex + 1) % this.rangeOptions.length;
       this.buildTabs();
       this.invalidate();
       return;
