@@ -68,6 +68,25 @@ describe("Usage", () => {
     expect(text).toContain("No tools data for this time range");
   });
 
+  it("renders tool names with control characters as single lines", () => {
+    const dirtyTools: ToolStat[] = [
+      { tool: "ls -la agent/\n</parameter", count: 2 },
+      { tool: "bash", count: 100 },
+    ];
+    const tab = new Usage(dirtyTools, tokenUsage, makeTheme(), mockTui, 10);
+    const lines = tab.render(80);
+    // Every line should be a single-line render — no extra lines from \n
+    const text = lines.join("\n");
+    // Tool column is ~20 chars wide — the \n is stripped, leaving truncated "ls -la agent/</param…"
+    expect(text).not.toContain("agent/\n");
+    expect(text).toContain("bash");
+    // Verify no broken rows (each rendered line is a single table row)
+    for (const line of lines) {
+      // Each line should be a continuous visible string without embedded newlines
+      expect(line).not.toContain("\n");
+    }
+  });
+
   it("renders within width", () => {
     const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(50);
