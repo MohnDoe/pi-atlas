@@ -65,9 +65,6 @@ export class Usage extends Container {
     // Token section: title + stat cards
     const title = this.theme.bold("Tokens");
     const subtitle = this.theme.fg("muted", formatNumber(this.tokenUsage.total));
-    const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
-    this.addChild(new Text(title + gap + subtitle, 0, 0));
-
     const row = new GridRow(
       [
         new BorderBox(
@@ -149,7 +146,16 @@ export class Usage extends Container {
       ],
       [25, 25, 25, 25],
     );
-    this.addChild(row);
+    this.addChild(
+      new BorderBox(
+        {
+          title: title + " · " + subtitle,
+          child: row,
+          color: "border",
+        },
+        this.theme,
+      ),
+    );
 
     // Tool table section
     if (!this.isEmpty) {
