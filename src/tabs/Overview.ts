@@ -4,8 +4,9 @@ import { DaySpend } from "../types";
 import { BarChart } from "../components/BarChart";
 import { KpiCards, KpiData } from "../components/KpiCards";
 
-const KPI_CARDS_HEIGHT = 4; // 2 rows × 2 lines (label + value)
+const KPI_CARDS_HEIGHT = 4 * 2;
 const SPACER_HEIGHT = 1;
+const BAR_CHART_MAX_HEIGHT = 12;
 
 export class Overview implements Component {
   private kpiCards: KpiCards;
@@ -21,7 +22,10 @@ export class Overview implements Component {
     maxHeight: number,
   ) {
     this.kpiCards = new KpiCards(kpis, theme);
-    const chartHeight = maxHeight - KPI_CARDS_HEIGHT - SPACER_HEIGHT;
+    const chartHeight = Math.min(
+      BAR_CHART_MAX_HEIGHT,
+      maxHeight - KPI_CARDS_HEIGHT - SPACER_HEIGHT,
+    );
     this.barChart = new BarChart(dailySpend, rangeLabel, chartHeight, theme);
   }
 
