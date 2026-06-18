@@ -14,16 +14,23 @@ interface Value {
 interface StatCardParams {
   label: Label;
   value: Value;
+  paddingX?: number;
+  paddingY?: number;
 }
 
 export class StatCard implements Component {
   private box: Box;
+  private DEFAULT_PADDING_X = 1;
+  private DEFAULT_PADDING_Y = 0;
 
   constructor(
     params: StatCardParams,
     private theme: Theme,
   ) {
-    this.box = new Box(1, 0);
+    this.box = new Box(
+      params.paddingX || this.DEFAULT_PADDING_X,
+      params.paddingY || this.DEFAULT_PADDING_Y,
+    );
     this.box.addChild(
       new Text(
         params.label.color

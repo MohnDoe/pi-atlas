@@ -67,79 +67,60 @@ export class Usage extends Container {
     const subtitle = this.theme.fg("muted", formatNumber(this.tokenUsage.total));
     const row = new GridRow(
       [
-        new BorderBox(
+        new StatCard(
           {
-            rounded: false,
-            color: "borderMuted",
-            child: new StatCard(
-              {
-                label: {
-                  text: "Input",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(this.tokenUsage.input)),
-                  color: "accent",
-                },
-              },
-              this.theme,
-            ),
+            label: {
+              text: "Input",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.input)),
+              color: "accent",
+            },
+            paddingX: 1,
+            paddingY: 1,
           },
           this.theme,
         ),
-        new BorderBox(
+        new StatCard(
           {
-            rounded: false,
-            color: "borderMuted",
-            child: new StatCard(
-              {
-                label: {
-                  text: "Output",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(this.tokenUsage.output)),
-                  color: "accent",
-                },
-              },
-              this.theme,
-            ),
+            label: {
+              text: "Output",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.output)),
+              color: "accent",
+            },
+            paddingX: 1,
+            paddingY: 1,
+          },
+
+          this.theme,
+        ),
+        new StatCard(
+          {
+            label: {
+              text: "Cache Read",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.cacheRead)),
+              color: "accent",
+            },
+            paddingX: 1,
+            paddingY: 1,
           },
           this.theme,
         ),
-        new BorderBox(
+        new StatCard(
           {
-            rounded: false,
-            color: "borderMuted",
-            child: new StatCard(
-              {
-                label: {
-                  text: "Cache Read",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(this.tokenUsage.cacheRead)),
-                  color: "accent",
-                },
-              },
-              this.theme,
-            ),
-          },
-          this.theme,
-        ),
-        new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            child: new StatCard(
-              {
-                label: {
-                  text: "Cache Write",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(this.tokenUsage.cacheWrite)),
-                  color: "accent",
-                },
-              },
-              this.theme,
-            ),
+            label: {
+              text: "Cache Write",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.cacheWrite)),
+              color: "accent",
+            },
+            paddingX: 1,
+            paddingY: 1,
           },
           this.theme,
         ),
