@@ -1,6 +1,5 @@
 import { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import { ChalkInstance } from "chalk";
 
 export interface BorderBoxOptions {
   child: Component;
@@ -31,21 +30,25 @@ function borderLine(
   right: string,
   innerWidth: number,
   width: number,
+  borderColor: (s: string) => string = (s) => s,
   text?: string,
 ): string {
+  left = borderColor(left);
+  right = borderColor(right);
+  const border = borderColor("─");
   if (!text) {
-    return padLine(`${left}${"─".repeat(innerWidth)}${right}`, width);
+    return padLine(`${left}${border.repeat(innerWidth)}${right}`, width);
   }
 
-  const decor = `─ ${text} ─`;
+  const decor = `${border} ${text} ${border}`;
   const decorLen = visibleWidth(decor);
   const fill = Math.max(0, innerWidth - decorLen);
 
   const truncated = fill === 0 ? truncate(text, innerWidth - 4) : text;
-  const finalDecor = `─ ${truncated} ─`;
+  const finalDecor = `${border} ${truncated} ${border}`;
   const finalFill = Math.max(0, innerWidth - visibleWidth(finalDecor));
 
-  return padLine(`${left}${finalDecor}${"─".repeat(finalFill)}${right}`, width);
+  return padLine(`${left}${finalDecor}${border.repeat(finalFill)}${right}`, width);
 }
 
 export class BorderBox implements Component {
@@ -83,7 +86,9 @@ export class BorderBox implements Component {
     const lines: string[] = [];
 
     // Top border (with optional title)
-    lines.push(this.theme.fg(this.color, borderLine(tl, tr, innerWidth, width, this.title)));
+    lines.push(
+      borderLine(tl, tr, innerWidth, width, (s) => this.theme.fg(this.color, s), this.title),
+    );
 
     // Content lines
     for (const line of childLines) {
@@ -95,7 +100,9 @@ export class BorderBox implements Component {
     }
 
     // Bottom border (with optional footer)
-    lines.push(this.theme.fg(this.color, borderLine(bl, br, innerWidth, width, this.footer)));
+    lines.push(
+      borderLine(bl, br, innerWidth, width, (s) => this.theme.fg(this.color, s), this.footer),
+    );
 
     this.cache = { lines, width };
     return lines;
