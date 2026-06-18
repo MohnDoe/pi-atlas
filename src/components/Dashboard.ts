@@ -7,7 +7,7 @@ import {
   Text,
 } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { StatsSummary } from "../types";
+import { StatsSummary, type TimeRange } from "../types";
 import { RangeSelector, type RangeOption } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 import { Header } from "./Header";
@@ -33,7 +33,7 @@ export class Dashboard extends Container {
   private contentHeight = 0;
 
   constructor(
-    private summaries: Map<string, StatsSummary>,
+    private summaries: Map<TimeRange, StatsSummary>,
     private theme: Theme,
     private usePopup: boolean,
     private updateLabel: string | null,

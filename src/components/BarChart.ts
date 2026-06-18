@@ -1,6 +1,6 @@
 import { type Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { DaySpend } from "../types";
+import { DaySpend, type TimeRange } from "../types";
 import { MONTH_NAMES, formatCost } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -38,7 +38,7 @@ export class BarChart implements Component {
 
   constructor(
     data: DaySpend[],
-    range: string,
+    range: TimeRange,
     maxHeight: number,
     theme: Theme,
     yAxisSpacing?: number,
@@ -147,7 +147,7 @@ function computeLabelWidth(maxCost: number, barAreaH: number, step: number): num
   return maxW;
 }
 
-function formatLabel(dateStr: string, index: number, data: DaySpend[], range: string): string {
+function formatLabel(dateStr: string, index: number, data: DaySpend[], range: TimeRange): string {
   const d = new Date(dateStr + "T00:00:00Z");
   if (range === "1d" || range === "7d") {
     return DAY_NAMES[d.getUTCDay()];

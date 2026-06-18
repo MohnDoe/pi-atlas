@@ -1,9 +1,10 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { TimeRange } from "../types";
 
 export interface RangeOption {
   label: string;
-  value: string;
+  value: TimeRange;
 }
 
 export class RangeSelector implements Component {
@@ -24,7 +25,7 @@ export class RangeSelector implements Component {
     this.selectedIndex = selectedIndex;
   }
 
-  get selectedValue(): string {
+  get selectedValue(): TimeRange {
     return this.ranges[this.selectedIndex].value;
   }
 

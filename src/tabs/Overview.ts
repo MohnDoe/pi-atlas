@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
-import { DaySpend } from "../types";
+import { DaySpend, type TimeRange } from "../types";
 import { BarChart } from "../components/BarChart";
 import { KpiCards, KpiData } from "../components/KpiCards";
 
@@ -17,7 +17,7 @@ export class Overview implements Component {
   constructor(
     kpis: KpiData,
     dailySpend: DaySpend[],
-    rangeKey: string,
+    rangeKey: TimeRange,
     theme: Theme,
     maxHeight: number,
   ) {
