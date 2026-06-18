@@ -28,7 +28,7 @@ export interface SortedTableConfig {
 }
 
 export class SortedTable implements Component {
-  static readonly DEFAULT_CURSOR_CHAR = "▶";
+  static readonly DEFAULT_CURSOR_CHAR = "▌";
   static readonly CURSOR_SUFFIX = " ";
   private columns: ColumnDef[];
   private rows: CellComponent[][];

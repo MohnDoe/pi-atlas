@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Models } from "../Models";
 import { ModelStat } from "../../types";
+import { SortedTable } from "../../components/SortedTable";
 
 describe("Models", () => {
-  const mockTui = makeMockTUI();
+  const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
+const mockTui = makeMockTUI();
 
   const models: ModelStat[] = [
     { model: "claude-sonnet-4-20250514", provider: "anthropic", cost: 150.5, calls: 42 },
@@ -49,22 +51,22 @@ describe("Models", () => {
   it("fill column adapts to width", () => {
     const tab = new Models(models, makeTheme(), testPalette(), mockTui, 10);
 
-    // At width 30, fill column is ~1-2 chars — model name truncated
-    const narrowLines = tab.render(30);
+    // At width 18, fill column is small — full model name truncated
+    const narrowLines = tab.render(18);
     const narrowText = narrowLines.join("\n");
-    expect(narrowText).not.toContain("Claude");
+    expect(narrowText).not.toContain("Claude Sonnet");
 
-    // At width 80, fill column is ~6 chars — truncated name visible
+    // At width 80, fill column is spacious — full name visible
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
-    expect(wideText).toContain("Claude");
+    expect(wideText).toContain("Claude Sonnet");
   });
 
   it("shows cursor on first row", () => {
     const tab = new Models(models, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(80);
     // First data row (line 1, after header) should start with cursor
-    expect(lines[1]).toMatch(/^▶/);
+    expect(lines[1].startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -101,7 +103,7 @@ describe("Models", () => {
     const text = lines2.join("\n");
     expect(text).toContain("Claude");
     expect(text).toContain("Cost ▼");
-    expect(lines2[1]).toMatch(/^▶/);
+    expect(lines2[1].startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -137,7 +139,7 @@ describe("Models", () => {
       const text = lines.join("\n");
       expect(text).toContain("C"); // first char of "Claude Sonnet 4"
       expect(text).toContain("anthr"); // provider truncated to ~5 chars at width 30
-      expect(lines[1]).toMatch(/^▶/);
+      expect(lines[1].startsWith(CURSOR)).toBe(true);
     });
   });
 });

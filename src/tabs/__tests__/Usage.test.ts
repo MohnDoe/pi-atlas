@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { Usage } from "../Usage";
 import { ToolStat, StatsSummary } from "../../types";
+import { SortedTable } from "../../components/SortedTable";
 
 describe("Usage", () => {
-  const mockTui = makeMockTUI();
+  const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
+const mockTui = makeMockTUI();
 
   const tokenUsage = {
     total: 10000,
@@ -100,7 +102,7 @@ describe("Usage", () => {
     const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(80);
     // Find the first line with a cursor — should be in the tool table section
-    const cursorLine = lines.find((l) => l.startsWith("▶"));
+    const cursorLine = lines.find((l) => l.startsWith(CURSOR));
     expect(cursorLine).toBeDefined();
     expect(cursorLine).toContain("bash");
   });
@@ -139,7 +141,7 @@ describe("Usage", () => {
     // Token section still intact
     expect(text).toContain("5.0k");
     expect(text).toContain("4.0k");
-    const cursorLine = lines2.find((l) => l.startsWith("▶"));
+    const cursorLine = lines2.find((l) => l.startsWith(CURSOR));
     expect(cursorLine).toBeDefined();
     expect(cursorLine).toContain("bash");
     for (const line of lines2) {
@@ -172,7 +174,7 @@ describe("Usage", () => {
       const lines = tab.render(80);
       const text = lines.join("\n");
       expect(text).toContain("a-very-long-tool");
-      const cursorLine = lines.find((l) => l.startsWith("▶"));
+      const cursorLine = lines.find((l) => l.startsWith(CURSOR));
       expect(cursorLine).toBeDefined();
       expect(cursorLine).toContain("a-very-long-tool");
     });

@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Languages } from "../Languages";
 import { LangStat } from "../../types";
+import { SortedTable } from "../../components/SortedTable";
+
+const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 
 describe("Languages", () => {
   const mockTui = makeMockTUI();
@@ -78,7 +81,7 @@ describe("Languages", () => {
     const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(80);
     // First data row (line 1, after header) should start with cursor
-    expect(lines[1]).toMatch(/^▶/);
+    expect(lines[1].startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Lines column", () => {
@@ -112,7 +115,7 @@ describe("Languages", () => {
     const text = lines2.join("\n");
     expect(text).toContain("TypeScript");
     expect(text).toContain("Lines ▼");
-    expect(lines2[1]).toMatch(/^▶/);
+    expect(lines2[1].startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -147,7 +150,7 @@ describe("Languages", () => {
       const lines = tab.render(80);
       const text = lines.join("\n");
       expect(text).toContain("TypeScript");
-      expect(lines[1]).toMatch(/^▶/);
+      expect(lines[1].startsWith(CURSOR)).toBe(true);
     });
   });
 });
