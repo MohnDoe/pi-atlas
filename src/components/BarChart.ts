@@ -104,6 +104,16 @@ export class BarChart implements Component {
 
     const lines: string[] = [];
 
+    // Granularity: text at top left showing aggregation level
+    {
+      const text = this.data.length === plotData.length
+        ? "Daily"
+        : "~" + (this.data.length / plotData.length).toFixed(1) + "d avg";
+      // Indent to align with y-axis cost labels, or left-align if text is wider
+      const indent = Math.max(0, yLabelPad - text.length);
+      lines.push(" ".repeat(indent) + text + " ".repeat(width - indent - text.length));
+    }
+
     for (let row = barAreaH - 1; row >= 0; row--) {
       let line = "";
 

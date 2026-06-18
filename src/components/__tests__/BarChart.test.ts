@@ -115,7 +115,7 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 5, so step=1
     const chart = new BarChart(dailySpend, "7d", 7, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(0, -1); // exclude x-axis label line
+    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
     // All bar rows should have a dot separator or label content
     for (const line of barLines) {
       expect(line).toContain("│");
@@ -126,7 +126,7 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 10, so step=2
     const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(0, -1);
+    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
     // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
     // But bottom row 0 always has label
     expect(barLines[barLines.length - 1]).toContain("$0.00");
@@ -154,7 +154,7 @@ describe("BarChart", () => {
     // but yAxisSpacing=1 forces every row
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme(), 1);
     const lines = chart.render(80);
-    const barLines = lines.slice(0, -1);
+    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
     // Every bar row should have $ labels (step=1)
     for (const line of barLines) {
       expect(line).toContain("$");
