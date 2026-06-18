@@ -97,6 +97,55 @@ describe("BarChart", () => {
     expect(visible).toContain("Apr");
   });
 
+  it("y-axis shows cost labels with separator", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    const text = lines.join("\n");
+    // Y-axis has $ labels
+    expect(text).toContain("$0.00");
+    expect(text).toContain("$3.00");
+    // Y-axis separator present
+    expect(text).toContain("│");
+  });
+
+  it("y-axis auto-dense: every row when barAreaH ≤ 6", () => {
+    // barAreaH = maxHeight - 2 = 5, so step=1
+    const chart = new BarChart(dailySpend, "7d", 7, makeTheme());
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1); // exclude x-axis label line
+    // All bar rows should have a dot separator or label content
+    for (const line of barLines) {
+      expect(line).toContain("│");
+    }
+  });
+
+  it("y-axis auto-dense: every-other row when barAreaH ≤ 14", () => {
+    // barAreaH = maxHeight - 2 = 10, so step=2
+    const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
+    const lines = chart.render(80);
+    const barLines = lines.slice(0, -1);
+    // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
+    // But bottom row 0 always has label
+    expect(barLines[barLines.length - 1]).toContain("$0.00");
+    expect(barLines[0]).not.toMatch(/\$\d/); // top row no label
+  });
+
+  it("y-axis labels are right-aligned", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(80);
+    const text = lines.join("\n");
+    // Labels should have a space before the separator
+    expect(text).toMatch(/  │/);
+  });
+
+  it("still renders within width with y-axis reserved", () => {
+    const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
+    const lines = chart.render(40);
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(40);
+    }
+  });
+
   it("invalidates cache", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     chart.render(80);

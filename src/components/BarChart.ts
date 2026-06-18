@@ -1,7 +1,7 @@
 import { type Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { DaySpend } from "../types";
-import { MONTH_NAMES } from "../format";
+import { MONTH_NAMES, formatCost } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -30,13 +30,31 @@ export class BarChart implements Component {
     }
 
     const barAreaH = Math.max(3, this.maxHeight - 2);
-    const colW = Math.max(2, Math.floor((width - this.data.length) / this.data.length));
     const maxCost = Math.max(...this.data.map((d) => d.cost), 0.01);
+
+    // Auto-density y-axis labels
+    const step = barAreaH <= 6 ? 1 : barAreaH <= 14 ? 2 : 3;
+    const yLabelPad = computeLabelWidth(maxCost, barAreaH, step);
+    const yAxisW = yLabelPad + 3; // label + " │ "
+
+    // Available width for bars
+    const availW = width - yAxisW;
+    const colW = Math.max(2, Math.floor((availW - this.data.length) / this.data.length));
 
     const lines: string[] = [];
 
     for (let row = barAreaH - 1; row >= 0; row--) {
       let line = "";
+
+      // Y-axis: right-aligned cost label + │ separator
+      const isLabelRow = row === 0 || row % step === 0;
+      if (isLabelRow) {
+        const val = (row / (barAreaH - 1)) * maxCost;
+        line += formatCost(val).padStart(yLabelPad) + " │ ";
+      } else {
+        line += " ".repeat(yLabelPad) + " │ ";
+      }
+
       for (const d of this.data) {
         const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
         if (barH > row + 0.5) {
@@ -51,8 +69,8 @@ export class BarChart implements Component {
       lines.push(line);
     }
 
-    // X-axis labels
-    let labelLine = "";
+    // X-axis labels with y-axis padding
+    let labelLine = " ".repeat(yAxisW);
     for (let i = 0; i < this.data.length; i++) {
       const lbl = formatLabel(this.data[i].date, i, this.data, this.range);
       const cellW = colW + 1;
@@ -69,6 +87,16 @@ export class BarChart implements Component {
     this.cachedLines = null;
     this.cachedWidth = -1;
   }
+}
+
+function computeLabelWidth(maxCost: number, barAreaH: number, step: number): number {
+  let maxW = 0;
+  for (let row = 0; row < barAreaH; row += step) {
+    const val = (row / (barAreaH - 1)) * maxCost;
+    maxW = Math.max(maxW, formatCost(val).length);
+  }
+  // Baseline $0.00 is always shown but already covered by row=0
+  return maxW;
 }
 
 function formatLabel(dateStr: string, index: number, data: DaySpend[], range: string): string {
