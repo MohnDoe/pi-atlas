@@ -6,27 +6,11 @@ import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
 import { Dashboard } from "../Dashboard";
 import { SortedTable } from "../SortedTable";
+import { allRanges, mapAllSummaries } from "./Dashboard.test";
+import { StatsSummary, TimeRange } from "../../types";
 
 const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();
-
-const allRanges = ["1d", "7d", "30d", "All"] as const;
-
-function mapAll(summary: ReturnType<typeof makeSummary>) {
-  return new Map(allRanges.map((r) => [r, { ...summary }]));
-}
-
-function mapMixed(
-  summary1d: ReturnType<typeof makeSummary>,
-  summaryOther: ReturnType<typeof makeSummary>,
-) {
-  return new Map([
-    ["1d", summary1d],
-    ["7d", summaryOther],
-    ["30d", summaryOther],
-    ["All", summaryOther],
-  ]);
-}
 
 const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
@@ -45,8 +29,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      mapAll(summary),
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     // Navigate to Models tab
@@ -69,8 +56,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      mapAll(summary),
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -95,8 +85,11 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ],
     };
     const dash = new Dashboard(
-      mapAll(summary),
-      makeTheme(), false, null, mockTui,
+      mapAllSummaries(allRanges, summary),
+      makeTheme(),
+      false,
+      null,
+      mockTui,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -127,15 +120,19 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
         { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
       ],
     };
-    const dash = new Dashboard(
-      mapMixed(summary1d, summaryAll),
-      makeTheme(), false, null, mockTui,
-    );
+
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", summary1d],
+      ["7d", summaryAll],
+      ["30d", summaryAll],
+      ["All", summaryAll],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Models, switch to 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("r");      // All → 1d
+    dash.handleInput("r"); // All → 1d
     let lines = dash.render(80);
     // 1d: only Alpha Model
     expect(cursorOnModel(lines, "Alpha")).toBe(true);
@@ -183,13 +180,14 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       const longModel = "A-Very-Long-Model-Name-That-Overflows-And-Should-Scroll";
       const summary = {
         ...makeSummary(),
-        models: [
-          { model: longModel, cost: 10, calls: 100, provider: "p1" },
-        ],
+        models: [{ model: longModel, cost: 10, calls: 100, provider: "p1" }],
       };
       const dash = new Dashboard(
-        mapAll(summary),
-        makeTheme(), false, null, mockTui,
+        mapAllSummaries(allRanges, summary),
+        makeTheme(),
+        false,
+        null,
+        mockTui,
       );
 
       // Navigate to Models tab

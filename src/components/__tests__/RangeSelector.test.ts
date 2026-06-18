@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
-import { RangeSelector } from "../RangeSelector";
+import { RangeOption, RangeSelector } from "../RangeSelector";
 
 describe("RangeSelector", () => {
-  const ranges = [
+  const ranges: RangeOption[] = [
     { label: "Today", value: "1d" },
     { label: "Last 7 days", value: "7d" },
     { label: "Last 30 days", value: "30d" },

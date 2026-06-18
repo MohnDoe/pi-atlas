@@ -7,6 +7,7 @@ import { summarize } from "../compute.js";
 import { parseFile } from "../parser";
 import { DayAgg } from "../types";
 import { makeMockTUI, makeTheme } from "./components.fixtures";
+import { allRanges } from "../components/__tests__/Dashboard.test";
 
 const mockTui = makeMockTUI();
 
@@ -85,7 +86,7 @@ describe("JSONL → Dashboard", () => {
     expect(days.length).toBeGreaterThan(0);
 
     // Summarize for all ranges
-    const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
+    const ranges = allRanges;
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     // Render dashboard
@@ -152,7 +153,7 @@ describe("JSONL → Dashboard", () => {
 
     const map = parseFile(filePath);
     const days = daysFromMap(map);
-    const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
+    const ranges = allRanges;
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);

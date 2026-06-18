@@ -1,18 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
+import { StatsSummary, TimeRange } from "../../types";
 import { Dashboard } from "../Dashboard";
 
 const mockTui = makeMockTUI();
-const allRanges = ["1d", "7d", "30d", "All"] as const;
+export const allRanges: TimeRange[] = ["1d", "7d", "30d", "All"];
 
-function mapAll(summary: ReturnType<typeof makeSummary>) {
-  return new Map(allRanges.map((r) => [r, { ...summary }]));
+export function mapAllSummaries(ranges: TimeRange[], summary: ReturnType<typeof makeSummary>) {
+  return new Map(ranges.map((r) => [r, { ...summary }]));
 }
+
+export const ALL_SUMMARIES = mapAllSummaries(allRanges, makeSummary());
 
 describe("Dashboard", () => {
   it("renders all sections", () => {
-    const summaries = mapAll(makeSummary());
+    const summaries = ALL_SUMMARIES;
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     const lines = dash.render(80);
     const text = lines.join("\n");
@@ -32,7 +35,7 @@ describe("Dashboard", () => {
       totalTokens: 0,
       dailySpend: [],
     };
-    const summaries = mapAll(zeroSummary);
+    const summaries = mapAllSummaries(allRanges, zeroSummary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     const lines = dash.render(80);
     const text = lines.join("\n");
@@ -50,7 +53,7 @@ describe("Dashboard", () => {
       dailySpend: [],
     };
     // 1d range empty, others have data
-    const summaries = new Map([
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
       ["1d", zeroSummary],
       ["7d", dataSummary],
       ["30d", dataSummary],
@@ -65,7 +68,7 @@ describe("Dashboard", () => {
   });
 
   it("handles escape to close", () => {
-    const summaries = mapAll(makeSummary());
+    const summaries = ALL_SUMMARIES;
     let closed = false;
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
       closed = true;
@@ -75,7 +78,7 @@ describe("Dashboard", () => {
   });
 
   it("handles q to close", () => {
-    const summaries = mapAll(makeSummary());
+    const summaries = ALL_SUMMARIES;
     let closed = false;
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
       closed = true;
@@ -93,7 +96,7 @@ describe("Dashboard", () => {
         { language: "JSON", lines: 300, edits: 5 },
       ],
     };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Switch to Languages tab (index 1)
@@ -121,7 +124,7 @@ describe("Dashboard", () => {
         { language: "Go", lines: 200, edits: 8 },
       ],
     };
-    const summaries = new Map([
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
       ["1d", summary1d],
       ["7d", summary7d],
       ["30d", summary7d],
@@ -150,7 +153,7 @@ describe("Dashboard", () => {
 
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // right to Languages
@@ -170,7 +173,7 @@ describe("Dashboard", () => {
         { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
       ],
     };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Switch to Models tab (index 2)
@@ -188,7 +191,7 @@ describe("Dashboard", () => {
       ...makeSummary(),
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Models tab
@@ -203,7 +206,7 @@ describe("Dashboard", () => {
 
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -225,7 +228,7 @@ describe("Dashboard", () => {
         { model: "deepseek-v4-pro", cost: 5.0, calls: 80 },
       ],
     };
-    const summaries = new Map([
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
       ["1d", summary1d],
       ["7d", summary7d],
       ["30d", summary7d],
@@ -256,7 +259,7 @@ describe("Dashboard", () => {
   });
 
   it("switches tabs with left/right arrows", () => {
-    const summaries = mapAll(makeSummary());
+    const summaries = ALL_SUMMARIES;
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
@@ -277,7 +280,7 @@ describe("Dashboard", () => {
         { tool: "read", count: 120 },
       ],
     };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Projects+Tools tab (index 3)
@@ -292,7 +295,7 @@ describe("Dashboard", () => {
 
   it("Projects tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
-    const summaries = mapAll(summary);
+    const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -316,7 +319,7 @@ describe("Dashboard", () => {
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
     };
-    const summaries = new Map([
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
       ["1d", summary1d],
       ["7d", summary7d],
       ["30d", summary7d],
