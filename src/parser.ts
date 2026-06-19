@@ -188,7 +188,7 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
         if (block.name === "edit" || block.name === "write") {
           mergeDay(
             day,
-            detectLanguage(block.name, parsedArgs as Record<string, unknown> | undefined),
+            parseLanguageUsage(block.name, parsedArgs as Record<string, unknown> | undefined),
           );
         }
       }
@@ -198,7 +198,7 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
   return day;
 }
 
-export function detectLanguage(
+export function parseLanguageUsage(
   toolName: string,
   args: Record<string, unknown> | undefined,
 ): DayAgg {
