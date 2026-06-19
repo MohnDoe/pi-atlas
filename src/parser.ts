@@ -7,8 +7,8 @@ function sanitizeToolName(name: string): string {
   return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
 }
 
-import type { UserMessage, AssistantMessage, ToolResultMessage, TextContent, ToolCall, Usage } from "@earendil-works/pi-ai";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
   FileEntry,
@@ -18,8 +18,8 @@ import type {
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
 
-import type { DayAgg } from "./types";
 import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format.js";
+import type { DayAgg } from "./types";
 
 // Tracks session ID → project name for cost attribution
 const sessionProjectMap = new Map<string, string>();
@@ -176,9 +176,12 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall") {
-        const parsedArgs = block.arguments !== undefined
-          ? (typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments)
-          : undefined;
+        const parsedArgs =
+          block.arguments !== undefined
+            ? typeof block.arguments === "string"
+              ? JSON.parse(block.arguments)
+              : block.arguments
+            : undefined;
         const sanitized = sanitizeToolName(block.name);
         day.toolCount[sanitized] = (day.toolCount[sanitized] ?? 0) + 1;
 
