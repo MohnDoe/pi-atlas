@@ -52,7 +52,7 @@ export class Usage extends Container {
     this.rows = this.tools.map((t) => {
       const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
       return [
-        cell.marquee(stripAnsi(t.tool).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
+        cell.marquee(stripAnsi(t.name).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
         cell.bar(barPct, (s) => s, "transparent"),
         cell.text(this.theme.bold(formatNumber(t.count))),
       ];

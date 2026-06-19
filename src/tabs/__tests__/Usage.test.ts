@@ -6,7 +6,7 @@ import { SortedTable } from "../../components/SortedTable";
 
 describe("Usage", () => {
   const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
-const mockTui = makeMockTUI();
+  const mockTui = makeMockTUI();
 
   const tokenUsage = {
     total: 10000,
@@ -17,9 +17,9 @@ const mockTui = makeMockTUI();
   };
 
   const tools: ToolStat[] = [
-    { tool: "bash", count: 150 },
-    { tool: "read", count: 120 },
-    { tool: "edit", count: 45 },
+    { name: "bash", count: 150 },
+    { name: "read", count: 120 },
+    { name: "edit", count: 45 },
   ];
 
   it("renders token section with StatCards", () => {
@@ -72,8 +72,8 @@ const mockTui = makeMockTUI();
 
   it("renders tool names with control characters as single lines", () => {
     const dirtyTools: ToolStat[] = [
-      { tool: "ls -la agent/\n</parameter", count: 2 },
-      { tool: "bash", count: 100 },
+      { name: "ls -la agent/\n</parameter", count: 2 },
+      { name: "bash", count: 100 },
     ];
     const tab = new Usage(dirtyTools, tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(80);
@@ -160,9 +160,7 @@ const mockTui = makeMockTUI();
     });
 
     it("clears marquee timers on invalidate", () => {
-      const longTool: ToolStat[] = [
-        { tool: "a-very-long-tool-name-x", count: 150 },
-      ];
+      const longTool: ToolStat[] = [{ name: "a-very-long-tool-name-x", count: 150 }];
       const tab = new Usage(longTool, tokenUsage, makeTheme(), mockTui, 10);
 
       tab.render(30);

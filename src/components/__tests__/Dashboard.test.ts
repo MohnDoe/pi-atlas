@@ -276,8 +276,8 @@ describe("Dashboard", () => {
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
       tools: [
-        { tool: "bash", count: 150 },
-        { tool: "read", count: 120 },
+        { name: "bash", count: 150 },
+        { name: "read", count: 120 },
       ],
     };
     const summaries = mapAllSummaries(allRanges, summary);

@@ -8,7 +8,7 @@ The extension has four core modules and a component layer:
 
 - **`index.ts`** — Entry point. Registers `/usage`. Uses `ctx.ui.custom()` to show a LoadingView, then the Dashboard.
 - **`cache.ts`** — Loads or computes the Day Aggregate array. Tries cache first (SHA-256 directory signature), falls back to parsing all JSONL files.
-- **`parser.ts`** — Parses individual `.jsonl` files into per-calendar-day DayAgg entries. Handles session, user message, assistant message, and tool result entry types.
+- **`parser.ts`** — Parses individual `.jsonl` files into per-calendar-day DayAgg entries. Handles session, user message, assistant message, tool result, model change, thinking level change, and compaction entry types. Silently skips branch summary, custom, custom message, label, and session info entries.
 - **`compute.ts`** — Pure function `summarize()` that filters DayAgg[] by time range and merges them into a StatsSummary.
 - **`format.ts`** — Formatting utilities (costs, numbers, dates, model names, language mapping via file extension).
 - **`colorPalette.ts`** — Per-language and per-provider color assignments using chalk.
@@ -36,8 +36,20 @@ A filter applied across all tabs. Options: 1d, 7d, 30d, All. The user cycles thr
 _Avoid_: Period, window, filter
 
 **Session Log**:
-A `.jsonl` file in `~/.pi/agent/sessions/` containing session, message, and tool call entries recorded by pi.
+A `.jsonl` file in `~/.pi/agent/sessions/` in pi's session format (a FileEntry union of 10 entry types). Contains session headers and tree-linked entries: messages, model changes, thinking level changes, compactions, branch summaries, custom entries, custom messages, labels, and session info.
 _Avoid_: Log file, trace, history file
+
+**Compaction Entry**:
+A session entry recording a context compaction event. Carries a summary of compacted messages, the first kept entry ID, and the number of tokens compacted (`tokensBefore`). Tracked in DayAgg as `compactionCount` and `compactedTokens`.
+_Avoid_: Summary entry, context compression
+
+**Model Change Entry**:
+A session entry recording an explicit model switch by the user. Carries the provider and model ID. Tracked in DayAgg as `modelChanges`.
+_Avoid_: Model switch, provider change
+
+**Thinking Level Change Entry**:
+A session entry recording a thinking/reasoning level change by the user. Carries the thinking level string (e.g. "low", "high", "xhigh"). Tracked in DayAgg as `thinkingLevelCount` (a per-level counter).
+_Avoid_: Reasoning level, effort change
 
 **Day Aggregate**:
 A pre-computed rollup of all session log data for a single calendar day. Cached to disk as a `CachePayload` (serialized `DayAgg[]` with a directory signature) to avoid re-parsing JSONL files on every open.

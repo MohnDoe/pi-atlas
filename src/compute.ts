@@ -171,7 +171,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .sort((a, b) => b.cost - a.cost);
 
   const tools: ToolStat[] = Object.entries(toolCount)
-    .map(([tool, count]) => ({ tool, count }))
+    .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
 
   return {
