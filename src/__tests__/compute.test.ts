@@ -284,4 +284,53 @@ describe("summarize", () => {
       { model: "haiku", cost: 0.5, calls: 2 },
     ]);
   });
+
+  it("hourlySpend for 1d range has 24 zero-filled entries when no hourly cost", () => {
+    const today = dateFromISOString(new Date().toISOString());
+    const d = emptyDay(today);
+    d.cost = 5;
+    d.sessionIds = new Set(["s1"]);
+    const days = [d];
+
+    const s = summarize(days, "1d");
+    expect(s.hourlySpend).toHaveLength(24);
+    for (const h of s.hourlySpend) {
+      expect(h.cost).toBe(0);
+    }
+    // Zero-cost days still produce 24 entries
+    const d2 = emptyDay(dateFromISOString(new Date().toISOString()));
+    d2.cost = 0;
+    d2.sessionIds = new Set(["s2"]);
+    const s2 = summarize([d2], "1d");
+    expect(s2.hourlySpend).toHaveLength(24);
+  });
+
+  it("hourlySpend for 1d maps cost to correct hours", () => {
+    const today = dateFromISOString(new Date().toISOString());
+    const d = emptyDay(today);
+    mergeDay(d, {
+      ...emptyDay(""),
+      cost: 3.5,
+      hourCost: { 10: 1.5, 14: 2.0 },
+    });
+    const days = [d];
+
+    const s = summarize(days, "1d");
+    expect(s.hourlySpend).toHaveLength(24);
+    expect(s.hourlySpend[10].cost).toBe(1.5);
+    expect(s.hourlySpend[14].cost).toBe(2.0);
+    expect(s.hourlySpend[0].cost).toBe(0);
+    expect(s.hourlySpend[23].cost).toBe(0);
+  });
+
+  it("hourlySpend is empty for 7d, 30d, All ranges", () => {
+    const d = emptyDay("2026-06-01");
+    d.cost = 5;
+    d.sessionIds = new Set(["s1"]);
+    const days = [d];
+
+    expect(summarize(days, "7d").hourlySpend).toEqual([]);
+    expect(summarize(days, "30d").hourlySpend).toEqual([]);
+    expect(summarize(days, "All").hourlySpend).toEqual([]);
+  });
 });

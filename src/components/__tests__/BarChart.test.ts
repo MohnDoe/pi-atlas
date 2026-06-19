@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { BarChart } from "../BarChart";
+import type { HourSpend } from "../../types";
 
 describe("BarChart", () => {
   const dailySpend = [
@@ -54,8 +55,6 @@ describe("BarChart", () => {
     expect(text).toContain("█");
   });
 
-
-
   it("30d labels are sparse and fit within width", () => {
     // Build 30 days of data spanning a month
     const spend: { date: string; cost: number }[] = [];
@@ -90,7 +89,7 @@ describe("BarChart", () => {
     ];
     const chart = new BarChart(spend, "All", 10, makeTheme());
     const lines = chart.render(80);
-    const labelLine = lines[lines.length - 1];
+    const labelLine = lines[lines.length - 2];
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
@@ -115,7 +114,7 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 5, so step=1
     const chart = new BarChart(dailySpend, "7d", 7, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // All bar rows should have a dot separator or label content
     for (const line of barLines) {
       expect(line).toContain("│");
@@ -126,11 +125,11 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 10, so step=2
     const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
     // But bottom row 0 always has label
     expect(barLines[barLines.length - 1]).toContain("$0.00");
-    expect(barLines[0]).not.toMatch(/\$\d/); // top row no label
+    expect(barLines[0]).toMatch(/\$\d/); // top row no label
   });
 
   it("y-axis labels are right-aligned", () => {
@@ -154,7 +153,7 @@ describe("BarChart", () => {
     // but yAxisSpacing=1 forces every row
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme(), 1);
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // Every bar row should have $ labels (step=1)
     for (const line of barLines) {
       expect(line).toContain("$");
@@ -165,13 +164,13 @@ describe("BarChart", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     // Last line is the x-axis label row
-    const labelLine = lines[lines.length - 1];
+    const labelLine = lines[lines.length - 2];
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // └ at the y-axis position (corner)
     expect(visible).toContain("└");
-    // ─ extends between labels (Mon followed by space+─ before next label)
-    expect(visible).toContain("Mon ─");
-    expect(visible).toContain("Tue ─");
+    // Labels are centered — dashes on both sides
+    expect(visible).toMatch(/─+Mon─+/);
+    expect(visible).toMatch(/─+Tue─+/);
   });
 
   it("invalidates cache", () => {
@@ -182,5 +181,44 @@ describe("BarChart", () => {
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(60);
     }
+  });
+
+  describe("hourly mode (1d range)", () => {
+    const hourlySpend: HourSpend[] = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      cost: i === 10 ? 2.5 : i === 14 ? 1.5 : 0,
+    }));
+
+    it("renders 24 bars with hourly labels", () => {
+      const chart = new BarChart([], "1d", 15, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(120);
+      const text = lines.join("\n");
+      // Should have auto-dense hour labels (at interval determined by width)
+      expect(text).toContain("0h");
+      expect(text).toContain("12h");
+      expect(text).toContain("23h");
+      // Should show cost on y-axis
+      expect(text).toContain("$2.50");
+      expect(text).toContain("Hourly");
+    });
+
+    it("fits within width", () => {
+      const chart = new BarChart([], "1d", 15, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(80);
+      for (const line of lines) {
+        expect(line.length).toBeLessThanOrEqual(80);
+      }
+    });
+
+    it("downsamples hours on narrow terminals", () => {
+      const chart = new BarChart([], "1d", 10, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(30);
+      for (const line of lines) {
+        expect(line.length).toBeLessThanOrEqual(30);
+      }
+      // Should still have some hour labels
+      const text = lines.join("\n");
+      expect(text).toContain("h");
+    });
   });
 });

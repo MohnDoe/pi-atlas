@@ -30,6 +30,7 @@ export function emptyDay(date: string): DayAgg {
   return {
     date,
     cost: 0,
+    hourCost: {},
     inTok: 0,
     outTok: 0,
     crTok: 0,
@@ -66,6 +67,10 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   base.toolResults += update.toolResults;
 
   for (const id of update.sessionIds) base.sessionIds.add(id);
+
+  for (const [h, c] of Object.entries(update.hourCost)) {
+    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
+  }
 
   for (const [k, v] of Object.entries(update.langLines)) {
     base.langLines[k] = (base.langLines[k] ?? 0) + v;
@@ -287,8 +292,12 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
+      const hour = new Date(msgEntry.timestamp).getHours();
       const day = emptyDay(dateFromISOString(msgEntry.timestamp));
       mergeDay(day, parseAgentMessage(msgEntry.message));
+      if (day.cost > 0) {
+        day.hourCost[hour] = (day.hourCost[hour] ?? 0) + day.cost;
+      }
       return day;
     }
     case "model_change":

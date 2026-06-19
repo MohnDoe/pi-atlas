@@ -102,6 +102,7 @@ describe("emptyDay", () => {
     expect(day.compactedTokens).toBe(0);
     expect(day.modelChanges).toBe(0);
     expect(day.thinkingLevelCount).toEqual({});
+    expect(day.hourCost).toEqual({});
   });
 
   it("returns a new empty object each call", () => {
@@ -530,6 +531,8 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
     expect(dayAgg.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
+    expect(dayAgg.hourCost[localHour]).toBe(0.00141);
   });
 
   it("returns a DayAgg for a user message", () => {
@@ -544,6 +547,8 @@ describe("parseSessionLogEntry", () => {
     assert(dayAgg);
     expect(dayAgg.userMsgs).toBe(1);
     expect(dayAgg.date).toBe("2026-06-08");
+    // No cost => hourCost not incremented
+    expect(dayAgg.hourCost).toEqual({});
   });
 
   it("returns a DayAgg for a tool result message", () => {
@@ -558,6 +563,7 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.toolResults).toBe(1);
     expect(dayAgg.toolCount["bash"]).toBe(1);
     expect(dayAgg.date).toBe("2026-06-08");
+    expect(dayAgg.hourCost).toEqual({});
   });
 
   it("detects languages from edit/write tool calls", () => {
@@ -879,6 +885,33 @@ describe("mergeDay", () => {
     mergeDay(a, b);
     expect(a.langLines).toEqual({ TypeScript: 10, Rust: 5 });
     expect(a.toolCount).toEqual({ bash: 2, edit: 1 });
+  });
+
+  it("merges hourCost records", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      hourCost: { 10: 1.5, 14: 2.0 },
+    };
+
+    mergeDay(a, b);
+    expect(a.hourCost).toEqual({ 10: 1.5, 14: 2.0 });
+  });
+
+  it("sums hourCost from multiple merges", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      hourCost: { 10: 1.5, 14: 2.0 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      hourCost: { 10: 0.5, 16: 3.0 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.hourCost).toEqual({ 10: 2.0, 14: 2.0, 16: 3.0 });
   });
 
   it("sums record values from multiple merges", () => {

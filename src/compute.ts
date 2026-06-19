@@ -2,6 +2,7 @@ import { dateFromISOString } from "./format.js";
 import type {
   DayAgg,
   DaySpend,
+  HourSpend,
   LangStat,
   ModelStat,
   ProjectStat,
@@ -58,6 +59,17 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
   }
 
   return result;
+}
+
+function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
+  if (range !== "1d" || filtered.length !== 1) return [];
+
+  const day = filtered[0];
+  const hourly: HourSpend[] = [];
+  for (let h = 0; h < 24; h++) {
+    hourly.push({ hour: h, cost: day.hourCost[h] ?? 0 });
+  }
+  return hourly;
 }
 
 export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
@@ -174,6 +186,8 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
 
+  const hourlySpend = buildHourlySpend(filtered, range);
+
   return {
     totalCost,
     sessionCount,
@@ -191,5 +205,6 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     projects,
     tools,
     dailySpend: fillDailySpend(filtered, range),
+    hourlySpend,
   };
 }

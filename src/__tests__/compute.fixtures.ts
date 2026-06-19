@@ -21,4 +21,5 @@ export const makeSummary = (): StatsSummary => ({
     { date: "2026-06-07", cost: 2.0 },
     { date: "2026-06-08", cost: 2.0 },
   ],
+  hourlySpend: [],
 });
