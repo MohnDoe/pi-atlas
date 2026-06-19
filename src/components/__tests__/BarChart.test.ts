@@ -195,9 +195,10 @@ describe("BarChart", () => {
       const chart = new BarChart([], "1d", 15, makeTheme(), undefined, hourlySpend);
       const lines = chart.render(120);
       const text = lines.join("\n");
-      // Should have hour labels
-      expect(text).toContain("10h");
-      expect(text).toContain("14h");
+      // Should have auto-dense hour labels (at interval determined by width)
+      expect(text).toContain("0h");
+      expect(text).toContain("12h");
+      expect(text).toContain("23h");
       // Should show cost on y-axis
       expect(text).toContain("$2.50");
       expect(text).toContain("Hourly");

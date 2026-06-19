@@ -531,7 +531,8 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
     expect(dayAgg.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
-    expect(dayAgg.hourCost[10]).toBe(0.00141);
+    const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
+    expect(dayAgg.hourCost[localHour]).toBe(0.00141);
   });
 
   it("returns a DayAgg for a user message", () => {

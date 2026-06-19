@@ -196,9 +196,8 @@ export class BarChart implements Component {
 
     // Downsample hours if too many for available width
     const maxBars = Math.max(MIN_BARS, Math.floor(availW / (MIN_COL_WIDTH + BAR_GAP)));
-    const plotData = this.hourlyData.length > maxBars
-      ? aggregateHours(this.hourlyData, maxBars)
-      : this.hourlyData;
+    const plotData =
+      this.hourlyData.length > maxBars ? aggregateHours(this.hourlyData, maxBars) : this.hourlyData;
 
     const totalGaps = plotData.length * BAR_GAP;
     const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / plotData.length));
@@ -251,7 +250,9 @@ export class BarChart implements Component {
 
     // Granularity
     const granularityText = this.theme.italic(
-      this.hourlyData.length === plotData.length ? "Hourly" : `~${(24 / plotData.length).toFixed(1)}h avg`,
+      this.hourlyData.length === plotData.length
+        ? "Hourly"
+        : `~${(24 / plotData.length).toFixed(1)}h avg`,
     );
     lines.push(
       this.theme.fg(
@@ -327,9 +328,8 @@ function aggregateHours(data: HourSpend[], target: number): HourSpend[] {
 }
 
 function computeHourLabelInterval(count: number, cellWidth: number): number {
-  // Try intervals: 1, 2, 3, 4, 6, 12 — pick the smallest that fits labels in cells
-  const candidates = [1, 2, 3, 4, 6, 12];
-  const labelChars = 3; // max "23h" or "12h"
+  // Try intervals — pick the smallest that fits labels in cells
+  const candidates = [4, 6, 12];
   for (const interval of candidates) {
     const labelsOnRow = Math.ceil(count / interval);
     // Rough estimate: each label needs cellWidth minus a gap for a space on each side
@@ -338,7 +338,7 @@ function computeHourLabelInterval(count: number, cellWidth: number): number {
       return interval;
     }
   }
-  return 12;
+  return candidates[candidates.length - 1];
 }
 
 function formatHourLabel(hour: number, index: number, data: HourSpend[], interval: number): string {

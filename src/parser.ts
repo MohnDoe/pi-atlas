@@ -292,7 +292,7 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
-      const hour = new Date(msgEntry.timestamp).getUTCHours();
+      const hour = new Date(msgEntry.timestamp).getHours();
       const day = emptyDay(dateFromISOString(msgEntry.timestamp));
       mergeDay(day, parseAgentMessage(msgEntry.message));
       if (day.cost > 0) {
