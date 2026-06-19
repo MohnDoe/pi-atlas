@@ -1,14 +1,15 @@
 import { Box, Component, Text } from "@earendil-works/pi-tui";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
+import { ChalkInstance } from "chalk";
 
 interface Label {
   text: string;
-  color?: ThemeColor;
+  color?: ThemeColor | ChalkInstance;
 }
 
 interface Value {
   text: string;
-  color: ThemeColor;
+  color: ThemeColor | ChalkInstance;
 }
 
 interface StatCardParams {
@@ -34,13 +35,23 @@ export class StatCard implements Component {
     this.box.addChild(
       new Text(
         params.label.color
-          ? this.theme.fg(params.label.color, params.label.text)
+          ? typeof params.label.color === "string"
+            ? this.theme.fg(params.label.color, params.label.text)
+            : params.label.color(params.label.text)
           : params.label.text,
         0,
         0,
       ),
     );
-    this.box.addChild(new Text(this.theme.fg(params.value.color, params.value.text), 0, 0));
+    this.box.addChild(
+      new Text(
+        typeof params.value.color === "string"
+          ? this.theme.fg(params.value.color, params.value.text)
+          : params.value.color(params.value.text),
+        0,
+        0,
+      ),
+    );
   }
 
   render(width: number): string[] {

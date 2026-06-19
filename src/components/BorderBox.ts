@@ -1,12 +1,13 @@
 import { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { Component, visibleWidth } from "@earendil-works/pi-tui";
+import { ChalkInstance } from "chalk";
 
 export interface BorderBoxOptions {
   child: Component;
   title?: string;
   footer?: string;
   rounded?: boolean;
-  color?: ThemeColor;
+  color?: ThemeColor | ChalkInstance;
   paddingX?: number;
   paddingY?: number;
 }
@@ -62,7 +63,7 @@ export class BorderBox implements Component {
   private readonly rounded: boolean;
   private readonly title?: string;
   private readonly footer?: string;
-  private readonly color: ThemeColor = "border";
+  private readonly color: ThemeColor | ChalkInstance = "border";
   private readonly paddingX: number = 0;
   private readonly paddingY: number = 0;
 
@@ -94,7 +95,10 @@ export class BorderBox implements Component {
     const r = "│";
 
     const lines: string[] = [];
-    const borderColor = this.color ? (s: string) => this.theme.fg(this.color, s) : undefined;
+    const borderColor =
+      typeof this.color === "string"
+        ? (s: string) => this.theme.fg(this.color as ThemeColor, s)
+        : this.color;
 
     // Top border (with optional title)
     lines.push(
@@ -110,10 +114,7 @@ export class BorderBox implements Component {
 
     // Shared helper for bordered lines (blank or content)
     const borderedLine = (inner: string): string => {
-      return padLine(
-        this.theme.fg(this.color, l) + inner + this.theme.fg(this.color, r),
-        width,
-      );
+      return padLine(borderColor(l) + inner + borderColor(r), width);
     };
 
     // Y-padding blank line (uniform fill)
@@ -129,8 +130,7 @@ export class BorderBox implements Component {
     // Content lines
     for (const line of childLines) {
       const childPad = Math.max(0, childInnerWidth - visibleWidth(line));
-      const padded =
-        " ".repeat(this.paddingX) + line + " ".repeat(childPad + this.paddingX);
+      const padded = " ".repeat(this.paddingX) + line + " ".repeat(childPad + this.paddingX);
       lines.push(borderedLine(padded));
     }
 
@@ -148,7 +148,7 @@ export class BorderBox implements Component {
         right: br,
         innerWidth,
         width,
-        borderColor: (s) => this.theme.fg(this.color, s),
+        borderColor,
         text: this.footer,
       }),
     );
