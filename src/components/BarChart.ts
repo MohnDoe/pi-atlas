@@ -1,6 +1,6 @@
 import { type Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { DaySpend, type TimeRange } from "../types";
+import { DaySpend, HourSpend, type TimeRange } from "../types";
 import { MONTH_NAMES, formatCost } from "../format";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -59,6 +59,7 @@ export class BarChart implements Component {
   private maxHeight: number;
   private theme: Theme;
   private yAxisSpacing: number | undefined;
+  private hourlyData: HourSpend[];
   private cachedLines: string[] | null = null;
   private cachedWidth = -1;
 
@@ -68,21 +69,30 @@ export class BarChart implements Component {
     maxHeight: number,
     theme: Theme,
     yAxisSpacing?: number,
+    hourlyData?: HourSpend[],
   ) {
     this.data = data;
     this.range = range;
     this.maxHeight = maxHeight;
     this.theme = theme;
     this.yAxisSpacing = yAxisSpacing;
+    this.hourlyData = hourlyData ?? [];
   }
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
-    if (this.data.length === 0) {
+    if (this.data.length === 0 && this.hourlyData.length === 0) {
       this.cachedLines = [this.theme.fg("muted", "No data")];
       this.cachedWidth = width;
       return this.cachedLines;
+    }
+
+    if (this.range === "1d" && this.hourlyData.length === 24) {
+      const lines = this.renderHourly(width);
+      this.cachedLines = lines;
+      this.cachedWidth = width;
+      return lines;
     }
 
     const barAreaH = Math.max(MIN_BAR_AREA, this.maxHeight - CHART_VERTICAL_PADDING);
@@ -174,6 +184,85 @@ export class BarChart implements Component {
     return lines;
   }
 
+  /** Render per-hour bars for 1d range. */
+  private renderHourly(width: number): string[] {
+    const barAreaH = Math.max(MIN_BAR_AREA, this.maxHeight - CHART_VERTICAL_PADDING);
+    const maxCost = Math.max(...this.hourlyData.map((h) => h.cost), COST_FLOOR);
+
+    const step = this.yAxisSpacing != null ? Math.max(1, this.yAxisSpacing) : densityStep(barAreaH);
+    const yLabelPad = computeLabelWidth(maxCost, barAreaH, step);
+    const yAxisW = yLabelPad + Y_SEP_WIDTH;
+    const availW = width - yAxisW;
+
+    // Downsample hours if too many for available width
+    const maxBars = Math.max(MIN_BARS, Math.floor(availW / (MIN_COL_WIDTH + BAR_GAP)));
+    const plotData = this.hourlyData.length > maxBars
+      ? aggregateHours(this.hourlyData, maxBars)
+      : this.hourlyData;
+
+    const totalGaps = plotData.length * BAR_GAP;
+    const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / plotData.length));
+
+    const lines: string[] = [];
+
+    for (let row = barAreaH - 1; row >= 0; row--) {
+      let line = "";
+
+      const isLabelRow = row === 0 || row % step === 0;
+      if (isLabelRow) {
+        const val = (row / (barAreaH - 1)) * maxCost;
+        line += formatCost(val).padStart(yLabelPad) + Y_AXIS_SEPARATOR;
+      } else {
+        line += " ".repeat(yLabelPad) + Y_AXIS_SEPARATOR;
+      }
+
+      for (const h of plotData) {
+        const barH = maxCost > 0 ? (h.cost / maxCost) * barAreaH : 0;
+        if (barH > row + HALF_BLOCK_THRESHOLD) {
+          line += "█".repeat(colW);
+        } else if (barH > row) {
+          line += "▄".repeat(colW);
+        } else {
+          line += " ".repeat(colW);
+        }
+        line += " ".repeat(BAR_GAP);
+      }
+      lines.push(line);
+    }
+
+    // X-axis labels with hour labels auto-dense
+    const hourInterval = computeHourLabelInterval(plotData.length, colW + BAR_GAP);
+    let labelLine = " ".repeat(yLabelPad + 1) + "└─";
+    for (let i = 0; i < plotData.length; i++) {
+      const lbl = formatHourLabel(plotData[i].hour, i, plotData, hourInterval);
+      const cellW = colW + BAR_GAP;
+      if (lbl.length > 0) {
+        if (lbl.length + 2 <= cellW) {
+          const fill = cellW - lbl.length - 2;
+          labelLine += " " + lbl + " " + "─".repeat(fill);
+        } else {
+          labelLine += lbl + "─".repeat(Math.max(0, cellW - lbl.length));
+        }
+      } else {
+        labelLine += "─".repeat(cellW);
+      }
+    }
+    lines.push(labelLine);
+
+    // Granularity
+    const granularityText = this.theme.italic(
+      this.hourlyData.length === plotData.length ? "Hourly" : `~${(24 / plotData.length).toFixed(1)}h avg`,
+    );
+    lines.push(
+      this.theme.fg(
+        "dim",
+        " ".repeat(width - Math.max(0, visibleWidth(granularityText))) + granularityText,
+      ),
+    );
+
+    return lines;
+  }
+
   invalidate(): void {
     this.cachedLines = null;
     this.cachedWidth = -1;
@@ -213,5 +302,48 @@ function formatLabel(dateStr: string, index: number, data: DaySpend[], range: Ti
   if (index === 0) return month;
   const prevD = new Date(data[index - 1].date + "T00:00:00Z");
   if (prevD.getUTCMonth() !== d.getUTCMonth()) return month;
+  return "";
+}
+
+// TODO: Unify BarEntry type so BarChart is agnostic to daily/hourly data shapes
+
+function aggregateHours(data: HourSpend[], target: number): HourSpend[] {
+  if (data.length <= target) return data;
+  const n = data.length;
+  const q = Math.floor(n / target);
+  const r = n % target;
+  const result: HourSpend[] = [];
+  let idx = 0;
+  for (let i = 0; i < target; i++) {
+    const size = i < r ? q + 1 : q;
+    let cost = 0;
+    for (let j = 0; j < size; j++) {
+      cost += data[idx + j].cost;
+    }
+    result.push({ hour: data[idx].hour, cost });
+    idx += size;
+  }
+  return result;
+}
+
+function computeHourLabelInterval(count: number, cellWidth: number): number {
+  // Try intervals: 1, 2, 3, 4, 6, 12 — pick the smallest that fits labels in cells
+  const candidates = [1, 2, 3, 4, 6, 12];
+  const labelChars = 3; // max "23h" or "12h"
+  for (const interval of candidates) {
+    const labelsOnRow = Math.ceil(count / interval);
+    // Rough estimate: each label needs cellWidth minus a gap for a space on each side
+    const neededPerLabel = cellWidth;
+    if (labelsOnRow * neededPerLabel <= count * cellWidth) {
+      return interval;
+    }
+  }
+  return 12;
+}
+
+function formatHourLabel(hour: number, index: number, data: HourSpend[], interval: number): string {
+  if (index === 0 || index === data.length - 1 || hour % interval === 0) {
+    return `${hour}h`;
+  }
   return "";
 }

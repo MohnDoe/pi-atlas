@@ -1,6 +1,7 @@
 export interface DayAgg {
   date: string; // "YYYY-MM-DD"
   cost: number;
+  hourCost: Record<number, number>; // accumulated cost per UTC hour 0-23
   inTok: number;
   outTok: number;
   crTok: number;
@@ -30,6 +31,11 @@ export type TimeRange = "1d" | "7d" | "30d" | "All";
 
 export interface DaySpend {
   date: string; // "YYYY-MM-DD"
+  cost: number;
+}
+
+export interface HourSpend {
+  hour: number; // 0-23
   cost: number;
 }
 
@@ -74,6 +80,7 @@ export interface StatsSummary {
   projects: ProjectStat[];
   tools: ToolStat[];
   dailySpend: DaySpend[];
+  hourlySpend: HourSpend[];
 }
 
 export interface CachePayload {

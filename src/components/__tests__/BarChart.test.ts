@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { BarChart } from "../BarChart";
+import type { HourSpend } from "../../types";
 
 describe("BarChart", () => {
   const dailySpend = [
@@ -182,5 +183,43 @@ describe("BarChart", () => {
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(60);
     }
+  });
+
+  describe("hourly mode (1d range)", () => {
+    const hourlySpend: HourSpend[] = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      cost: i === 10 ? 2.5 : i === 14 ? 1.5 : 0,
+    }));
+
+    it("renders 24 bars with hourly labels", () => {
+      const chart = new BarChart([], "1d", 15, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(120);
+      const text = lines.join("\n");
+      // Should have hour labels
+      expect(text).toContain("10h");
+      expect(text).toContain("14h");
+      // Should show cost on y-axis
+      expect(text).toContain("$2.50");
+      expect(text).toContain("Hourly");
+    });
+
+    it("fits within width", () => {
+      const chart = new BarChart([], "1d", 15, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(80);
+      for (const line of lines) {
+        expect(line.length).toBeLessThanOrEqual(80);
+      }
+    });
+
+    it("downsamples hours on narrow terminals", () => {
+      const chart = new BarChart([], "1d", 10, makeTheme(), undefined, hourlySpend);
+      const lines = chart.render(30);
+      for (const line of lines) {
+        expect(line.length).toBeLessThanOrEqual(30);
+      }
+      // Should still have some hour labels
+      const text = lines.join("\n");
+      expect(text).toContain("h");
+    });
   });
 });

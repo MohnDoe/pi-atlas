@@ -92,6 +92,7 @@ export class Dashboard extends Container {
         rangeKey,
         this.theme,
         contentHeight,
+        summary.hourlySpend,
       ),
       new Languages(summary.languages, this.theme, this.langPalette, this.tui, contentHeight),
       new Models(summary.models, this.theme, this.modelPalette, this.tui, contentHeight),
