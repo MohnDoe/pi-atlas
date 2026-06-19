@@ -3,6 +3,9 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { DaySpend, HourSpend, type TimeRange } from "../types";
 import { MONTH_NAMES, formatCost } from "../format";
 
+/** Number of hours displayed in a full day. */
+const HOURS_PER_DAY = 24;
+
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** Minimum bar area height (rows) — prevents degenerate chart at tiny maxHeight. */
@@ -17,8 +20,7 @@ const COST_FLOOR = 0.01;
 const HALF_BLOCK_THRESHOLD = 0.5;
 /** Y-axis separator string " │ " — space, box-drawing line, space. */
 const Y_AXIS_SEPARATOR = " │ ";
-/** Y-axis separator width in characters. */
-const Y_SEP_WIDTH = 3;
+
 /** Space between bar columns in characters. */
 const BAR_GAP = 1;
 
@@ -31,15 +33,15 @@ const SPREAD_MAX_HEIGHT = 14;
 const MIN_BARS = 2;
 
 /**
- * Aggregate data into at most `target` buckets by grouping consecutive days.
- * Costs are summed per bucket; date is set to the first day in each group.
+ * Aggregate data into at most `target` buckets by grouping consecutive items.
+ * Costs are summed per bucket; the first item's other fields are preserved.
  */
-function aggregateDays(data: DaySpend[], target: number): DaySpend[] {
+function aggregate<T extends { cost: number }>(data: T[], target: number): T[] {
   if (data.length <= target) return data;
   const n = data.length;
   const q = Math.floor(n / target);
   const r = n % target;
-  const result: DaySpend[] = [];
+  const result: T[] = [];
   let idx = 0;
   for (let i = 0; i < target; i++) {
     const size = i < r ? q + 1 : q;
@@ -47,7 +49,7 @@ function aggregateDays(data: DaySpend[], target: number): DaySpend[] {
     for (let j = 0; j < size; j++) {
       cost += data[idx + j].cost;
     }
-    result.push({ date: data[idx].date, cost });
+    result.push({ ...data[idx], cost });
     idx += size;
   }
   return result;
@@ -88,56 +90,99 @@ export class BarChart implements Component {
       return this.cachedLines;
     }
 
-    if (this.range === "1d" && this.hourlyData.length === 24) {
-      const lines = this.renderHourly(width);
-      this.cachedLines = lines;
-      this.cachedWidth = width;
-      return lines;
+    let lines: string[] = [];
+    if (this.range === "1d" && this.hourlyData.length === HOURS_PER_DAY) {
+      lines = this.renderHourly(width);
+    } else {
+      lines = this.renderDaily(width);
     }
 
+    this.cachedLines = lines;
+    this.cachedWidth = width;
+    return lines;
+  }
+
+  private renderDaily(width: number): string[] {
+    return this.renderBars(
+      this.data,
+      (plotData, _cellW) =>
+        plotData.map((d, i) => formatDateLabel(d.date, i, plotData as DaySpend[], this.range)),
+      (plotData, n) =>
+        plotData.length === n ? "Daily" : "~" + (n / plotData.length).toFixed(1) + "d avg",
+      width,
+    );
+  }
+
+  /** Render per-hour bars for 1d range. */
+  private renderHourly(width: number): string[] {
+    return this.renderBars(
+      this.hourlyData,
+      (plotData, cellW) => {
+        const interval = computeHourLabelInterval(plotData.length, cellW);
+        return plotData.map((h, i) =>
+          formatHourLabel(h.hour, i, plotData as HourSpend[], interval),
+        );
+      },
+      (plotData, n) =>
+        plotData.length === n ? "Hourly" : `~${(HOURS_PER_DAY / plotData.length).toFixed(1)}h avg`,
+      width,
+    );
+  }
+
+  /**
+   * Shared bar-rendering engine. Handles layout, y-axis, bar drawing,
+   * x-axis label line, and granularity footer.
+   *
+   * @param sourceData — raw data before potential downsampling
+   * @param getLabels — computes x-axis labels from the (possibly downsampled) plotData and cell width
+   * @param getGranularity — returns the granularity label string from (plotData, sourceLength)
+   */
+  private renderBars<T extends { cost: number }>(
+    sourceData: T[],
+    getLabels: (plotData: T[], cellWidth: number) => string[],
+    getGranularity: (plotData: T[], sourceLength: number) => string,
+    width: number,
+  ): string[] {
     const barAreaH = Math.max(MIN_BAR_AREA, this.maxHeight - CHART_VERTICAL_PADDING);
-    const maxCost = Math.max(...this.data.map((d) => d.cost), COST_FLOOR);
+    const maxCost = Math.max(...sourceData.map((d) => d.cost), COST_FLOOR);
 
     const step = this.yAxisSpacing != null ? Math.max(1, this.yAxisSpacing) : densityStep(barAreaH);
     const yLabelPad = computeLabelWidth(maxCost, barAreaH, step);
-    const yAxisW = yLabelPad + Y_SEP_WIDTH;
+    const yAxisW = yLabelPad + Y_AXIS_SEPARATOR.length;
 
-    // Available width for bars
     const availW = width - yAxisW;
-
-    // Downsample if too many bars for the available width
     const maxBars = Math.max(MIN_BARS, Math.floor(availW / (MIN_COL_WIDTH + BAR_GAP)));
-    const plotData = this.data.length > maxBars ? aggregateDays(this.data, maxBars) : this.data;
+    const plotData = sourceData.length > maxBars ? aggregate(sourceData, maxBars) : sourceData;
 
     const totalGaps = plotData.length * BAR_GAP;
     const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / plotData.length));
+    const cellW = colW + BAR_GAP;
+
+    // Pre-compute bar heights once (not per-row)
+    const barHeights = plotData.map((d) => (d.cost / maxCost) * barAreaH);
+    const labels = getLabels(plotData, cellW);
+    const granularityLabel = getGranularity(plotData, sourceData.length);
 
     const lines: string[] = [];
 
     for (let row = barAreaH - 1; row >= 0; row--) {
       let line = "";
 
-      // Y-axis: right-aligned cost label + │ separator
       const isLabelRow = row === 0 || row % step === 0;
       if (isLabelRow) {
-        // Compute the actual cost value for this Y-axis label row
         const val = (row / (barAreaH - 1)) * maxCost;
         line += formatCost(val).padStart(yLabelPad) + Y_AXIS_SEPARATOR;
       } else {
         line += " ".repeat(yLabelPad) + Y_AXIS_SEPARATOR;
       }
 
-      for (const d of plotData) {
-        // Normalised bar height on the 0..barAreaH scale
-        const barH = maxCost > 0 ? (d.cost / maxCost) * barAreaH : 0;
+      for (let bi = 0; bi < plotData.length; bi++) {
+        const barH = barHeights[bi];
         if (barH > row + HALF_BLOCK_THRESHOLD) {
-          // Bar fills this row entirely — use full block
           line += "█".repeat(colW);
         } else if (barH > row) {
-          // Bar partially fills this row — use half block
           line += "▄".repeat(colW);
         } else {
-          // No bar at this row
           line += " ".repeat(colW);
         }
         line += " ".repeat(BAR_GAP);
@@ -148,92 +193,7 @@ export class BarChart implements Component {
     // X-axis labels with y-axis bottom corner
     let labelLine = " ".repeat(yLabelPad + 1) + "└─";
     for (let i = 0; i < plotData.length; i++) {
-      const lbl = formatLabel(plotData[i].date, i, plotData, this.range);
-      const cellW = colW + BAR_GAP;
-      if (lbl.length > 0) {
-        if (lbl.length + 2 <= cellW) {
-          // Standard: space + label + space + filler dashes
-          const fill = cellW - lbl.length - 2;
-          labelLine += " " + lbl + " " + "─".repeat(fill);
-        } else {
-          // Tight: label trimmed to fit with remaining filler
-          labelLine += lbl + "─".repeat(Math.max(0, cellW - lbl.length));
-        }
-      } else {
-        // Empty label: continuous ─ baseline
-        labelLine += "─".repeat(cellW);
-      }
-    }
-    lines.push(labelLine);
-
-    // Granularity: text at top left showing aggregation level
-    const granularityText = this.theme.italic(
-      this.data.length === plotData.length
-        ? "Daily"
-        : "~" + (this.data.length / plotData.length).toFixed(1) + "d avg",
-    );
-    lines.push(
-      this.theme.fg(
-        "dim",
-        " ".repeat(width - Math.max(0, visibleWidth(granularityText))) + granularityText,
-      ),
-    );
-
-    this.cachedLines = lines;
-    this.cachedWidth = width;
-    return lines;
-  }
-
-  /** Render per-hour bars for 1d range. */
-  private renderHourly(width: number): string[] {
-    const barAreaH = Math.max(MIN_BAR_AREA, this.maxHeight - CHART_VERTICAL_PADDING);
-    const maxCost = Math.max(...this.hourlyData.map((h) => h.cost), COST_FLOOR);
-
-    const step = this.yAxisSpacing != null ? Math.max(1, this.yAxisSpacing) : densityStep(barAreaH);
-    const yLabelPad = computeLabelWidth(maxCost, barAreaH, step);
-    const yAxisW = yLabelPad + Y_SEP_WIDTH;
-    const availW = width - yAxisW;
-
-    // Downsample hours if too many for available width
-    const maxBars = Math.max(MIN_BARS, Math.floor(availW / (MIN_COL_WIDTH + BAR_GAP)));
-    const plotData =
-      this.hourlyData.length > maxBars ? aggregateHours(this.hourlyData, maxBars) : this.hourlyData;
-
-    const totalGaps = plotData.length * BAR_GAP;
-    const colW = Math.max(MIN_COL_WIDTH, Math.floor((availW - totalGaps) / plotData.length));
-
-    const lines: string[] = [];
-
-    for (let row = barAreaH - 1; row >= 0; row--) {
-      let line = "";
-
-      const isLabelRow = row === 0 || row % step === 0;
-      if (isLabelRow) {
-        const val = (row / (barAreaH - 1)) * maxCost;
-        line += formatCost(val).padStart(yLabelPad) + Y_AXIS_SEPARATOR;
-      } else {
-        line += " ".repeat(yLabelPad) + Y_AXIS_SEPARATOR;
-      }
-
-      for (const h of plotData) {
-        const barH = maxCost > 0 ? (h.cost / maxCost) * barAreaH : 0;
-        if (barH > row + HALF_BLOCK_THRESHOLD) {
-          line += "█".repeat(colW);
-        } else if (barH > row) {
-          line += "▄".repeat(colW);
-        } else {
-          line += " ".repeat(colW);
-        }
-        line += " ".repeat(BAR_GAP);
-      }
-      lines.push(line);
-    }
-
-    // X-axis labels with hour labels auto-dense
-    const hourInterval = computeHourLabelInterval(plotData.length, colW + BAR_GAP);
-    let labelLine = " ".repeat(yLabelPad + 1) + "└─";
-    for (let i = 0; i < plotData.length; i++) {
-      const lbl = formatHourLabel(plotData[i].hour, i, plotData, hourInterval);
+      const lbl = labels[i];
       const cellW = colW + BAR_GAP;
       if (lbl.length > 0) {
         if (lbl.length + 2 <= cellW) {
@@ -248,17 +208,10 @@ export class BarChart implements Component {
     }
     lines.push(labelLine);
 
-    // Granularity
-    const granularityText = this.theme.italic(
-      this.hourlyData.length === plotData.length
-        ? "Hourly"
-        : `~${(24 / plotData.length).toFixed(1)}h avg`,
-    );
+    // Granularity footer (right-aligned)
+    const granularityText = this.theme.italic(granularityLabel);
     lines.push(
-      this.theme.fg(
-        "dim",
-        " ".repeat(width - Math.max(0, visibleWidth(granularityText))) + granularityText,
-      ),
+      this.theme.fg("dim", " ".repeat(width - visibleWidth(granularityText)) + granularityText),
     );
 
     return lines;
@@ -286,7 +239,12 @@ function computeLabelWidth(maxCost: number, barAreaH: number, step: number): num
   return maxW;
 }
 
-function formatLabel(dateStr: string, index: number, data: DaySpend[], range: TimeRange): string {
+function formatDateLabel(
+  dateStr: string,
+  index: number,
+  data: DaySpend[],
+  range: TimeRange,
+): string {
   const d = new Date(dateStr + "T00:00:00Z");
   if (range === "1d" || range === "7d") {
     return DAY_NAMES[d.getUTCDay()];
@@ -304,27 +262,6 @@ function formatLabel(dateStr: string, index: number, data: DaySpend[], range: Ti
   const prevD = new Date(data[index - 1].date + "T00:00:00Z");
   if (prevD.getUTCMonth() !== d.getUTCMonth()) return month;
   return "";
-}
-
-// TODO: Unify BarEntry type so BarChart is agnostic to daily/hourly data shapes
-
-function aggregateHours(data: HourSpend[], target: number): HourSpend[] {
-  if (data.length <= target) return data;
-  const n = data.length;
-  const q = Math.floor(n / target);
-  const r = n % target;
-  const result: HourSpend[] = [];
-  let idx = 0;
-  for (let i = 0; i < target; i++) {
-    const size = i < r ? q + 1 : q;
-    let cost = 0;
-    for (let j = 0; j < size; j++) {
-      cost += data[idx + j].cost;
-    }
-    result.push({ hour: data[idx].hour, cost });
-    idx += size;
-  }
-  return result;
 }
 
 function computeHourLabelInterval(count: number, cellWidth: number): number {
