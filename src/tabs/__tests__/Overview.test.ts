@@ -1,29 +1,31 @@
 import { describe, it, expect } from "vitest";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { Overview } from "../Overview";
+import { StatsSummary } from "../../types";
+import { makeSummary } from "../../__tests__/compute.fixtures";
 
 describe("Overview", () => {
-  const kpis = {
+  const mockSummary: StatsSummary = {
+    ...makeSummary(),
     totalCost: 12.34,
     sessionCount: 42,
     totalMessages: 1500,
     totalTokens: 250000,
     daysActive: 7,
     avgCostPerDay: 1.76,
+    dailySpend: [
+      { date: "2026-06-01", cost: 1.0 },
+      { date: "2026-06-02", cost: 0.0 },
+      { date: "2026-06-03", cost: 2.5 },
+      { date: "2026-06-04", cost: 0.5 },
+      { date: "2026-06-05", cost: 0.0 },
+      { date: "2026-06-06", cost: 1.2 },
+      { date: "2026-06-07", cost: 3.0 },
+    ],
   };
 
-  const dailySpend = [
-    { date: "2026-06-01", cost: 1.0 },
-    { date: "2026-06-02", cost: 0.0 },
-    { date: "2026-06-03", cost: 2.5 },
-    { date: "2026-06-04", cost: 0.5 },
-    { date: "2026-06-05", cost: 0.0 },
-    { date: "2026-06-06", cost: 1.2 },
-    { date: "2026-06-07", cost: 3.0 },
-  ];
-
   it("renders KpiCards followed by spacer followed by BarChart", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", makeTheme(), 15);
+    const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
     const lines = overview.render(80);
 
     // Should have KPI + spacer + chart
@@ -53,7 +55,7 @@ describe("Overview", () => {
 
   it("adapts bar chart height to available space after KpiCards", () => {
     // Use a small maxHeight to verify chart still renders
-    const overview = new Overview(kpis, dailySpend, "7d", makeTheme(), 10);
+    const overview = new Overview(mockSummary, "7d", makeTheme(), 10);
     const lines = overview.render(80);
 
     // Chart should still render (not zero lines)
@@ -64,7 +66,11 @@ describe("Overview", () => {
   });
 
   it("shows 'No data' when daily spend is empty", () => {
-    const overview = new Overview(kpis, [], "7d", makeTheme(), 15);
+    const summary: StatsSummary = {
+      ...mockSummary,
+      dailySpend: [],
+    };
+    const overview = new Overview(summary, "7d", makeTheme(), 15);
     const lines = overview.render(80);
 
     const text = lines.join("\n");
@@ -74,7 +80,7 @@ describe("Overview", () => {
   });
 
   it("invalidate clears cache and re-renders at new width", () => {
-    const overview = new Overview(kpis, dailySpend, "7d", makeTheme(), 15);
+    const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
     overview.render(80);
     overview.invalidate();
 

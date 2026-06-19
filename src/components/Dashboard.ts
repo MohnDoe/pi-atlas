@@ -79,21 +79,7 @@ export class Dashboard extends Container {
     }
 
     this.tabs = [
-      new Overview(
-        {
-          totalCost: summary.totalCost,
-          sessionCount: summary.sessionCount,
-          totalMessages: summary.totalMessages,
-          totalTokens: summary.totalTokens,
-          daysActive: summary.daysActive,
-          avgCostPerDay: summary.avgCostPerDay,
-        },
-        summary.dailySpend,
-        rangeKey,
-        this.theme,
-        contentHeight,
-        summary.hourlySpend,
-      ),
+      new Overview(summary, rangeKey, this.theme, contentHeight),
       new Languages(summary.languages, this.theme, this.langPalette, this.tui, contentHeight),
       new Models(summary.models, this.theme, this.modelPalette, this.tui, contentHeight),
       new Projects(summary.projects, this.theme, this.tui, contentHeight),

@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer } from "@earendil-works/pi-tui";
-import { DaySpend, HourSpend, type TimeRange } from "../types";
+import { DaySpend, HourSpend, StatsSummary, type TimeRange } from "../types";
 import { BarChart } from "../components/BarChart";
 import { KpiCards, KpiData } from "../components/KpiCards";
 import { BorderBox } from "../components/BorderBox";
@@ -14,26 +14,32 @@ export class Overview extends Container {
   private barChart: BarChart;
 
   constructor(
-    kpis: KpiData,
-    dailySpend: DaySpend[],
+    private summary: StatsSummary,
     rangeKey: TimeRange,
     private theme: Theme,
     maxHeight: number,
-    hourlySpend?: HourSpend[],
   ) {
     super();
+    const kpis: KpiData = {
+      totalCost: this.summary.totalCost,
+      sessionCount: this.summary.sessionCount,
+      totalMessages: this.summary.totalMessages,
+      totalTokens: this.summary.totalTokens,
+      daysActive: this.summary.daysActive,
+      avgCostPerDay: this.summary.avgCostPerDay,
+    };
     this.kpiCards = new KpiCards(kpis, this.theme);
     const chartHeight = Math.min(
       BAR_CHART_MAX_HEIGHT,
       maxHeight - KPI_CARDS_HEIGHT - SPACER_HEIGHT,
     );
     this.barChart = new BarChart(
-      dailySpend,
+      this.summary.dailySpend,
       rangeKey,
       chartHeight,
       this.theme,
       undefined,
-      hourlySpend,
+      this.summary.hourlySpend,
     );
   }
 
