@@ -198,6 +198,10 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
   return day;
 }
 
+function countNewLines(s: string): number {
+  return (s.match(/\n/g) ?? []).length;
+}
+
 export function parseLanguageUsage(
   toolName: string,
   args: Record<string, unknown> | undefined,
@@ -211,20 +215,23 @@ export function parseLanguageUsage(
   if (toolName === "edit") {
     const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
     if (Array.isArray(edits)) {
-      let totalNewChars = 0;
+      let totalNewLines = 0;
       for (const edit of edits) {
-        totalNewChars += edit.newText?.length ?? 0;
+        totalNewLines += countNewLines(edit.newText ?? "") + countNewLines(edit.oldText ?? "") + 1;
+        day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
       }
-      if (totalNewChars > 0) {
-        day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewChars;
-      }
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewLines;
+    } else {
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
+      day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
     }
-    day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
   } else {
     const contentStr = args?.content as string | undefined;
     if (contentStr) {
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
+      // +1 because no new line is still a line
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + countNewLines(contentStr);
     }
+    day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
   }
 
   return day;

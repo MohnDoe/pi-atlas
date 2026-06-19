@@ -18,8 +18,18 @@ import {
   sessionProjectMap,
 } from "../parser";
 import type { DayAgg } from "../types";
-import type { AssistantMessage as PiAssistantMessage, ToolResultMessage as PiToolResultMessage, ToolCall } from "@earendil-works/pi-ai";
-import type { CompactionEntry, ModelChangeEntry, SessionHeader, SessionMessageEntry, ThinkingLevelChangeEntry } from "@earendil-works/pi-coding-agent";
+import type {
+  AssistantMessage as PiAssistantMessage,
+  ToolResultMessage as PiToolResultMessage,
+  ToolCall,
+} from "@earendil-works/pi-ai";
+import type {
+  CompactionEntry,
+  ModelChangeEntry,
+  SessionHeader,
+  SessionMessageEntry,
+  ThinkingLevelChangeEntry,
+} from "@earendil-works/pi-coding-agent";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {
@@ -34,14 +44,25 @@ function mkAsst(msg: {
     api: "anthropic-messages",
     provider: msg.provider ?? "deepseek",
     model: msg.model ?? "deepseek-v4-pro",
-    usage: msg.usage ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    usage: msg.usage ?? {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
     stopReason: "stop",
     timestamp: 1700000000000,
   };
 }
 
 // Helper: minimal ToolResultMessage with required fields
-function mkToolResult(msg: { toolName?: string; toolCallId?: string; content?: PiToolResultMessage["content"] }): PiToolResultMessage {
+function mkToolResult(msg: {
+  toolName?: string;
+  toolCallId?: string;
+  content?: PiToolResultMessage["content"];
+}): PiToolResultMessage {
   return {
     role: "toolResult",
     toolName: msg.toolName ?? "bash",
@@ -126,7 +147,7 @@ describe("parseToolResultMessage", () => {
 });
 
 describe("parseLanguageUsage", () => {
-  it("counts edit newText chars as langLines and increments langEdits", () => {
+  it("counts edits correctly", () => {
     const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: [
@@ -134,25 +155,25 @@ describe("parseLanguageUsage", () => {
         { oldText: "y", newText: "defg" },
       ],
     });
-    expect(day.langLines["TypeScript"]).toBe(7);
-    expect(day.langEdits["TypeScript"]).toBe(1);
+    expect(day.langEdits["TypeScript"]).toBe(2);
+    expect(day.langLines["TypeScript"]).toBe(2);
   });
 
-  it("counts write content length as langLines", () => {
+  it("counts write call correctly", () => {
     const day = parseLanguageUsage("write", {
       path: "/src/lib.rs",
       content: "fn main() {}",
     });
-    expect(day.langLines["Rust"]).toBe(12);
+    expect(day.langLines["Rust"]).toBe(1);
     expect(day.langEdits["Rust"]).toBeUndefined();
   });
 
-  it("treats edits with no newText as zero chars", () => {
+  it("treats edits with no newText as a line", () => {
     const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: [{ oldText: "x" }],
     });
-    expect(day.langLines["TypeScript"]).toBeUndefined();
+    expect(day.langLines["TypeScript"]).toBe(1);
     expect(day.langEdits["TypeScript"]).toBe(1);
   });
 
@@ -161,13 +182,13 @@ describe("parseLanguageUsage", () => {
       path: "/src/foo.ts",
       edits: "not-an-array",
     });
-    expect(day.langLines["TypeScript"]).toBeUndefined();
+    expect(day.langLines["TypeScript"]).toBe(1);
     expect(day.langEdits["TypeScript"]).toBe(1);
   });
 
   it("handles missing content in write gracefully", () => {
     const day = parseLanguageUsage("write", { path: "/src/foo.py" });
-    expect(day.langLines["Python"]).toBeUndefined();
+    expect(day.langLines["Python"]).toBe(1);
   });
 
   it("returns empty day when path is missing", () => {
@@ -187,7 +208,14 @@ describe("parseAssistantMessage", () => {
   it("counts one assistant message and usage tokens", () => {
     const msg = mkAsst({
       content: [{ type: "text", text: "hello" }],
-      usage: { input: 100, output: 50, cacheRead: 10, cacheWrite: 5, totalTokens: 165, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 10,
+        cacheWrite: 5,
+        totalTokens: 165,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
@@ -200,7 +228,14 @@ describe("parseAssistantMessage", () => {
   it("records model cost and count when both model and cost present", () => {
     const msg = mkAsst({
       model: "deepseek-v4-pro",
-      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 } },
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.cost).toBe(0.003);
@@ -211,7 +246,14 @@ describe("parseAssistantMessage", () => {
   it("skips model cost when model is missing", () => {
     const msg = mkAsst({
       model: "",
-      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 } },
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.modelCost).toEqual({});
@@ -248,9 +290,9 @@ describe("parseAssistantMessage", () => {
       ],
     });
     const day = parseAssistantMessage(msg);
-    expect(day.langLines["TypeScript"]).toBe(3);
+    expect(day.langLines["TypeScript"]).toBe(1);
     expect(day.langEdits["TypeScript"]).toBe(1);
-    expect(day.langLines["Rust"]).toBe(12);
+    expect(day.langLines["Rust"]).toBe(1);
   });
 
   it("attributes cost to projects in sessionProject", () => {
@@ -260,7 +302,14 @@ describe("parseAssistantMessage", () => {
 
     const msg = mkAsst({
       content: [{ type: "text", text: "ok" }],
-      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 } },
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.projectCost["alpha"]).toBe(0.05);
@@ -270,7 +319,14 @@ describe("parseAssistantMessage", () => {
   it("handles missing usage gracefully", () => {
     const msg = mkAsst({
       content: [{ type: "text", text: "hi" }],
-      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
@@ -280,7 +336,14 @@ describe("parseAssistantMessage", () => {
 
   it("handles missing content gracefully", () => {
     const msg = mkAsst({
-      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
     });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
@@ -442,7 +505,14 @@ describe("parseSessionLogEntry", () => {
         content: [{ type: "text", text: "hello" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
+        },
       }),
     };
 
@@ -498,17 +568,23 @@ describe("parseSessionLogEntry", () => {
       timestamp: "2026-06-08T10:01:00.000Z",
       message: mkAsst({
         content: [
-          tc("edit", { path: "/home/doe/proj/src/foo.ts", edits: [{ oldText: "a", newText: "ab" }] }),
-          { ...tc("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }), id: "c2" },
+          tc("edit", {
+            path: "/home/doe/proj/src/foo.ts",
+            edits: [{ oldText: "a", newText: "ab" }],
+          }),
+          {
+            ...tc("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }),
+            id: "c2",
+          },
           { ...tc("read", { path: "/home/doe/proj/README.md" }), id: "c3" },
         ],
         model: "sonnet",
       }),
     })!;
 
-    expect(dayAgg.langLines["TypeScript"]).toBe(2);
+    expect(dayAgg.langLines["TypeScript"]).toBe(1);
     expect(dayAgg.langEdits["TypeScript"]).toBe(1);
-    expect(dayAgg.langLines["Rust"]).toBe(12);
+    expect(dayAgg.langLines["Rust"]).toBe(1);
     expect(dayAgg.langLines["Markdown"]).toBeUndefined();
   });
 
@@ -546,7 +622,14 @@ describe("parseSessionLogEntry", () => {
       message: mkAsst({
         content: [{ type: "text", text: "ok" }],
         model: "gpt",
-        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 } },
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
+        },
       }),
     })!;
 
@@ -590,7 +673,14 @@ describe("parseSessionLogEntry", () => {
       message: mkAsst({
         content: [{ type: "text", text: "hi" }],
         model: "m",
-        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
       }),
     })!;
 
@@ -624,7 +714,14 @@ describe("parseSessionLogEntry", () => {
       message: mkAsst({
         content: [{ type: "text", text: "hi" }],
         model: "deepseek-v4",
-        usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
       }),
     })!;
 
@@ -657,35 +754,41 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     mergeDay(session, day);
-    expect(session.langLines["Other"]).toBe(3);
+    expect(session.langLines["Other"]).toBe(1);
   });
 
   it("returns null for unknown entry types", () => {
-    expect(parseSessionLogEntry({
-      type: "branch_summary",
-      id: "b1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      fromId: "m1",
-      summary: "branch",
-    })).toBeNull();
+    expect(
+      parseSessionLogEntry({
+        type: "branch_summary",
+        id: "b1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        fromId: "m1",
+        summary: "branch",
+      }),
+    ).toBeNull();
 
-    expect(parseSessionLogEntry({
-      type: "custom",
-      id: "c1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      customType: "my-ext",
-    })).toBeNull();
+    expect(
+      parseSessionLogEntry({
+        type: "custom",
+        id: "c1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        customType: "my-ext",
+      }),
+    ).toBeNull();
 
-    expect(parseSessionLogEntry({
-      type: "label",
-      id: "l1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      targetId: "t1",
-      label: "checkpoint",
-    })).toBeNull();
+    expect(
+      parseSessionLogEntry({
+        type: "label",
+        id: "l1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        targetId: "t1",
+        label: "checkpoint",
+      }),
+    ).toBeNull();
   });
 
   it("handles compaction entries", () => {
@@ -851,7 +954,14 @@ describe("mergeDay", () => {
         content: [{ type: "text", text: "hello" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
+        },
       }),
     })!;
     const b = parseSessionLogEntry({
@@ -863,7 +973,14 @@ describe("mergeDay", () => {
         content: [{ type: "text", text: "??" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
+        },
       }),
     })!;
 
@@ -876,7 +993,14 @@ describe("mergeDay", () => {
         content: [{ type: "text", text: "OK" }],
         provider: "openai",
         model: "gpt-4",
-        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+        usage: {
+          input: 1000,
+          output: 200,
+          cacheRead: 100,
+          cacheWrite: 0,
+          totalTokens: 1300,
+          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
+        },
       }),
     })!;
 
@@ -985,7 +1109,14 @@ describe("parseFile", () => {
         message: mkAsst({
           content: [{ type: "text", text: "hey" }],
           model: "m",
-          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 } },
+          usage: {
+            input: 100,
+            output: 50,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 150,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
+          },
         }),
       }),
     ];
@@ -1136,7 +1267,14 @@ describe("parseFile", () => {
       message: mkAsst({
         content: [{ type: "text", text: "ok" }],
         model: "m",
-        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost } },
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+        },
       }),
     });
 
@@ -1212,7 +1350,9 @@ describe("parseFile", () => {
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (c) => { warnings = c; });
+    const map = parseFile(filePath, (c) => {
+      warnings = c;
+    });
 
     // Only the user message should be counted; unknown types are silently skipped
     expect(map.size).toBe(1);
