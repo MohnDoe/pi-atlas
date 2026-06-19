@@ -7,21 +7,55 @@ import {
   emptyDay,
   mergeDay,
   parseAssistantMessage,
+  parseCompactionEntry,
   parseFile,
-  parseMessageEntry,
-  parseSessionEntry,
+  parseModelChangeEntry,
+  parseSessionHeader,
   parseSessionLogEntry,
+  parseThinkingLevelChangeEntry,
   parseToolResultMessage,
   parseUserMessage,
   sessionProjectMap,
 } from "../parser";
-import type {
-  AssistantMessageBody,
-  DayAgg,
-  MessageEntry,
-  SessionEntry,
-  ToolResultMessageBody,
-} from "../types";
+import type { DayAgg } from "../types";
+import type { AssistantMessage as PiAssistantMessage, ToolResultMessage as PiToolResultMessage, ToolCall } from "@earendil-works/pi-ai";
+import type { CompactionEntry, ModelChangeEntry, SessionHeader, SessionMessageEntry, ThinkingLevelChangeEntry } from "@earendil-works/pi-coding-agent";
+
+// Helper: minimal AssistantMessage with required fields
+function mkAsst(msg: {
+  content?: PiAssistantMessage["content"];
+  model?: string;
+  provider?: string;
+  usage?: PiAssistantMessage["usage"];
+}): PiAssistantMessage {
+  return {
+    role: "assistant",
+    content: msg.content ?? [],
+    api: "anthropic-messages",
+    provider: msg.provider ?? "deepseek",
+    model: msg.model ?? "deepseek-v4-pro",
+    usage: msg.usage ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    stopReason: "stop",
+    timestamp: 1700000000000,
+  };
+}
+
+// Helper: minimal ToolResultMessage with required fields
+function mkToolResult(msg: { toolName?: string; toolCallId?: string; content?: PiToolResultMessage["content"] }): PiToolResultMessage {
+  return {
+    role: "toolResult",
+    toolName: msg.toolName ?? "bash",
+    toolCallId: msg.toolCallId ?? "c1",
+    content: msg.content ?? [],
+    isError: false,
+    timestamp: 1700000000000,
+  };
+}
+
+// Helper: minimal ToolCall block
+function tc(name: string, args?: Record<string, unknown>): ToolCall {
+  return { type: "toolCall", id: "c1", name, arguments: args ?? {} };
+}
 
 describe("emptyDay", () => {
   it("creates a zeroed DayAgg with the given date", () => {
@@ -43,6 +77,10 @@ describe("emptyDay", () => {
     expect(day.projectCost).toEqual({});
     expect(day.projectSessions).toEqual({});
     expect(day.toolCount).toEqual({});
+    expect(day.compactionCount).toBe(0);
+    expect(day.compactedTokens).toBe(0);
+    expect(day.modelChanges).toBe(0);
+    expect(day.thinkingLevelCount).toEqual({});
   });
 
   it("returns a new empty object each call", () => {
@@ -65,35 +103,23 @@ describe("parseUserMessage", () => {
 
 describe("parseToolResultMessage", () => {
   it("counts one tool result and the tool name", () => {
-    const msg: ToolResultMessageBody = {
-      role: "toolResult",
-      toolName: "bash",
-      toolCallId: "c1",
-    };
+    const msg = mkToolResult({ toolName: "bash" });
     const day = parseToolResultMessage(msg);
     expect(day.toolResults).toBe(1);
     expect(day.toolCount["bash"]).toBe(1);
   });
 
   it("handles missing toolName gracefully", () => {
-    const msg: ToolResultMessageBody = {
-      role: "toolResult",
-      toolCallId: "c1",
-    };
+    const msg = mkToolResult({ toolName: "" });
     const day = parseToolResultMessage(msg);
     expect(day.toolResults).toBe(1);
     expect(day.toolCount).toEqual({});
   });
 
   it("strips control characters from toolName", () => {
-    const msg: ToolResultMessageBody = {
-      role: "toolResult",
-      toolName: "ls -la agent/\n</parameter",
-      toolCallId: "c1",
-    };
+    const msg = mkToolResult({ toolName: "ls -la agent/\n</parameter" });
     const day = parseToolResultMessage(msg);
     expect(day.toolResults).toBe(1);
-    // Newline and XML fragments removed — only printable chars survive
     expect(Object.keys(day.toolCount)[0]).toBe("ls -la agent/</parameter");
     expect(day.toolCount["ls -la agent/</parameter"]).toBe(1);
   });
@@ -159,17 +185,10 @@ describe("detectLanguage", () => {
 
 describe("parseAssistantMessage", () => {
   it("counts one assistant message and usage tokens", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
+    const msg = mkAsst({
       content: [{ type: "text", text: "hello" }],
-      usage: {
-        input: 100,
-        output: 50,
-        cacheRead: 10,
-        cacheWrite: 5,
-        totalTokens: 165,
-      },
-    };
+      usage: { input: 100, output: 50, cacheRead: 10, cacheWrite: 5, totalTokens: 165, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
     expect(day.inTok).toBe(100);
@@ -179,19 +198,10 @@ describe("parseAssistantMessage", () => {
   });
 
   it("records model cost and count when both model and cost present", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
-      content: [{ type: "text", text: "ok" }],
+    const msg = mkAsst({
       model: "deepseek-v4-pro",
-      usage: {
-        input: 10,
-        output: 5,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 15,
-        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
-      },
-    };
+      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.cost).toBe(0.003);
     expect(day.modelCost["deepseek-v4-pro"]).toBe(0.003);
@@ -199,73 +209,44 @@ describe("parseAssistantMessage", () => {
   });
 
   it("skips model cost when model is missing", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
-      content: [{ type: "text", text: "ok" }],
-      usage: {
-        input: 10,
-        output: 5,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 15,
-        cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
-      },
-    };
+    const msg = mkAsst({
+      model: "",
+      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.modelCost).toEqual({});
     expect(day.modelCount).toEqual({});
   });
 
   it("counts tool calls from content blocks", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
+    const msg = mkAsst({
       content: [
-        { type: "toolCall", id: "c1", name: "read", arguments: { path: "/f" } },
-        { type: "toolCall", id: "c2", name: "bash", arguments: { command: "ls" } },
-        { type: "toolCall", id: "c3", name: "read", arguments: { path: "/g" } },
+        tc("read", { path: "/f" }),
+        { ...tc("bash", { command: "ls" }), id: "c2" },
+        { ...tc("read", { path: "/g" }), id: "c3" },
       ],
-    };
+    });
     const day = parseAssistantMessage(msg);
     expect(day.toolCount["read"]).toBe(2);
     expect(day.toolCount["bash"]).toBe(1);
   });
 
   it("strips control characters from tool call names", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
-      content: [
-        {
-          type: "toolCall",
-          id: "c1",
-          name: "ls -la agent/\n</parameter",
-          arguments: { command: "ls -la agent/" },
-        },
-      ],
-    };
+    const msg = mkAsst({
+      content: [tc("ls -la agent/\n</parameter", { command: "ls -la agent/" })],
+    });
     const day = parseAssistantMessage(msg);
-    // Names with newlines are sanitized — only printable chars survive
     expect(day.toolCount["ls -la agent/</parameter"]).toBe(1);
     expect(day.toolCount["ls -la agent/\n</parameter"]).toBeUndefined();
   });
 
   it("detects language from edit/write tool calls", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
+    const msg = mkAsst({
       content: [
-        {
-          type: "toolCall",
-          id: "c1",
-          name: "edit",
-          arguments: { path: "/src/foo.ts", edits: [{ newText: "abc" }] },
-        },
-        {
-          type: "toolCall",
-          id: "c2",
-          name: "write",
-          arguments: { path: "/src/bar.rs", content: "fn main() {}" },
-        },
+        tc("edit", { path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
+        { ...tc("write", { path: "/src/bar.rs", content: "fn main() {}" }), id: "c2" },
       ],
-    };
+    });
     const day = parseAssistantMessage(msg);
     expect(day.langLines["TypeScript"]).toBe(3);
     expect(day.langEdits["TypeScript"]).toBe(1);
@@ -277,28 +258,20 @@ describe("parseAssistantMessage", () => {
     sessionProjectMap.set("s1", "alpha");
     sessionProjectMap.set("s2", "beta");
 
-    const msg: AssistantMessageBody = {
-      role: "assistant",
+    const msg = mkAsst({
       content: [{ type: "text", text: "ok" }],
-      usage: {
-        input: 0,
-        output: 0,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 0,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
-      },
-    };
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.projectCost["alpha"]).toBe(0.05);
     expect(day.projectCost["beta"]).toBe(0.05);
   });
 
   it("handles missing usage gracefully", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
+    const msg = mkAsst({
       content: [{ type: "text", text: "hi" }],
-    };
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
     expect(day.inTok).toBe(0);
@@ -306,143 +279,136 @@ describe("parseAssistantMessage", () => {
   });
 
   it("handles missing content gracefully", () => {
-    const msg: AssistantMessageBody = {
-      role: "assistant",
-      usage: {
-        input: 10,
-        output: 5,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 15,
-      },
-    };
+    const msg = mkAsst({
+      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
     expect(day.toolCount).toEqual({});
   });
 });
 
-describe("parseSessionEntry", () => {
+describe("parseSessionHeader", () => {
   it("creates a DayAgg with session id and date", () => {
     sessionProjectMap.clear();
-    const entry: SessionEntry = {
+    const entry: SessionHeader = {
       type: "session",
       version: 3,
       id: "abc-123",
       timestamp: "2026-06-09T10:00:00.000Z",
+      cwd: "/home/doe",
     };
-    const day = parseSessionEntry(entry);
+    const day = parseSessionHeader(entry);
     expect(day.date).toBe("2026-06-09");
     expect(day.sessionIds.has("abc-123")).toBe(true);
   });
 
   it("registers project from cwd in sessionProject", () => {
     sessionProjectMap.clear();
-    const entry: SessionEntry = {
+    const entry: SessionHeader = {
       type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-09T10:00:00.000Z",
       cwd: "/home/doe/Work/dev/my-app",
     };
-    const day = parseSessionEntry(entry);
+    const day = parseSessionHeader(entry);
     expect(sessionProjectMap.get("s1")).toBe("my-app");
     expect(day.projectCost["my-app"]).toBe(0);
     expect(day.projectSessions["my-app"]?.has("s1")).toBe(true);
   });
 
-  it("skips project setup when cwd is missing", () => {
+  it("handles empty cwd gracefully", () => {
     sessionProjectMap.clear();
-    const entry: SessionEntry = {
+    const entry: SessionHeader = {
       type: "session",
       version: 3,
       id: "s2",
       timestamp: "2026-06-09T10:00:00.000Z",
+      cwd: "",
     };
-    const day = parseSessionEntry(entry);
+    const day = parseSessionHeader(entry);
     expect(sessionProjectMap.has("s2")).toBe(false);
     expect(day.projectCost).toEqual({});
     expect(day.projectSessions).toEqual({});
   });
 });
 
-describe("parseMessageEntry", () => {
-  it("routes user messages to parseUserMessage", () => {
-    const entry: MessageEntry = {
-      type: "message",
+describe("parseModelChangeEntry", () => {
+  it("increments modelChanges", () => {
+    const entry: ModelChangeEntry = {
+      type: "model_change",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-09T10:00:00.000Z",
-      message: { role: "user", content: [{ type: "text", text: "hi" }] },
+      provider: "deepseek",
+      modelId: "deepseek-v4-pro",
     };
-    const day = parseMessageEntry(entry);
+    const day = parseModelChangeEntry(entry);
     expect(day.date).toBe("2026-06-09");
-    expect(day.userMsgs).toBe(1);
+    expect(day.modelChanges).toBe(1);
+    expect(day.cost).toBe(0);
+  });
+});
+
+describe("parseThinkingLevelChangeEntry", () => {
+  it("counts one thinking level change", () => {
+    const entry: ThinkingLevelChangeEntry = {
+      type: "thinking_level_change",
+      id: "t1",
+      parentId: "p",
+      timestamp: "2026-06-09T10:00:00.000Z",
+      thinkingLevel: "high",
+    };
+    const day = parseThinkingLevelChangeEntry(entry);
+    expect(day.date).toBe("2026-06-09");
+    expect(day.thinkingLevelCount).toEqual({ high: 1 });
   });
 
-  it("routes tool result messages to parseToolResultMessage", () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "m1",
+  it("counts different thinking levels separately", () => {
+    const low: ThinkingLevelChangeEntry = {
+      type: "thinking_level_change",
+      id: "t1",
       parentId: "p",
       timestamp: "2026-06-09T10:00:00.000Z",
-      message: {
-        role: "toolResult",
-        toolName: "bash",
-        toolCallId: "c1",
-      },
+      thinkingLevel: "low",
     };
-    const day = parseMessageEntry(entry);
-    expect(day.date).toBe("2026-06-09");
-    expect(day.toolResults).toBe(1);
-    expect(day.toolCount["bash"]).toBe(1);
-  });
+    const high: ThinkingLevelChangeEntry = {
+      type: "thinking_level_change",
+      id: "t2",
+      parentId: "t1",
+      timestamp: "2026-06-09T10:01:00.000Z",
+      thinkingLevel: "high",
+    };
 
-  it("routes assistant messages to parseAssistantMessage", () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-09T10:00:00.000Z",
-      message: {
-        role: "assistant",
-        content: [{ type: "text", text: "ok" }],
-        usage: {
-          input: 100,
-          output: 50,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 150,
-        },
-      },
-    };
-    const day = parseMessageEntry(entry);
-    expect(day.date).toBe("2026-06-09");
-    expect(day.asstMsgs).toBe(1);
-    expect(day.inTok).toBe(100);
-    expect(day.outTok).toBe(50);
+    const base = emptyDay("2026-06-09");
+    mergeDay(base, parseThinkingLevelChangeEntry(low));
+    mergeDay(base, parseThinkingLevelChangeEntry(high));
+    expect(base.thinkingLevelCount).toEqual({ low: 1, high: 1 });
   });
+});
 
-  it("returns a mostly empty DayAgg for unknown role", () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "m1",
+describe("parseCompactionEntry", () => {
+  it("increments compactionCount and sums tokensBefore", () => {
+    const entry: CompactionEntry = {
+      type: "compaction",
+      id: "c1",
       parentId: "p",
       timestamp: "2026-06-09T10:00:00.000Z",
-      // @ts-expect-error: testing runtime resilience against unknown message role
-      message: { role: "unknown" },
+      summary: "Some summary",
+      firstKeptEntryId: "m1",
+      tokensBefore: 50000,
     };
-    const day = parseMessageEntry(entry);
+    const day = parseCompactionEntry(entry);
     expect(day.date).toBe("2026-06-09");
-    expect(day.userMsgs).toBe(0);
-    expect(day.asstMsgs).toBe(0);
-    expect(day.toolResults).toBe(0);
+    expect(day.compactionCount).toBe(1);
+    expect(day.compactedTokens).toBe(50000);
   });
 });
 
 describe("parseSessionLogEntry", () => {
   it("returns a DayAgg for a session entry", () => {
-    const entry: SessionEntry = {
+    const entry: SessionHeader = {
       type: "session",
       version: 3,
       id: "abc-123",
@@ -467,32 +433,17 @@ describe("parseSessionLogEntry", () => {
   });
 
   it("returns a DayAgg for an assistant message with usage", () => {
-    const msgEntry: MessageEntry = {
+    const msgEntry: SessionMessageEntry = {
       type: "message",
       id: "msg-1",
       parentId: "prev",
       timestamp: "2026-06-08T10:05:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "hello" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "hello" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: {
-            input: 0.001,
-            output: 0.0004,
-            cacheRead: 0.00001,
-            cacheWrite: 0,
-            total: 0.00141,
-          },
-        },
-        timestamp: 1700000000000,
-      } as AssistantMessageBody,
+        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+      }),
     };
 
     const dayAgg = parseSessionLogEntry(msgEntry);
@@ -513,70 +464,46 @@ describe("parseSessionLogEntry", () => {
 
   it("returns a DayAgg for a user message", () => {
     const dayAgg = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: { role: "user" as const, content: [{ type: "text" as const, text: "hi" }] },
+      message: { role: "user" as const, content: "hi", timestamp: 1700000000000 },
     })!;
 
+    assert(dayAgg);
     expect(dayAgg.userMsgs).toBe(1);
+    expect(dayAgg.date).toBe("2026-06-08");
   });
 
   it("returns a DayAgg for a tool result message", () => {
     const dayAgg = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:02:00.000Z",
-      message: { role: "toolResult" as const, toolName: "bash", toolCallId: "c1", content: [] },
+      message: mkToolResult({ toolName: "bash" }),
     })!;
 
     expect(dayAgg.toolResults).toBe(1);
     expect(dayAgg.toolCount["bash"]).toBe(1);
+    expect(dayAgg.date).toBe("2026-06-08");
   });
 
   it("detects languages from edit/write tool calls", () => {
     const dayAgg = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
+      message: mkAsst({
         content: [
-          {
-            type: "toolCall" as const,
-            id: "c1",
-            name: "edit",
-            arguments: {
-              path: "/home/doe/proj/src/foo.ts",
-              edits: [{ oldText: "a", newText: "ab" }],
-            },
-          },
-          {
-            type: "toolCall" as const,
-            id: "c2",
-            name: "write",
-            arguments: { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" },
-          },
-          {
-            type: "toolCall" as const,
-            id: "c3",
-            name: "read",
-            arguments: { path: "/home/doe/proj/README.md" },
-          },
+          tc("edit", { path: "/home/doe/proj/src/foo.ts", edits: [{ oldText: "a", newText: "ab" }] }),
+          { ...tc("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }), id: "c2" },
+          { ...tc("read", { path: "/home/doe/proj/README.md" }), id: "c3" },
         ],
         model: "sonnet",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-      },
+      }),
     })!;
 
     expect(dayAgg.langLines["TypeScript"]).toBe(2);
@@ -587,7 +514,7 @@ describe("parseSessionLogEntry", () => {
 
   it("extracts project name from session cwd", () => {
     const dayAgg = parseSessionLogEntry({
-      type: "session" as const,
+      type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-08T10:00:00.000Z",
@@ -602,7 +529,7 @@ describe("parseSessionLogEntry", () => {
 
   it("accumulates project costs", () => {
     const session = parseSessionLogEntry({
-      type: "session" as const,
+      type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-08T10:00:00.000Z",
@@ -612,23 +539,15 @@ describe("parseSessionLogEntry", () => {
     expect(session.projectCost["proj"]).toBe(0);
 
     const dayAgg = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "ok" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "ok" }],
         model: "gpt",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 },
-        },
-      },
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.05 } },
+      }),
     })!;
 
     mergeDay(session, dayAgg);
@@ -637,27 +556,17 @@ describe("parseSessionLogEntry", () => {
 
   it("counts tool calls from assistant content", () => {
     const dayAgg = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
+      message: mkAsst({
         content: [
-          { type: "toolCall" as const, id: "c1", name: "bash", arguments: { command: "ls" } },
-          { type: "toolCall" as const, id: "c2", name: "read", arguments: { path: "f" } },
-          { type: "toolCall" as const, id: "c3", name: "read", arguments: { path: "g" } },
+          tc("bash", { command: "ls" }),
+          { ...tc("read", { path: "f" }), id: "c2" },
+          { ...tc("read", { path: "g" }), id: "c3" },
         ],
-        model: "m",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-      },
+      }),
     })!;
 
     expect(dayAgg.toolCount["bash"]).toBe(1);
@@ -666,7 +575,7 @@ describe("parseSessionLogEntry", () => {
 
   it("handles missing usage gracefully", () => {
     const session = parseSessionLogEntry({
-      type: "session" as const,
+      type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-08T10:00:00.000Z",
@@ -674,15 +583,15 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     const day = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "hi" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "hi" }],
         model: "m",
-      },
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      }),
     })!;
 
     mergeDay(session, day);
@@ -693,10 +602,11 @@ describe("parseSessionLogEntry", () => {
 
   it("handles session entry without cwd", () => {
     const day = parseSessionLogEntry({
-      type: "session" as const,
+      type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-08T10:00:00.000Z",
+      cwd: "",
     })!;
 
     expect(day.date).toBe("2026-06-08");
@@ -707,22 +617,15 @@ describe("parseSessionLogEntry", () => {
 
   it("handles assistant message with model but no cost", () => {
     const day = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "hi" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "hi" }],
         model: "deepseek-v4",
-        usage: {
-          input: 100,
-          output: 50,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 150,
-        },
-      },
+        usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      }),
     })!;
 
     expect(day.asstMsgs).toBe(1);
@@ -735,7 +638,7 @@ describe("parseSessionLogEntry", () => {
 
   it("parses unknown file extensions as 'Other'", () => {
     const session = parseSessionLogEntry({
-      type: "session" as const,
+      type: "session",
       version: 3,
       id: "s1",
       timestamp: "2026-06-08T10:00:00.000Z",
@@ -743,34 +646,89 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     const day = parseSessionLogEntry({
-      type: "message" as const,
+      type: "message",
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [
-          {
-            type: "toolCall" as const,
-            id: "c1",
-            name: "write",
-            arguments: { path: "/x/config.xyz", content: "abc" },
-          },
-        ],
+      message: mkAsst({
+        content: [tc("write", { path: "/x/config.xyz", content: "abc" })],
         model: "m",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-      },
+      }),
     })!;
 
     mergeDay(session, day);
     expect(session.langLines["Other"]).toBe(3);
+  });
+
+  it("returns null for unknown entry types", () => {
+    expect(parseSessionLogEntry({
+      type: "branch_summary",
+      id: "b1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      fromId: "m1",
+      summary: "branch",
+    })).toBeNull();
+
+    expect(parseSessionLogEntry({
+      type: "custom",
+      id: "c1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      customType: "my-ext",
+    })).toBeNull();
+
+    expect(parseSessionLogEntry({
+      type: "label",
+      id: "l1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      targetId: "t1",
+      label: "checkpoint",
+    })).toBeNull();
+  });
+
+  it("handles compaction entries", () => {
+    const day = parseSessionLogEntry({
+      type: "compaction",
+      id: "c1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      summary: "Summary",
+      firstKeptEntryId: "m1",
+      tokensBefore: 42000,
+    })!;
+
+    assert(day);
+    expect(day.compactionCount).toBe(1);
+    expect(day.compactedTokens).toBe(42000);
+  });
+
+  it("handles model_change entries", () => {
+    const day = parseSessionLogEntry({
+      type: "model_change",
+      id: "mc1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      provider: "openai",
+      modelId: "gpt-5",
+    })!;
+
+    assert(day);
+    expect(day.modelChanges).toBe(1);
+  });
+
+  it("handles thinking_level_change entries", () => {
+    const day = parseSessionLogEntry({
+      type: "thinking_level_change",
+      id: "t1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:00:00.000Z",
+      thinkingLevel: "xhigh",
+    })!;
+
+    assert(day);
+    expect(day.thinkingLevelCount).toEqual({ xhigh: 1 });
   });
 });
 
@@ -889,54 +847,24 @@ describe("mergeDay", () => {
       id: "msg-1",
       parentId: "prev",
       timestamp: "2026-06-08T10:05:00.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "hello" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "hello" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: {
-            input: 0.001,
-            output: 0.0004,
-            cacheRead: 0.00001,
-            cacheWrite: 0,
-            total: 0.00141,
-          },
-        },
-        timestamp: 1700000000000,
-      } as AssistantMessageBody,
+        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+      }),
     })!;
     const b = parseSessionLogEntry({
       type: "message",
       id: "msg-2",
       parentId: "msg-1",
       timestamp: "2026-06-08T10:05:01.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "??" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "??" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: {
-            input: 0.001,
-            output: 0.0004,
-            cacheRead: 0.00001,
-            cacheWrite: 0,
-            total: 0.00141,
-          },
-        },
-        timestamp: 1700000000001,
-      } as AssistantMessageBody,
+        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+      }),
     })!;
 
     const c = parseSessionLogEntry({
@@ -944,27 +872,12 @@ describe("mergeDay", () => {
       id: "msg-3",
       parentId: "msg-2",
       timestamp: "2026-06-08T10:05:02.000Z",
-      message: {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "OK" }],
+      message: mkAsst({
+        content: [{ type: "text", text: "OK" }],
         provider: "openai",
         model: "gpt-4",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: {
-            input: 0.001,
-            output: 0.0004,
-            cacheRead: 0.00001,
-            cacheWrite: 0,
-            total: 0.00141,
-          },
-        },
-        timestamp: 1700000000001,
-      } as AssistantMessageBody,
+        usage: { input: 1000, output: 200, cacheRead: 100, cacheWrite: 0, totalTokens: 1300, cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 } },
+      }),
     })!;
 
     mergeDay(a, b);
@@ -1007,6 +920,31 @@ describe("mergeDay", () => {
     mergeDay(a, c);
     expect(a.projectCost).toEqual({ alpha: 2.0, beta: 2.0, gamma: 3.0 });
   });
+
+  it("merges new fields: compaction, modelChanges, thinkingLevelCount", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      compactionCount: 2,
+      compactedTokens: 80000,
+      modelChanges: 1,
+      thinkingLevelCount: { low: 2, high: 1 },
+    };
+    const c: DayAgg = {
+      ...emptyDay("2026-06-08"),
+      compactionCount: 1,
+      compactedTokens: 20000,
+      modelChanges: 2,
+      thinkingLevelCount: { low: 1, xhigh: 1 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.compactionCount).toBe(3);
+    expect(a.compactedTokens).toBe(100000);
+    expect(a.modelChanges).toBe(3);
+    expect(a.thinkingLevelCount).toEqual({ low: 3, high: 1, xhigh: 1 });
+  });
 });
 
 describe("parseFile", () => {
@@ -1036,7 +974,7 @@ describe("parseFile", () => {
         id: "m1",
         parentId: "p",
         timestamp: "2026-06-08T10:01:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
       }),
       "invalid json {broken",
       JSON.stringify({
@@ -1044,19 +982,11 @@ describe("parseFile", () => {
         id: "m2",
         parentId: "m1",
         timestamp: "2026-06-08T10:02:00.000Z",
-        message: {
-          role: "assistant",
+        message: mkAsst({
           content: [{ type: "text", text: "hey" }],
           model: "m",
-          usage: {
-            input: 100,
-            output: 50,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 150,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
-          },
-        },
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 } },
+        }),
       }),
     ];
     await writeFile(filePath, lines.join("\n"));
@@ -1094,14 +1024,14 @@ describe("parseFile", () => {
         id: "m1",
         parentId: "p",
         timestamp: "2026-06-08T10:00:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
       }),
       JSON.stringify({
         type: "message",
         id: "m2",
         parentId: "m1",
         timestamp: "2026-06-09T10:00:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "bye" }] },
+        message: { role: "user", content: "bye", timestamp: 1700000000001 },
       }),
     ];
     await writeFile(filePath, lines.join("\n"));
@@ -1123,7 +1053,7 @@ describe("parseFile", () => {
         id: "m1",
         parentId: "p",
         timestamp: "2026-06-08T10:00:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "ok" }] },
+        message: { role: "user", content: "ok", timestamp: 1700000000000 },
       }),
     ];
     await writeFile(filePath, lines.join("\n"));
@@ -1182,7 +1112,7 @@ describe("parseFile", () => {
         id: "m1",
         parentId: "p",
         timestamp: "2026-06-08T10:00:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
       }),
       "\t",
     ];
@@ -1203,19 +1133,11 @@ describe("parseFile", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "assistant",
+      message: mkAsst({
         content: [{ type: "text", text: "ok" }],
         model: "m",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
-        },
-      },
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost } },
+      }),
     });
 
     const fileA = join(tmpDir, "project-a.jsonl");
@@ -1248,18 +1170,53 @@ describe("parseFile", () => {
       ].join("\n"),
     );
 
-    // Parse each file separately
     const mapA = parseFile(fileA);
     const mapB = parseFile(fileB);
 
-    // File A's day should only have proj-alpha cost
     const dayA = mapA.get("2026-06-08")!;
     expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
     expect(dayA.projectCost["proj-alpha"]).toBe(0.1);
 
-    // File B's day should only have proj-beta cost
     const dayB = mapB.get("2026-06-08")!;
     expect(Object.keys(dayB.projectCost)).toEqual(["proj-beta"]);
     expect(dayB.projectCost["proj-beta"]).toBe(0.25);
+  });
+
+  it("silently skips unknown entry types (branch_summary, custom, label, session_info)", async () => {
+    const filePath = join(tmpDir, "unknown-types.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "branch_summary",
+        id: "b1",
+        parentId: null,
+        timestamp: "2026-06-08T10:00:00.000Z",
+        fromId: "m1",
+        summary: "branch",
+      }),
+      JSON.stringify({
+        type: "custom",
+        id: "c1",
+        parentId: "b1",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        customType: "my-ext",
+        data: { x: 1 },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "c1",
+        timestamp: "2026-06-08T10:02:00.000Z",
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (c) => { warnings = c; });
+
+    // Only the user message should be counted; unknown types are silently skipped
+    expect(map.size).toBe(1);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
+    expect(warnings).toBe(0);
   });
 });
