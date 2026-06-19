@@ -27,7 +27,14 @@ export class Overview extends Container {
       BAR_CHART_MAX_HEIGHT,
       maxHeight - KPI_CARDS_HEIGHT - SPACER_HEIGHT,
     );
-    this.barChart = new BarChart(dailySpend, rangeKey, chartHeight, this.theme, undefined, hourlySpend);
+    this.barChart = new BarChart(
+      dailySpend,
+      rangeKey,
+      chartHeight,
+      this.theme,
+      undefined,
+      hourlySpend,
+    );
   }
 
   render(width: number): string[] {
@@ -37,7 +44,7 @@ export class Overview extends Container {
     this.addChild(
       new BorderBox(
         {
-          title: this.theme.bold("Usage overtime"),
+          title: this.theme.bold("Cost overtime"),
           child: this.barChart,
           paddingX: 1,
           paddingY: 1,
