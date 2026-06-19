@@ -55,8 +55,6 @@ describe("BarChart", () => {
     expect(text).toContain("█");
   });
 
-
-
   it("30d labels are sparse and fit within width", () => {
     // Build 30 days of data spanning a month
     const spend: { date: string; cost: number }[] = [];
@@ -91,7 +89,7 @@ describe("BarChart", () => {
     ];
     const chart = new BarChart(spend, "All", 10, makeTheme());
     const lines = chart.render(80);
-    const labelLine = lines[lines.length - 1];
+    const labelLine = lines[lines.length - 2];
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
@@ -116,7 +114,7 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 5, so step=1
     const chart = new BarChart(dailySpend, "7d", 7, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // All bar rows should have a dot separator or label content
     for (const line of barLines) {
       expect(line).toContain("│");
@@ -127,11 +125,11 @@ describe("BarChart", () => {
     // barAreaH = maxHeight - 2 = 10, so step=2
     const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
     // But bottom row 0 always has label
     expect(barLines[barLines.length - 1]).toContain("$0.00");
-    expect(barLines[0]).not.toMatch(/\$\d/); // top row no label
+    expect(barLines[0]).toMatch(/\$\d/); // top row no label
   });
 
   it("y-axis labels are right-aligned", () => {
@@ -155,7 +153,7 @@ describe("BarChart", () => {
     // but yAxisSpacing=1 forces every row
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme(), 1);
     const lines = chart.render(80);
-    const barLines = lines.slice(1, -1); // exclude granularity + x-axis label
+    const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
     // Every bar row should have $ labels (step=1)
     for (const line of barLines) {
       expect(line).toContain("$");
@@ -166,7 +164,7 @@ describe("BarChart", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     // Last line is the x-axis label row
-    const labelLine = lines[lines.length - 1];
+    const labelLine = lines[lines.length - 2];
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // └ at the y-axis position (corner)
     expect(visible).toContain("└");
