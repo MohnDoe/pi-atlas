@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import {
-  detectLanguage,
+  parseLanguageUsage,
   emptyDay,
   mergeDay,
   parseAssistantMessage,
@@ -125,9 +125,9 @@ describe("parseToolResultMessage", () => {
   });
 });
 
-describe("detectLanguage", () => {
+describe("parseLanguageUsage", () => {
   it("counts edit newText chars as langLines and increments langEdits", () => {
-    const day = detectLanguage("edit", {
+    const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: [
         { oldText: "x", newText: "abc" },
@@ -139,7 +139,7 @@ describe("detectLanguage", () => {
   });
 
   it("counts write content length as langLines", () => {
-    const day = detectLanguage("write", {
+    const day = parseLanguageUsage("write", {
       path: "/src/lib.rs",
       content: "fn main() {}",
     });
@@ -148,7 +148,7 @@ describe("detectLanguage", () => {
   });
 
   it("treats edits with no newText as zero chars", () => {
-    const day = detectLanguage("edit", {
+    const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: [{ oldText: "x" }],
     });
@@ -157,7 +157,7 @@ describe("detectLanguage", () => {
   });
 
   it("handles non-array edits gracefully", () => {
-    const day = detectLanguage("edit", {
+    const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: "not-an-array",
     });
@@ -166,18 +166,18 @@ describe("detectLanguage", () => {
   });
 
   it("handles missing content in write gracefully", () => {
-    const day = detectLanguage("write", { path: "/src/foo.py" });
+    const day = parseLanguageUsage("write", { path: "/src/foo.py" });
     expect(day.langLines["Python"]).toBeUndefined();
   });
 
   it("returns empty day when path is missing", () => {
-    const day = detectLanguage("write", {});
+    const day = parseLanguageUsage("write", {});
     expect(day.langLines).toEqual({});
     expect(day.langEdits).toEqual({});
   });
 
   it("returns empty day when args is undefined", () => {
-    const day = detectLanguage("edit", undefined);
+    const day = parseLanguageUsage("edit", undefined);
     expect(day.langLines).toEqual({});
     expect(day.langEdits).toEqual({});
   });
