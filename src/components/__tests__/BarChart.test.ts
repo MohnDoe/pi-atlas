@@ -168,9 +168,9 @@ describe("BarChart", () => {
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // └ at the y-axis position (corner)
     expect(visible).toContain("└");
-    // ─ extends between labels (Mon followed by space+─ before next label)
-    expect(visible).toContain("Mon ─");
-    expect(visible).toContain("Tue ─");
+    // Labels are centered — dashes on both sides
+    expect(visible).toMatch(/─+Mon─+/);
+    expect(visible).toMatch(/─+Tue─+/);
   });
 
   it("invalidates cache", () => {

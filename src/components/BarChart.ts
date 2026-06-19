@@ -196,9 +196,11 @@ export class BarChart implements Component {
       const lbl = labels[i];
       const cellW = colW + BAR_GAP;
       if (lbl.length > 0) {
-        if (lbl.length + 2 <= cellW) {
-          const fill = cellW - lbl.length - 2;
-          labelLine += " " + lbl + " " + "─".repeat(fill);
+        if (lbl.length <= cellW) {
+          const pad = cellW - lbl.length;
+          const padLeft = Math.floor(pad / 2);
+          const padRight = pad - padLeft;
+          labelLine += "─".repeat(padLeft) + lbl + "─".repeat(padRight);
         } else {
           labelLine += lbl + "─".repeat(Math.max(0, cellW - lbl.length));
         }
