@@ -62,8 +62,8 @@ describe("summarize", () => {
     expect(s.models[1]).toEqual({ model: "haiku", cost: 0.5, calls: 3 });
 
     expect(s.tools).toHaveLength(2);
-    expect(s.tools).toContainEqual({ tool: "bash", count: 2 });
-    expect(s.tools).toContainEqual({ tool: "read", count: 2 });
+    expect(s.tools).toContainEqual({ name: "bash", count: 2 });
+    expect(s.tools).toContainEqual({ name: "read", count: 2 });
 
     expect(s.languages).toEqual([{ language: "typescript", lines: 100, edits: 5 }]);
   });
@@ -165,7 +165,7 @@ describe("summarize", () => {
       "secondFree",
       "free",
     ]);
-    expect(s.tools.map((t) => t.tool)).toEqual(["read", "edit", "bash"]);
+    expect(s.tools.map((t) => t.name)).toEqual(["read", "edit", "bash"]);
   });
 
   it("reports todayCost separately", () => {

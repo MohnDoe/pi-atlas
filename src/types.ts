@@ -53,7 +53,7 @@ export interface ProjectStat {
 }
 
 export interface ToolStat {
-  tool: string;
+  name: string;
   count: number;
 }
 
