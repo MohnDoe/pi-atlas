@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -30,8 +30,8 @@ describe("computeSignature", () => {
   });
 
   it("returns a non-empty hash for a directory with files", async () => {
-    await Bun.write(join(tmpDir, "a.jsonl"), "line1\n");
-    await Bun.write(join(tmpDir, "b.jsonl"), "line2\n");
+    await writeFile(join(tmpDir, "a.jsonl"), "line1\n");
+    await writeFile(join(tmpDir, "b.jsonl"), "line2\n");
 
     const sig1 = await computeSignature(tmpDir);
     expect(sig1).toBeTruthy();
@@ -43,20 +43,20 @@ describe("computeSignature", () => {
   });
 
   it("changes when a file is modified", async () => {
-    await Bun.write(join(tmpDir, "a.jsonl"), "original\n");
+    await writeFile(join(tmpDir, "a.jsonl"), "original\n");
     const sig1 = await computeSignature(tmpDir);
 
-    await Bun.write(join(tmpDir, "a.jsonl"), "modified\n");
+    await writeFile(join(tmpDir, "a.jsonl"), "modified\n");
     const sig2 = await computeSignature(tmpDir);
 
     expect(sig2).not.toBe(sig1);
   });
 
   it("changes when a file is added", async () => {
-    await Bun.write(join(tmpDir, "a.jsonl"), "data\n");
+    await writeFile(join(tmpDir, "a.jsonl"), "data\n");
     const sig1 = await computeSignature(tmpDir);
 
-    await Bun.write(join(tmpDir, "b.jsonl"), "more\n");
+    await writeFile(join(tmpDir, "b.jsonl"), "more\n");
     const sig2 = await computeSignature(tmpDir);
 
     expect(sig2).not.toBe(sig1);
@@ -65,7 +65,7 @@ describe("computeSignature", () => {
   it("scans subdirectories", async () => {
     const subDir = join(tmpDir, "project-a");
     await mkdir(subDir);
-    await Bun.write(join(subDir, "s1.jsonl"), "data\n");
+    await writeFile(join(subDir, "s1.jsonl"), "data\n");
 
     const sig = await computeSignature(tmpDir);
     expect(sig).toBeTruthy();
@@ -73,7 +73,7 @@ describe("computeSignature", () => {
   });
 
   it("ignores non-.jsonl files", async () => {
-    await Bun.write(join(tmpDir, "README.md"), "docs\n");
+    await writeFile(join(tmpDir, "README.md"), "docs\n");
     const sig = await computeSignature(tmpDir);
     expect(sig).toBe("");
   });
@@ -116,7 +116,7 @@ describe("cache read/write", () => {
   });
 
   it("returns null for corrupt cache", async () => {
-    await Bun.write(cachePath, "not-json");
+    await writeFile(cachePath, "not-json");
     const payload = await readCache(cachePath);
     expect(payload).toBeNull();
   });
@@ -136,7 +136,7 @@ describe("cache read/write", () => {
   });
 
   it("returns null for corrupt cache", async () => {
-    await Bun.write(cachePath, "not-json");
+    await writeFile(cachePath, "not-json");
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).toBeNull();
   });
@@ -160,7 +160,7 @@ describe("cache read/write", () => {
     // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
     const sesDir = join(tmpDir, "sessions");
     await mkdir(sesDir, { recursive: true });
-    await Bun.write(
+    await writeFile(
       join(sesDir, "dummy.jsonl"),
       JSON.stringify({
         type: "session",
@@ -171,7 +171,7 @@ describe("cache read/write", () => {
       }) + "\n",
     );
     const sig = await computeSignature(sesDir);
-    await Bun.write(
+    await writeFile(
       cachePath,
       JSON.stringify({
         signature: sig,
@@ -235,7 +235,7 @@ describe("loadAggregate", () => {
   it("parses session files and returns DayAgg array", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await Bun.write(
+    await writeFile(
       join(subDir, "s1.jsonl"),
       [
         JSON.stringify({
@@ -264,7 +264,7 @@ describe("loadAggregate", () => {
   it("caches results and reuses them", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await Bun.write(
+    await writeFile(
       join(subDir, "s1.jsonl"),
       [
         JSON.stringify({
@@ -288,7 +288,7 @@ describe("loadAggregate", () => {
   it("invalidates cache when session files change", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await Bun.write(
+    await writeFile(
       join(subDir, "s1.jsonl"),
       [
         JSON.stringify({
@@ -304,7 +304,7 @@ describe("loadAggregate", () => {
     await loadAggregate(cachePath, sessionsDir);
 
     // Add a new file
-    await Bun.write(
+    await writeFile(
       join(subDir, "s2.jsonl"),
       [
         JSON.stringify({
@@ -324,7 +324,7 @@ describe("loadAggregate", () => {
   it("logs corrupt line count to stderr", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await Bun.write(
+    await writeFile(
       join(subDir, "mixed.jsonl"),
       [
         JSON.stringify({
@@ -366,7 +366,7 @@ describe("loadAggregate", () => {
   it("calls onProgress during parsing", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
-    await Bun.write(
+    await writeFile(
       join(subDir, "s1.jsonl"),
       [
         JSON.stringify({
