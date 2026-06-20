@@ -8,6 +8,7 @@ import type {
   SessionMessageEntry,
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
+import { readFileSync } from "node:fs";
 
 import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
 import type { DayAgg } from "./types";
@@ -317,10 +318,10 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
 
 // ---- Parse a full JSONL file ----
 
-export async function parseFile(
+export function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
-): Promise<Map<string, DayAgg>> {
+): Map<string, DayAgg> {
   // Each JSONL file represents one session; reset global session→project
   // tracking so costs from previous files don't leak across projects.
   sessionProjectMap.clear();
@@ -329,7 +330,7 @@ export async function parseFile(
 
   let content: string;
   try {
-    content = await Bun.file(filePath).text();
+    content = readFileSync(filePath, "utf-8");
   } catch {
     return map;
   }

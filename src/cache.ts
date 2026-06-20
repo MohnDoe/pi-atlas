@@ -148,7 +148,7 @@ export async function loadAggregate(
 
   for (let i = 0; i < files.length; i++) {
     let lastCount = 0;
-    const fileMap = await parseFile(files[i]!, (count) => {
+    const fileMap = parseFile(files[i]!, (count) => {
       lastCount = count;
     });
     totalCorrupt += lastCount;
