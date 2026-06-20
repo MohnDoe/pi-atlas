@@ -1,9 +1,9 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
+import { formatCost, formatNumber } from "../format";
 import { GridRow } from "./shared/GridRow";
 import { StatCard } from "./StatCard";
-import { formatCost, formatNumber } from "../format";
-import { BorderBox } from "./BorderBox";
 
 export interface KpiData {
   totalCost: number;
@@ -27,64 +27,61 @@ export class KpiCards implements Component {
     this.topRow = new GridRow(
       [
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Total cost",
-                },
-                value: {
-                  text: this.theme.bold(formatCost(kpis.totalCost)),
-                  color: "success",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Total cost",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatCost(kpis.totalCost)),
+                color: "success",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Sessions",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(kpis.sessionCount)),
-                  color: "accent",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Sessions",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatNumber(kpis.sessionCount)),
+                color: "accent",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Messages",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(kpis.totalMessages)),
-                  color: "borderAccent",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Messages",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatNumber(kpis.totalMessages)),
+                color: "borderAccent",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
       ],
       colPcts,
@@ -93,64 +90,61 @@ export class KpiCards implements Component {
     this.bottomRow = new GridRow(
       [
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Active days",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(kpis.daysActive)),
-                  color: "warning",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Active days",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatNumber(kpis.daysActive)),
+                color: "warning",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Avg/Day",
-                },
-                value: {
-                  text: this.theme.bold(formatCost(kpis.avgCostPerDay)),
-                  color: "border",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Avg/Day",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatCost(kpis.avgCostPerDay)),
+                color: "border",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            rounded: false,
-            color: "borderMuted",
-            paddingX: 1,
-            child: new StatCard(
-              {
-                label: {
-                  text: "Tokens",
-                },
-                value: {
-                  text: this.theme.bold(formatNumber(kpis.totalTokens)),
-                  color: "error",
-                },
+          new StatCard(
+            {
+              label: {
+                text: "Tokens",
               },
-              this.theme,
-            ),
+              value: {
+                text: this.theme.bold(formatNumber(kpis.totalTokens)),
+                color: "error",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
           },
-          this.theme,
         ),
       ],
       colPcts,

@@ -1,6 +1,6 @@
 import { type Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { BorderBox } from "./BorderBox";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
 import { RangeSelector } from "./RangeSelector";
 
 const RANGE_BOX_WIDTH = 17;
@@ -12,15 +12,11 @@ export class Header implements Component {
     theme: Theme,
     private rangeSelector: RangeSelector,
   ) {
-    this.rangeBox = new BorderBox(
-      {
-        child: this.rangeSelector,
-        title: "Range (r)",
-        rounded: false,
-        color: "dim",
-      },
-      theme,
-    );
+    this.rangeBox = new BorderBox(this.rangeSelector, {
+      titles: [{ text: "Range (r)", align: "left" }],
+      borderStyle: "single",
+      borderColor: (s: string) => theme.fg("dim", s),
+    });
   }
 
   render(width: number): string[] {

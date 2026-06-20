@@ -1,8 +1,8 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
 import { langPalette, modelPalette } from "../colorPalette";
 import { BarChart } from "../components/BarChart";
-import { BorderBox } from "../components/BorderBox";
 import { KpiCards, type KpiData } from "../components/KpiCards";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
@@ -41,70 +41,69 @@ export class Overview extends Container {
     this.topCards = new GridRow(
       [
         new BorderBox(
-          {
-            title: this.theme.bold("Top Language"),
-            paddingX: 1,
-            color: topLanguage ? langPalette.getColor(topLanguage.language) : "borderMuted",
-            child: topLanguage
-              ? new StatCard(
-                  {
-                    label: {
-                      text: topLanguage.language,
-                    },
-                    value: {
-                      text: this.theme.bold(formatNumber(topLanguage.lines) + " lines"),
-                      color: "text",
-                    },
+          topLanguage
+            ? new StatCard(
+                {
+                  label: {
+                    text: topLanguage.language,
                   },
-                  this.theme,
-                )
-              : new Text("No data"),
+                  value: {
+                    text: this.theme.bold(formatNumber(topLanguage.lines) + " lines"),
+                    color: "text",
+                  },
+                },
+                this.theme,
+              )
+            : new Text("No data"),
+          {
+            titles: [{ text: this.theme.bold("Top Language"), align: "left" }],
+            padding: { left: 1, right: 1 },
+            borderColor: topLanguage
+              ? langPalette.getColor(topLanguage.language)
+              : (s: string) => this.theme.fg("borderMuted", s),
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            title: this.theme.bold("Top model"),
-            paddingX: 1,
-            color: modelPalette.getColor(topModel?.provider || ""),
-            child: topModel
-              ? new StatCard(
-                  {
-                    label: {
-                      text: topModel.model,
-                    },
-                    value: {
-                      text: this.theme.bold(formatCost(topModel.cost)),
-                      color: "text",
-                    },
+          topModel
+            ? new StatCard(
+                {
+                  label: {
+                    text: topModel.model,
                   },
-                  this.theme,
-                )
-              : new Text("No data."),
+                  value: {
+                    text: this.theme.bold(formatCost(topModel.cost)),
+                    color: "text",
+                  },
+                },
+                this.theme,
+              )
+            : new Text("No data."),
+          {
+            titles: [{ text: this.theme.bold("Top model"), align: "left" }],
+            padding: { left: 1, right: 1 },
+            borderColor: modelPalette.getColor(topModel?.provider || ""),
           },
-          this.theme,
         ),
         new BorderBox(
-          {
-            title: this.theme.bold("Top project"),
-            paddingX: 1,
-            color: "borderMuted",
-            child: topProject
-              ? new StatCard(
-                  {
-                    label: {
-                      text: topProject.project,
-                    },
-                    value: {
-                      text: this.theme.bold(formatCost(topProject.cost)),
-                      color: "text",
-                    },
+          topProject
+            ? new StatCard(
+                {
+                  label: {
+                    text: topProject.project,
                   },
-                  this.theme,
-                )
-              : new Text("No data."),
+                  value: {
+                    text: this.theme.bold(formatCost(topProject.cost)),
+                    color: "text",
+                  },
+                },
+                this.theme,
+              )
+            : new Text("No data."),
+          {
+            titles: [{ text: this.theme.bold("Top project"), align: "left" }],
+            padding: { left: 1, right: 1 },
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
           },
-          this.theme,
         ),
       ],
       [33, 33, 34],
@@ -132,15 +131,11 @@ export class Overview extends Container {
     this.addChild(this.kpiCards);
     this.addChild(new Spacer(1));
     this.addChild(
-      new BorderBox(
-        {
-          title: this.theme.bold("Cost overtime"),
-          child: this.barChart,
-          paddingX: 1,
-          paddingY: 1,
-        },
-        this.theme,
-      ),
+      new BorderBox(this.barChart, {
+        titles: [{ text: this.theme.bold("Cost overtime"), align: "left" }],
+        borderColor: (s: string) => this.theme.fg("border", s),
+        padding: { left: 1, right: 1, top: 1, bottom: 1 },
+      }),
     );
     this.addChild(new Spacer(1));
     this.addChild(this.topCards);
