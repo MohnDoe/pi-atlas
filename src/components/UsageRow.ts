@@ -1,7 +1,7 @@
-import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import type { ChalkInstance } from "chalk";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { renderBar } from "./shared/Bar.js";
+import { type Component, visibleWidth } from "@earendil-works/pi-tui";
+import type { ChalkInstance } from "chalk";
+import { renderBar } from "./shared/Bar";
 
 export class UsageRow implements Component {
   constructor(

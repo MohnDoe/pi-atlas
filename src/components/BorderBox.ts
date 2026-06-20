@@ -1,6 +1,6 @@
-import { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { Component, visibleWidth } from "@earendil-works/pi-tui";
-import { ChalkInstance } from "chalk";
+import { Theme, type ThemeColor } from "@earendil-works/pi-coding-agent";
+import { type Component, visibleWidth } from "@earendil-works/pi-tui";
+import { type ChalkInstance } from "chalk";
 
 export interface BorderBoxOptions {
   child: Component;

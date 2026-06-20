@@ -1,7 +1,7 @@
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { TUI } from "@earendil-works/pi-tui";
-import { MarqueeText } from "./MarqueeText.js";
-import { renderBar } from "./shared/Bar.js";
+import { truncateToWidth } from "@earendil-works/pi-tui";
+import { MarqueeText } from "./MarqueeText";
+import { renderBar } from "./shared/Bar";
 
 export interface CellState {
   isFocused?: boolean;
@@ -54,7 +54,7 @@ class MarqueeCell implements CellComponent {
       if (!this.marquee) {
         this.marquee = new MarqueeText(this.content, this.tui);
       }
-      return this.marquee.render(width)[0];
+      return this.marquee.render(width)[0]!;
     }
 
     // Unfocused or content fits — truncate with ellipsis

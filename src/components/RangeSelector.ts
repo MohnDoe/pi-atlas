@@ -26,13 +26,23 @@ export class RangeSelector implements Component {
   }
 
   get selectedValue(): TimeRange {
-    return this.ranges[this.selectedIndex].value;
+    if (this.selectedRangeOption) return this.selectedRangeOption.value;
+    return "All";
+  }
+
+  get selectedRangeOption(): RangeOption {
+    return this.ranges[this.selectedIndex] ?? this.ranges[0]!;
+  }
+
+  get selectedLabel(): string {
+    if (this.selectedRangeOption) return this.selectedRangeOption.label;
+    return "All time";
   }
 
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
-    this.cachedLines = [this.theme.fg("accent", this.ranges[this.selectedIndex].label)];
+    this.cachedLines = [this.theme.fg("accent", this.selectedLabel)];
     this.cachedWidth = width;
     return this.cachedLines;
   }

@@ -1,6 +1,6 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
 import type { ChalkInstance } from "chalk";
-import type { Theme } from "@earendil-works/pi-coding-agent";
 import { UsageRow } from "./UsageRow";
 
 export interface RankedBarItem {
@@ -35,7 +35,7 @@ export class RankedBarList implements Component {
 
     const total = this.items.reduce((sum, item) => sum + item.primaryValue, 0);
 
-    const highestItem = total > 0 ? (this.items[0].primaryValue * 100) / total : 0;
+    const highestItem = total > 0 ? (this.items[0]!.primaryValue * 100) / total : 0;
 
     for (const item of this.items) {
       let pct = 0;
