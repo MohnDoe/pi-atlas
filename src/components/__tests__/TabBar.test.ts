@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { TabBar } from "../TabBar";
 
@@ -19,7 +19,7 @@ describe("TabBar", () => {
     const tb = new TabBar(tabs, makeTheme(), 0);
     const lines = tb.render(40);
     expect(lines).toHaveLength(1);
-    expect(lines[0].length).toBeLessThanOrEqual(40);
+    expect(lines[0]!.length).toBeLessThanOrEqual(40);
   });
 
   it("highlights the active tab", () => {
@@ -57,8 +57,6 @@ describe("TabBar", () => {
     tb.invalidate();
     // After invalidate, next render should recompute
     const lines = tb.render(60); // different width → should still work
-    expect(lines[0].length).toBeLessThanOrEqual(60);
+    expect(lines[0]!.length).toBeLessThanOrEqual(60);
   });
-
-
 });

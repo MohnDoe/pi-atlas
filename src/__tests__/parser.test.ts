@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   parseLanguageUsage,
   emptyDay,
@@ -30,6 +30,7 @@ import type {
   SessionMessageEntry,
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
+import assert from "node:assert";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {

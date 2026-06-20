@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { Component } from "@earendil-works/pi-tui";
-import { BorderBox } from "../BorderBox";
+import { type Component } from "@earendil-works/pi-tui";
+import { describe, expect, it } from "bun:test";
 import { makeTheme } from "../../__tests__/components.fixtures";
+import { BorderBox } from "../BorderBox";
 
 /** Simple mock child component that returns fixed lines. */
 class MockChild implements Component {
@@ -117,7 +117,8 @@ describe("BorderBox", () => {
 
       // innerWidth = 10, childInnerWidth = 10 - 4 = 6
       // content: 2 spaces + "Hi" + 2 spaces (child pad) + 2 spaces (paddingX right) = 10
-      expect(vLen(lines[1])).toBe(12);
+
+      expect(vLen(lines[1]!)).toBe(12);
       expect(lines[1]).toMatch(/^│\s{2}Hi\s{6}│$/);
     });
 

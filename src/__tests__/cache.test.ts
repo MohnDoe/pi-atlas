@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeSignature,
   getCacheTimestamp,
@@ -10,7 +10,7 @@ import {
   writeCache,
 } from "../cache.js";
 import { emptyDay } from "../parser.js";
-import { DayAgg } from "../types.js";
+import { type DayAgg } from "../types.js";
 
 describe("computeSignature", () => {
   let tmpDir: string;
@@ -104,10 +104,10 @@ describe("cache read/write", () => {
     expect(payload).toBeDefined();
     expect(payload!.signature).toBe("sig-abc");
     expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0].date).toBe("2026-06-08");
-    expect(payload!.days[0].cost).toBe(1.5);
+    expect(payload!.days[0]!.date).toBe("2026-06-08");
+    expect(payload!.days[0]!.cost).toBe(1.5);
     // Sets are serialized as arrays
-    expect(payload!.days[0].sessionIds).toEqual(["s1"]);
+    expect(payload!.days[0]!.sessionIds).toEqual(["s1"]);
   });
 
   it("returns null for missing cache file", async () => {
@@ -127,7 +127,7 @@ describe("cache read/write", () => {
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).not.toBeNull();
     // generatedAt is an ISO string
-    expect(new Date(ts!).toISOString()).toBe(ts);
+    expect(new Date(ts!).toISOString()).toBe(ts as string);
   });
 
   it("returns null for missing cache", async () => {
@@ -152,7 +152,7 @@ describe("cache read/write", () => {
     const payload = await readCache(cachePath);
     expect(payload).toBeDefined();
     expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0].modelToProvider).toEqual({
+    expect(payload!.days[0]!.modelToProvider).toEqual({
       "claude-sonnet-4": "anthropic",
       "gpt-4o": "openai",
     });
@@ -160,41 +160,53 @@ describe("cache read/write", () => {
     // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
     const sesDir = join(tmpDir, "sessions");
     await mkdir(sesDir, { recursive: true });
-    await writeFile(join(sesDir, "dummy.jsonl"), JSON.stringify({
-      type: "session", version: 3, id: "s1", timestamp: "2026-06-08T10:00:00.000Z", cwd: "/p",
-    }) + "\n");
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
     const sig = await computeSignature(sesDir);
-    await writeFile(cachePath, JSON.stringify({
-      signature: sig,
-      generatedAt: new Date().toISOString(),
-      days: [{
-        date: "2026-06-08",
-        cost: 0,
-        inTok: 0,
-        outTok: 0,
-        crTok: 0,
-        cwTok: 0,
-        userMsgs: 0,
-        asstMsgs: 0,
-        toolResults: 0,
-        sessionIds: [],
-        langLines: {},
-        langEdits: {},
-        modelCost: {},
-        modelCount: {},
-        providerCost: {},
-        providerCount: {},
-        modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
-        projectCost: {},
-        projectSessions: {},
-        toolCount: {},
-      }],
-    }));
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            date: "2026-06-08",
+            cost: 0,
+            inTok: 0,
+            outTok: 0,
+            crTok: 0,
+            cwTok: 0,
+            userMsgs: 0,
+            asstMsgs: 0,
+            toolResults: 0,
+            sessionIds: [],
+            langLines: {},
+            langEdits: {},
+            modelCost: {},
+            modelCount: {},
+            providerCost: {},
+            providerCount: {},
+            modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
+            projectCost: {},
+            projectSessions: {},
+            toolCount: {},
+          },
+        ],
+      }),
+    );
     const loaded = await loadAggregate(cachePath, sesDir);
     expect(loaded).toHaveLength(1);
-    expect(loaded[0].modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
-    expect(loaded[0].modelToProvider.get("gpt-4o")).toBe("openai");
-    expect(loaded[0].modelToProvider.size).toBe(2);
+    expect(loaded[0]!.modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
+    expect(loaded[0]!.modelToProvider.get("gpt-4o")).toBe("openai");
+    expect(loaded[0]!.modelToProvider.size).toBe(2);
   });
 });
 
@@ -245,8 +257,8 @@ describe("loadAggregate", () => {
 
     const days = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(1);
-    expect(days[0].date).toBe("2026-06-08");
-    expect(days[0].userMsgs).toBe(1);
+    expect(days[0]!.date).toBe("2026-06-08");
+    expect(days[0]!.userMsgs).toBe(1);
   });
 
   it("caches results and reuses them", async () => {
@@ -335,7 +347,7 @@ describe("loadAggregate", () => {
     );
 
     const errors: string[] = [];
-    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+    const spy = spyOn(console, "error").mockImplementation((...args: unknown[]) => {
       errors.push(args.join(" "));
     });
 

@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
-import { Models } from "../Models";
-import { ModelStat } from "../../types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { makeMockTUI, makeTheme, testPalette } from "../../__tests__/components.fixtures";
 import { SortedTable } from "../../components/SortedTable";
+import { type ModelStat } from "../../types";
+import { Models } from "../Models";
 
 describe("Models", () => {
   const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
-const mockTui = makeMockTUI();
+  const mockTui = makeMockTUI();
 
   const models: ModelStat[] = [
     { model: "claude-sonnet-4-20250514", provider: "anthropic", cost: 150.5, calls: 42 },
@@ -66,7 +66,7 @@ const mockTui = makeMockTUI();
     const tab = new Models(models, makeTheme(), testPalette(), mockTui, 10);
     const lines = tab.render(80);
     // First data row (line 1, after header) should start with cursor
-    expect(lines[1].startsWith(CURSOR)).toBe(true);
+    expect(lines[1]!.startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -103,7 +103,7 @@ const mockTui = makeMockTUI();
     const text = lines2.join("\n");
     expect(text).toContain("Claude");
     expect(text).toContain("Cost ▼");
-    expect(lines2[1].startsWith(CURSOR)).toBe(true);
+    expect(lines2[1]!.startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -139,7 +139,7 @@ const mockTui = makeMockTUI();
       const text = lines.join("\n");
       expect(text).toContain("C"); // first char of "Claude Sonnet 4"
       expect(text).toContain("anthr"); // provider truncated to ~5 chars at width 30
-      expect(lines[1].startsWith(CURSOR)).toBe(true);
+      expect(lines[1]!.startsWith(CURSOR)).toBe(true);
     });
   });
 });

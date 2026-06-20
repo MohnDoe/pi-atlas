@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { BarChart } from "../BarChart";
 import type { HourSpend } from "../../types";
@@ -68,7 +68,7 @@ describe("BarChart", () => {
       expect(line.length).toBeLessThanOrEqual(80);
     }
     // Last line is the label row
-    const labelLine = lines[lines.length - 1];
+    const labelLine = lines[lines.length - 1]!;
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // Should contain day numbers (first and last day)
     expect(visible).toContain("1");
@@ -89,7 +89,7 @@ describe("BarChart", () => {
     ];
     const chart = new BarChart(spend, "All", 10, makeTheme());
     const lines = chart.render(80);
-    const labelLine = lines[lines.length - 2];
+    const labelLine = lines[lines.length - 2]!;
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // First entry gets a month label
     expect(visible).toContain("Jan");
@@ -164,7 +164,7 @@ describe("BarChart", () => {
     const chart = new BarChart(dailySpend, "7d", 15, makeTheme());
     const lines = chart.render(80);
     // Last line is the x-axis label row
-    const labelLine = lines[lines.length - 2];
+    const labelLine = lines[lines.length - 2]!;
     const visible = labelLine.replace(/\x1b\[[0-9;]*m/g, "");
     // └ at the y-axis position (corner)
     expect(visible).toContain("└");

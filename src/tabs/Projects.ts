@@ -1,10 +1,9 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import chalk from "chalk";
 import { cell, type CellComponent } from "../components/cells.js";
 import { SortedTable } from "../components/SortedTable.js";
 import { formatCost, formatNumber } from "../format";
-import { ProjectStat } from "../types";
+import { type ProjectStat } from "../types";
 
 const EMPTY_MESSAGE = "No projects data for this time range";
 
@@ -41,7 +40,7 @@ export class Projects extends Container {
     });
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
       if (!this.table) {
@@ -72,7 +71,7 @@ export class Projects extends Container {
     this.table?.handleInput(data);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
     this.table?.invalidate();
   }

@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-import { Usage } from "../Usage";
-import { ToolStat, StatsSummary } from "../../types";
 import { SortedTable } from "../../components/SortedTable";
+import { type ToolStat } from "../../types";
+import { Usage } from "../Usage";
 
 describe("Usage", () => {
   const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;

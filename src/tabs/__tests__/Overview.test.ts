@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { makeTheme } from "../../__tests__/components.fixtures";
 import { Overview } from "../Overview";
-import { StatsSummary } from "../../types";
+import { type StatsSummary } from "../../types";
 import { makeSummary } from "../../__tests__/compute.fixtures";
 
 describe("Overview", () => {
