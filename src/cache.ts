@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { mergeDay, parseFile } from "./parser";
 import type { CachePayload, DayAgg, SerializedDayAgg } from "./types";
@@ -78,12 +78,12 @@ export async function writeCache(
     generatedAt: new Date().toISOString(),
     days: days.map(serializeDay),
   };
-  await writeFile(cachePath, JSON.stringify(payload), "utf-8");
+  await Bun.write(cachePath, JSON.stringify(payload));
 }
 
 export async function readCache(cachePath: string): Promise<CachePayload | null> {
   try {
-    const raw = await readFile(cachePath, "utf-8");
+    const raw = await Bun.file(cachePath).text();
     const payload = JSON.parse(raw) as CachePayload;
     if (!payload.signature || !Array.isArray(payload.days)) return null;
     return payload;
