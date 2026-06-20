@@ -12,7 +12,13 @@ export class DashboardPopup implements Component {
 
   constructor(dashboard: Dashboard, theme: Theme) {
     this.borderBox = new BorderBox(dashboard, {
-      titles: [{ text: theme.bold("Pi Usage") + " " + theme.fg("muted", "v0.1"), align: "left" }],
+      titles: [
+        { text: theme.bold("Pi Usage"), align: "left" },
+        {
+          text: theme.fg("muted", "v0.1"),
+          align: "right",
+        },
+      ],
       borderStyle: "singleRounded",
       borderColor: (s: string) => theme.fg("text", s),
       padding: { left: 1, right: 1 },

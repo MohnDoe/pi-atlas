@@ -120,7 +120,10 @@ export class Usage extends Container {
     );
     this.addChild(
       new BorderBox(row, {
-        titles: [{ text: title + " · " + subtitle, align: "left" }],
+        titles: [
+          { text: title, align: "left" },
+          { text: subtitle, align: "right" },
+        ],
         borderColor: (s: string) => this.theme.fg("border", s),
         padding: { left: 1, right: 1 },
       }),
