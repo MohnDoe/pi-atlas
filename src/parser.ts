@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 /** Strip control characters (\n, \r, \t, etc.) from a tool name. */
 function sanitizeToolName(name: string): string {
   // Remove any character below 0x20 (control chars) except 0x09 (\t) which
@@ -319,10 +317,10 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
 
 // ---- Parse a full JSONL file ----
 
-export function parseFile(
+export async function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
-): Map<string, DayAgg> {
+): Promise<Map<string, DayAgg>> {
   // Each JSONL file represents one session; reset global session→project
   // tracking so costs from previous files don't leak across projects.
   sessionProjectMap.clear();
@@ -331,7 +329,7 @@ export function parseFile(
 
   let content: string;
   try {
-    content = readFileSync(filePath, "utf-8");
+    content = await Bun.file(filePath).text();
   } catch {
     return map;
   }

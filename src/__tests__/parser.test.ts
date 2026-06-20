@@ -1,23 +1,3 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import {
-  parseLanguageUsage,
-  emptyDay,
-  mergeDay,
-  parseAssistantMessage,
-  parseCompactionEntry,
-  parseFile,
-  parseModelChangeEntry,
-  parseSessionHeader,
-  parseSessionLogEntry,
-  parseThinkingLevelChangeEntry,
-  parseToolResultMessage,
-  parseUserMessage,
-  sessionProjectMap,
-} from "../parser";
-import type { DayAgg } from "../types";
 import type {
   AssistantMessage as PiAssistantMessage,
   ToolResultMessage as PiToolResultMessage,
@@ -30,7 +10,27 @@ import type {
   SessionMessageEntry,
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import assert from "node:assert";
+import { mkdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  emptyDay,
+  mergeDay,
+  parseAssistantMessage,
+  parseCompactionEntry,
+  parseFile,
+  parseLanguageUsage,
+  parseModelChangeEntry,
+  parseSessionHeader,
+  parseSessionLogEntry,
+  parseThinkingLevelChangeEntry,
+  parseToolResultMessage,
+  parseUserMessage,
+  sessionProjectMap,
+} from "../parser";
+import type { DayAgg } from "../types";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {
@@ -1154,10 +1154,10 @@ describe("parseFile", () => {
         }),
       }),
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const map = await parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1170,14 +1170,14 @@ describe("parseFile", () => {
   });
 
   it("returns empty map for empty file", async () => {
-    const filePath = join(tmpDir, "empty.jsonl");
-    await writeFile(filePath, "");
-    const map = parseFile(filePath);
+    const filePath = await join(tmpDir, "empty.jsonl");
+    await Bun.write(filePath, "");
+    const map = await parseFile(filePath);
     expect(map.size).toBe(0);
   });
 
   it("silently returns empty map for non-existent file", async () => {
-    const map = parseFile("/nonexistent/path/never.jsonl");
+    const map = await parseFile("/nonexistent/path/never.jsonl");
     expect(map.size).toBe(0);
   });
 
@@ -1199,9 +1199,9 @@ describe("parseFile", () => {
         message: { role: "user", content: "bye", timestamp: 1700000000001 },
       }),
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const map = await parseFile(filePath);
 
     expect(map.size).toBe(2);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
@@ -1221,9 +1221,9 @@ describe("parseFile", () => {
         message: { role: "user", content: "ok", timestamp: 1700000000000 },
       }),
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const map = await parseFile(filePath);
 
     expect(map.size).toBe(1);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
@@ -1240,9 +1240,9 @@ describe("parseFile", () => {
         cwd: "/home/doe/proj",
       }),
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const map = await parseFile(filePath);
 
     expect(map.size).toBe(1);
     const day = map.get("2026-06-08")!;
@@ -1256,10 +1256,10 @@ describe("parseFile", () => {
   it("returns empty map for file with only corrupt lines", async () => {
     const filePath = join(tmpDir, "all-corrupt.jsonl");
     const lines = ["not json at all", "{also broken", "still broken]"];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const map = await parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1281,10 +1281,10 @@ describe("parseFile", () => {
       }),
       "\t",
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const map = await parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1313,7 +1313,7 @@ describe("parseFile", () => {
     });
 
     const fileA = join(tmpDir, "project-a.jsonl");
-    await writeFile(
+    await Bun.write(
       fileA,
       [
         JSON.stringify({
@@ -1328,7 +1328,7 @@ describe("parseFile", () => {
     );
 
     const fileB = join(tmpDir, "project-b.jsonl");
-    await writeFile(
+    await Bun.write(
       fileB,
       [
         JSON.stringify({
@@ -1342,8 +1342,8 @@ describe("parseFile", () => {
       ].join("\n"),
     );
 
-    const mapA = parseFile(fileA);
-    const mapB = parseFile(fileB);
+    const mapA = await parseFile(fileA);
+    const mapB = await parseFile(fileB);
 
     const dayA = mapA.get("2026-06-08")!;
     expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
@@ -1381,10 +1381,10 @@ describe("parseFile", () => {
         message: { role: "user", content: "hi", timestamp: 1700000000000 },
       }),
     ];
-    await writeFile(filePath, lines.join("\n"));
+    await Bun.write(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (c) => {
+    const map = await parseFile(filePath, (c) => {
       warnings = c;
     });
 

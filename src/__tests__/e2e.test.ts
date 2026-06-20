@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allRanges } from "../components/__tests__/Dashboard.test";
@@ -78,10 +78,10 @@ describe("JSONL → Dashboard", () => {
         },
       }),
     ];
-    await writeFile(filePath, jsonlLines.join("\n"));
+    await Bun.write(filePath, jsonlLines.join("\n"));
 
     // Parse
-    const map = parseFile(filePath);
+    const map = await parseFile(filePath);
     const days = daysFromMap(map);
     expect(days.length).toBeGreaterThan(0);
 
@@ -149,9 +149,9 @@ describe("JSONL → Dashboard", () => {
         },
       }),
     ];
-    await writeFile(filePath, jsonlLines.join("\n"));
+    await Bun.write(filePath, jsonlLines.join("\n"));
 
-    const map = parseFile(filePath);
+    const map = await parseFile(filePath);
     const days = daysFromMap(map);
     const ranges = allRanges;
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
