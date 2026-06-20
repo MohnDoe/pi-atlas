@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allRanges } from "../components/__tests__/Dashboard.test";
 import { Dashboard } from "../components/Dashboard";
-import { summarize } from "../compute.js";
+import { summarize } from "../compute";
 import { parseFile } from "../parser";
 import { type DayAgg } from "../types";
 import { makeMockTUI, makeTheme } from "./components.fixtures";
