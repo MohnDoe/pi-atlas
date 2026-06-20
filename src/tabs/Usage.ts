@@ -1,13 +1,12 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, Text, type TUI, visibleWidth } from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import { cell, type CellComponent } from "../components/cells.js";
-import { SortedTable } from "../components/SortedTable.js";
-import { GridRow } from "../components/shared/GridRow.js";
-import { StatCard } from "../components/StatCard.js";
-import { formatCost, formatNumber, stripAnsi } from "../format";
+import { Container, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import { BorderBox } from "../components/BorderBox";
+import { cell, type CellComponent } from "../components/cells";
+import { GridRow } from "../components/shared/GridRow";
+import { SortedTable } from "../components/SortedTable";
+import { StatCard } from "../components/StatCard";
+import { formatNumber, stripAnsi } from "../format";
 import type { StatsSummary, ToolStat } from "../types";
-import { BorderBox } from "../components/BorderBox.js";
 
 interface TokenUsageStat {
   total: StatsSummary["totalTokens"];
@@ -59,7 +58,7 @@ export class Usage extends Container {
     });
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
 
     // Token section: title + stat cards
@@ -163,7 +162,7 @@ export class Usage extends Container {
     this.table?.handleInput(data);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
     this.table?.invalidate();
   }

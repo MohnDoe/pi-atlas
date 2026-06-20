@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import { cell, type CellComponent } from "../components/cells.js";
-import { SortedTable } from "../components/SortedTable.js";
+import { cell, type CellComponent } from "../components/cells";
+import { SortedTable } from "../components/SortedTable";
 import { formatCost, formatNumber } from "../format";
 import { type ProjectStat } from "../types";
 
