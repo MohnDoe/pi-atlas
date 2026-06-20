@@ -1,12 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { langPalette, modelPalette } from "./colorPalette";
+import { getCacheTimestamp, loadAggregate } from "./cache";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
-import { getCacheTimestamp, loadAggregate } from "./cache.js";
-import { summarize } from "./compute.js";
+import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");

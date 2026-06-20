@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { summarize } from "../compute.js";
-import { dateFromISOString } from "../format.js";
-import { emptyDay, mergeDay } from "../parser.js";
+import { summarize } from "../compute";
+import { dateFromISOString } from "../format";
+import { emptyDay, mergeDay } from "../parser";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {

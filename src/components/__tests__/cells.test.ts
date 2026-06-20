@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { makeMockTUI } from "../../__tests__/components.fixtures.js";
-import { cell } from "../cells.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { makeMockTUI } from "../../__tests__/components.fixtures";
+import { cell } from "../cells";
 
 describe("cell.text", () => {
   it("renders content truncated to width", () => {

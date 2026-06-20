@@ -7,7 +7,7 @@ import {
   type Component,
   type TUI,
 } from "@earendil-works/pi-tui";
-import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
+import { ColorPalette, langPalette, modelPalette } from "../colorPalette";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
 import { Overview } from "../tabs/Overview";

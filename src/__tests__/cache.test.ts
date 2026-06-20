@@ -8,9 +8,9 @@ import {
   loadAggregate,
   readCache,
   writeCache,
-} from "../cache.js";
-import { emptyDay } from "../parser.js";
-import { type DayAgg } from "../types.js";
+} from "../cache";
+import { emptyDay } from "../parser";
+import { type DayAgg } from "../types";
 
 describe("computeSignature", () => {
   let tmpDir: string;

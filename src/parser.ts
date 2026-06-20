@@ -1,10 +1,3 @@
-/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
-function sanitizeToolName(name: string): string {
-  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
-  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
-  return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
-}
-
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
 import type {
@@ -16,8 +9,15 @@ import type {
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
 
-import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format.js";
+import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
 import type { DayAgg } from "./types";
+
+/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
+function sanitizeToolName(name: string): string {
+  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
+  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
+  return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+}
 
 // Tracks session ID → project name for cost attribution
 const sessionProjectMap = new Map<string, string>();
