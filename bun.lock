@@ -5,7 +5,7 @@
     "": {
       "name": "pi-usage",
       "dependencies": {
-        "@mohndoe/pi-tui-extras": "^0.1.1",
+        "@mohndoe/pi-tui-extras": "^0.1.2",
         "chalk": "^5.6.2",
       },
       "devDependencies": {
@@ -112,7 +112,7 @@
 
     "@mistralai/mistralai": ["@mistralai/mistralai@2.2.1", "", { "dependencies": { "ws": "^8.18.0", "zod": "^3.25.0 || ^4.0.0", "zod-to-json-schema": "^3.25.0" } }, "sha512-uKU8CZmL2RzYKmplsU01hii4p3pe4HqJefpWNRWXm1Tcm0Sm4xXfwSLIy4k7ZCPlbETCGcp69E7hZs+WOJ5itQ=="],
 
-    "@mohndoe/pi-tui-extras": ["@mohndoe/pi-tui-extras@0.1.1", "", { "peerDependencies": { "@mariozechner/pi-tui": "^0.73.1", "typescript": "^5" } }, "sha512-0A06U9rCnN4tbcBo9hytxEWdkPWqSk5Z+7GZn6gBvSbPXUNyA8dp4ogsNrbhDF54F7DSjJaVEp5BPUvtpkNsCA=="],
+    "@mohndoe/pi-tui-extras": ["@mohndoe/pi-tui-extras@0.1.2", "", { "peerDependencies": { "@mariozechner/pi-tui": "^0.73.1", "typescript": "^5" } }, "sha512-eGNtZHc7JOAoq4UHemF4gmKOR+diObCfkU2LMP7ON2jqotY5sWX2Om0NRNAwwol136Gu5ZPtKHnNla9Wpc6OVQ=="],
 
     "@nodable/entities": ["@nodable/entities@2.2.0", "", {}, "sha512-9uGyhaQavEUMC8AIddIjau4NsnsXhou+j5sBAGojCM1oxmQpVKTWR/9JxABD6UAv12vpIms55fPZKFQEhG6uBg=="],
 
