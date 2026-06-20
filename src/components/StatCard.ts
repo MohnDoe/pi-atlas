@@ -1,6 +1,6 @@
-import { Box, Component, Text } from "@earendil-works/pi-tui";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { ChalkInstance } from "chalk";
+import { Box, type Component, Text } from "@earendil-works/pi-tui";
+import { type ChalkInstance } from "chalk";
 
 interface Label {
   text: string;

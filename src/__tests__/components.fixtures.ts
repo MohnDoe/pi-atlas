@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { TUI } from "@earendil-works/pi-tui";
-import { ColorPalette } from "../colorPalette.js";
+import { ColorPalette } from "../colorPalette";
 
 /**
  * Pass-through mock theme for tests. All styling methods return text unchanged.
@@ -31,6 +31,13 @@ export function testPalette(): ColorPalette {
 export function makeMockTUI(): TUI {
   return {
     requestRender() {},
-    terminal: { get rows() { return 24; }, get columns() { return 80; } },
+    terminal: {
+      get rows() {
+        return 24;
+      },
+      get columns() {
+        return 80;
+      },
+    },
   } as TUI;
 }

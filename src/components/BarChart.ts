@@ -1,7 +1,7 @@
-import { type Component, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { DaySpend, HourSpend, type TimeRange } from "../types";
+import { type Component, visibleWidth } from "@earendil-works/pi-tui";
 import { MONTH_NAMES, formatCost } from "../format";
+import type { DaySpend, HourSpend, TimeRange } from "../types";
 
 /** Number of hours displayed in a full day. */
 const HOURS_PER_DAY = 24;
@@ -47,9 +47,9 @@ function aggregate<T extends { cost: number }>(data: T[], target: number): T[] {
     const size = i < r ? q + 1 : q;
     let cost = 0;
     for (let j = 0; j < size; j++) {
-      cost += data[idx + j].cost;
+      cost += data[idx + j]!.cost;
     }
-    result.push({ ...data[idx], cost });
+    result.push({ ...data[idx]!, cost });
     idx += size;
   }
   return result;
@@ -177,7 +177,7 @@ export class BarChart implements Component {
       }
 
       for (let bi = 0; bi < plotData.length; bi++) {
-        const barH = barHeights[bi];
+        const barH = barHeights[bi]!;
         if (barH > row + HALF_BLOCK_THRESHOLD) {
           line += "█".repeat(colW);
         } else if (barH > row) {
@@ -193,7 +193,7 @@ export class BarChart implements Component {
     // X-axis labels with y-axis bottom corner
     let labelLine = " ".repeat(yLabelPad + 1) + "└─";
     for (let i = 0; i < plotData.length; i++) {
-      const lbl = labels[i];
+      const lbl = labels[i]!;
       const cellW = colW + BAR_GAP;
       if (lbl.length > 0) {
         if (lbl.length <= cellW) {
@@ -249,7 +249,7 @@ function formatDateLabel(
 ): string {
   const d = new Date(dateStr + "T00:00:00Z");
   if (range === "1d" || range === "7d") {
-    return DAY_NAMES[d.getUTCDay()];
+    return DAY_NAMES[d.getUTCDay()] || "NaN";
   }
   if (range === "30d") {
     const day = d.getUTCDate();
@@ -260,9 +260,9 @@ function formatDateLabel(
   }
   // All — show month when it changes or first entry
   const month = MONTH_NAMES[d.getUTCMonth()];
-  if (index === 0) return month;
-  const prevD = new Date(data[index - 1].date + "T00:00:00Z");
-  if (prevD.getUTCMonth() !== d.getUTCMonth()) return month;
+  if (index === 0) return month || "NaN";
+  const prevD = new Date(data[index - 1]!.date + "T00:00:00Z");
+  if (prevD.getUTCMonth() !== d.getUTCMonth()) return month || "NaN";
   return "";
 }
 
@@ -277,7 +277,7 @@ function computeHourLabelInterval(count: number, cellWidth: number): number {
       return interval;
     }
   }
-  return candidates[candidates.length - 1];
+  return candidates[candidates.length - 1]!;
 }
 
 function formatHourLabel(hour: number, index: number, data: HourSpend[], interval: number): string {

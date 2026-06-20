@@ -1,6 +1,6 @@
-import { matchesKey, truncateToWidth, type Component, type TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import type { CellComponent } from "./cells.js";
+import { matchesKey, truncateToWidth, type Component, type TUI } from "@earendil-works/pi-tui";
+import type { CellComponent } from "./cells";
 
 export interface ColumnDef {
   header: CellComponent;
@@ -87,7 +87,7 @@ export class SortedTable implements Component {
 
     // Pass 1: fixed widths
     for (let i = 0; i < this.columns.length; i++) {
-      const w = this.columns[i].width;
+      const w = this.columns[i]!.width;
       if (typeof w === "number") {
         resolved[i] = w;
         fixedUsed += w;
@@ -97,7 +97,7 @@ export class SortedTable implements Component {
     // Pass 2: percentage widths
     for (let i = 0; i < this.columns.length; i++) {
       if (resolved[i] >= 0) continue;
-      const w = this.columns[i].width;
+      const w = this.columns[i]!.width;
       if (typeof w === "string" && /^\d+%$/.test(w)) {
         const pct = parseInt(w) / 100;
         resolved[i] = Math.floor(contentWidth * pct);
@@ -146,9 +146,9 @@ export class SortedTable implements Component {
     // Header row
     let header = "";
     for (let i = 0; i < this.columns.length; i++) {
-      const cw = colWidths[i];
+      const cw = colWidths[i] ?? width;
       const sortDirection = this.sort?.column === i ? this.sort.direction : null;
-      const headerText = this.columns[i].header.render(cw, { sortDirection });
+      const headerText = this.columns[i]!.header.render(cw, { sortDirection });
       header += truncateToWidth(headerText, cw, "", true) + gap;
     }
     header = this.padPrefix + header.trimEnd();
@@ -159,10 +159,11 @@ export class SortedTable implements Component {
     const end = Math.min(this.scrollOffset + this.visibleRows, this.rows.length);
     for (let i = this.scrollOffset; i < end; i++) {
       let row = "";
-      const dataRow = this.rows[i];
+      const dataRow = this.rows[i]!;
       for (let j = 0; j < this.columns.length; j++) {
         const c = dataRow[j];
-        const cw = colWidths[j];
+        if (!c) continue;
+        const cw = colWidths[j] ?? width;
         const val = c.render(cw, { isFocused: i === this.focusedRow });
         row += truncateToWidth(val, cw, "", true);
         if (j < this.columns.length - 1) row += gap;

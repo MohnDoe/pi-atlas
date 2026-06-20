@@ -1,10 +1,10 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import { ColorPalette } from "../colorPalette.js";
-import { cell, type CellComponent } from "../components/cells.js";
-import { SortedTable } from "../components/SortedTable.js";
+import { ColorPalette } from "../colorPalette";
+import { cell, type CellComponent } from "../components/cells";
+import { SortedTable } from "../components/SortedTable";
 import { formatCost, formatModelName, formatNumber } from "../format";
-import { ModelStat } from "../types";
+import { type ModelStat } from "../types";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
@@ -51,7 +51,7 @@ export class Models extends Container {
     });
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
       if (!this.table) {
@@ -83,7 +83,7 @@ export class Models extends Container {
     this.table?.handleInput(data);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
     this.table?.invalidate();
   }

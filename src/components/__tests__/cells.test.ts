@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { makeMockTUI } from "../../__tests__/components.fixtures.js";
-import { cell } from "../cells.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { makeMockTUI } from "../../__tests__/components.fixtures";
+import { cell } from "../cells";
 
 describe("cell.text", () => {
   it("renders content truncated to width", () => {
@@ -132,38 +132,62 @@ describe("cell.marquee", () => {
 
 describe("cell.bar", () => {
   it("renders bar filling the requested width", () => {
-    const c = cell.bar(50, (s) => s, (s) => "░".repeat(s.length));
+    const c = cell.bar(
+      50,
+      (s) => s,
+      (s) => "░".repeat(s.length),
+    );
     const result = c.render(10);
     expect(result).toHaveLength(10);
     expect(result).toBe("■■■■■░░░░░");
   });
 
   it("uses filled style for filled portion", () => {
-    const c = cell.bar(100, (s) => `F{${s}}`, (s) => "e".repeat(s.length));
+    const c = cell.bar(
+      100,
+      (s) => `F{${s}}`,
+      (s) => "e".repeat(s.length),
+    );
     const result = c.render(5);
     expect(result).toBe("F{■■■■■}");
   });
 
   it("uses empty style for empty portion", () => {
-    const c = cell.bar(0, (s) => "f".repeat(s.length), (s) => `E{${s}}`);
+    const c = cell.bar(
+      0,
+      (s) => "f".repeat(s.length),
+      (s) => `E{${s}}`,
+    );
     const result = c.render(5);
     expect(result).toBe("E{■■■■■}");
   });
 
   it("handles zero width", () => {
-    const c = cell.bar(50, (s) => s, (s) => "░".repeat(s.length));
+    const c = cell.bar(
+      50,
+      (s) => s,
+      (s) => "░".repeat(s.length),
+    );
     const result = c.render(0);
     expect(result).toBe("");
   });
 
   it("handles 100% fill with no empty chars", () => {
-    const c = cell.bar(100, (s) => `F{${s}}`, (s) => "E".repeat(s.length));
+    const c = cell.bar(
+      100,
+      (s) => `F{${s}}`,
+      (s) => "E".repeat(s.length),
+    );
     const result = c.render(8);
     expect(result).toBe("F{■■■■■■■■}");
   });
 
   it("invalidate does nothing (no internal cache)", () => {
-    const c = cell.bar(50, (s) => s, (s) => "░".repeat(s.length));
+    const c = cell.bar(
+      50,
+      (s) => s,
+      (s) => "░".repeat(s.length),
+    );
     expect(() => c.invalidate()).not.toThrow();
   });
 });

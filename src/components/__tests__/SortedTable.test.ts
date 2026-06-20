@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 
 import { cell } from "../cells";
-import { ColumnDef, SortedTable, type SortConfig } from "../SortedTable";
+import { type ColumnDef, SortedTable } from "../SortedTable";
 
 const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();
@@ -36,7 +36,7 @@ describe("SortedTable", () => {
   });
 
   it("renders data rows", () => {
-    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
     const lines = table.render(80);
     // Skip header (index 0), check first two data rows
     expect(lines.length).toBeGreaterThanOrEqual(3);
@@ -46,7 +46,7 @@ describe("SortedTable", () => {
   });
 
   it("renders within width", () => {
-    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
     const lines = table.render(50);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -55,7 +55,7 @@ describe("SortedTable", () => {
   });
 
   it("shows all rows when they fit within maxHeight", () => {
-    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
     const lines = table.render(80);
     // 1 header + 3 data rows = 4 lines (all fit in 10)
     expect(lines.length).toBe(4);
@@ -67,13 +67,16 @@ describe("SortedTable", () => {
       cell.text(String(i * 100)),
       cell.text(String(i * 10)),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6, tui: mockTui}, makeTheme()); // 1 header + 5 data
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 6, tui: mockTui },
+      makeTheme(),
+    ); // 1 header + 5 data
     const lines = table.render(80);
     expect(lines.length).toBe(6);
   });
 
   it("handles empty rows", () => {
-    const table = new SortedTable({ columns, rows: [], maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows: [], maxHeight: 10, tui: mockTui }, makeTheme());
     const lines = table.render(80);
     // Should have at least a header, maybe an empty message
     expect(lines.length).toBeGreaterThanOrEqual(1);
@@ -86,7 +89,10 @@ describe("SortedTable", () => {
       cell.text(String(i * 100)),
       cell.text(String(i * 10)),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6, tui: mockTui}, makeTheme()); // 5 data rows visible
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 6, tui: mockTui },
+      makeTheme(),
+    ); // 5 data rows visible
 
     // Initial: cursor at 0, rows 0-4 visible
     let lines = table.render(80);
@@ -107,7 +113,10 @@ describe("SortedTable", () => {
       cell.text(String(i * 100)),
       cell.text(String(i * 10)),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 6, tui: mockTui },
+      makeTheme(),
+    );
 
     // Move cursor down past visible area (cursor 0→6, viewport scrolls to 2)
     for (let i = 0; i < 6; i++) table.handleInput("\x1b[B");
@@ -127,7 +136,10 @@ describe("SortedTable", () => {
       cell.text("100"),
       cell.text("10"),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 10, tui: mockTui },
+      makeTheme(),
+    );
     // Cursor at 0, pressing up should not move it
     table.handleInput("\x1b[A");
     const lines = table.render(80);
@@ -141,7 +153,10 @@ describe("SortedTable", () => {
       cell.text("100"),
       cell.text("10"),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 6, tui: mockTui },
+      makeTheme(),
+    );
     // Move cursor all the way down (4 presses = last row)
     for (let i = 0; i < 10; i++) table.handleInput("\x1b[B");
     const lines = table.render(80);
@@ -151,7 +166,7 @@ describe("SortedTable", () => {
   });
 
   it("invalidates render cache", () => {
-    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
     table.render(80);
     table.invalidate();
     const lines = table.render(60);
@@ -167,7 +182,10 @@ describe("SortedTable", () => {
       cell.text("100"),
       cell.text("10"),
     ]);
-    const table = new SortedTable({ columns, rows: manyRows, maxHeight: 6, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns, rows: manyRows, maxHeight: 6, tui: mockTui },
+      makeTheme(),
+    );
 
     for (let i = 0; i < 5; i++) table.handleInput("\x1b[B");
     const lines = table.render(80);
@@ -178,7 +196,7 @@ describe("SortedTable", () => {
   // --- Flexible width tests ---
 
   it("renders each line at exactly the specified width (visible chars)", () => {
-    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
     const lines = table.render(80);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -187,12 +205,13 @@ describe("SortedTable", () => {
   });
 
   it("resolves percentage columns relative to content width", () => {
-    const pctCols: ColumnDef[] = [
-      { header: cell.header("Col"), width: "50%" },
-    ];
+    const pctCols: ColumnDef[] = [{ header: cell.header("Col"), width: "50%" }];
     // 1 column, 0 gaps → contentWidth = 20
     // 50% of 20 = 10
-    const table = new SortedTable({ columns: pctCols, rows: [[cell.text("hello")]], maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns: pctCols, rows: [[cell.text("hello")]], maxHeight: 10, tui: mockTui },
+      makeTheme(),
+    );
     const lines = table.render(20);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -205,7 +224,10 @@ describe("SortedTable", () => {
       { header: cell.header("A"), width: 5 },
       { header: cell.header("B"), width: "fill" },
     ];
-    const table = new SortedTable({ columns: fillCols, rows: [[cell.text("x"), cell.text("y")]], maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      { columns: fillCols, rows: [[cell.text("x"), cell.text("y")]], maxHeight: 10, tui: mockTui },
+      makeTheme(),
+    );
     const lines = table.render(20);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -220,7 +242,15 @@ describe("SortedTable", () => {
       { header: cell.header("A"), width: 18 },
       { header: cell.header("B"), width: "fill" },
     ];
-    const table = new SortedTable({ columns: tightCols, rows: [[cell.text("aaa"), cell.text("bbb")]], maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      {
+        columns: tightCols,
+        rows: [[cell.text("aaa"), cell.text("bbb")]],
+        maxHeight: 10,
+        tui: mockTui,
+      },
+      makeTheme(),
+    );
     const lines = table.render(20);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -233,18 +263,18 @@ describe("SortedTable", () => {
       { header: cell.header("A"), width: "fill" },
       { header: cell.header("B"), width: "fill" },
     ];
-    expect(() => new SortedTable({ columns: badCols, rows: [], maxHeight: 10, tui: mockTui}, makeTheme())).toThrow(
-      "Cannot have more than one fill column"
-    );
+    expect(
+      () =>
+        new SortedTable({ columns: badCols, rows: [], maxHeight: 10, tui: mockTui }, makeTheme()),
+    ).toThrow("Cannot have more than one fill column");
   });
 
   it("throws on invalid width string (not number, N%, or fill)", () => {
-    const badCols: ColumnDef[] = [
-      { header: cell.header("A"), width: "abc" },
-    ];
-    expect(() => new SortedTable({ columns: badCols, rows: [], maxHeight: 10, tui: mockTui}, makeTheme())).toThrow(
-      'Invalid column width: "abc"'
-    );
+    const badCols: ColumnDef[] = [{ header: cell.header("A"), width: "abc" }];
+    expect(
+      () =>
+        new SortedTable({ columns: badCols, rows: [], maxHeight: 10, tui: mockTui }, makeTheme()),
+    ).toThrow('Invalid column width: "abc"');
   });
 
   it("handles mix of fixed, percentage, and fill columns", () => {
@@ -253,7 +283,15 @@ describe("SortedTable", () => {
       { header: cell.header("Pct"), width: "25%" },
       { header: cell.header("Fill"), width: "fill" },
     ];
-    const table = new SortedTable({ columns: mixedCols, rows: [[cell.text("a"), cell.text("b"), cell.text("c")]], maxHeight: 10, tui: mockTui}, makeTheme());
+    const table = new SortedTable(
+      {
+        columns: mixedCols,
+        rows: [[cell.text("a"), cell.text("b"), cell.text("c")]],
+        maxHeight: 10,
+        tui: mockTui,
+      },
+      makeTheme(),
+    );
     const lines = table.render(60);
     for (const line of lines) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
@@ -265,7 +303,10 @@ describe("SortedTable", () => {
 
   describe("sort indicators", () => {
     it("shows ▲ on the sorted column header when direction is asc", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, sort: { column: 0, direction: "asc" }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, sort: { column: 0, direction: "asc" }, tui: mockTui },
+        makeTheme(),
+      );
       const lines = table.render(80);
       const header = lines[0];
       expect(header).toContain("Language ▲");
@@ -274,7 +315,10 @@ describe("SortedTable", () => {
     });
 
     it("shows ▼ on the sorted column header when direction is desc", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, sort: { column: 1, direction: "desc" }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, sort: { column: 1, direction: "desc" }, tui: mockTui },
+        makeTheme(),
+      );
       const lines = table.render(80);
       const header = lines[0];
       expect(header).toContain("Lines ▼");
@@ -288,7 +332,16 @@ describe("SortedTable", () => {
         { header: cell.header("Lines"), width: 10 },
         { header: cell.header("Edits"), width: 10 },
       ];
-      const table = new SortedTable({ columns: tightCols, rows, maxHeight: 10, sort: { column: 0, direction: "asc" }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        {
+          columns: tightCols,
+          rows,
+          maxHeight: 10,
+          sort: { column: 0, direction: "asc" },
+          tui: mockTui,
+        },
+        makeTheme(),
+      );
       const lines = table.render(80);
       const header = lines[0];
       // cell.header("Language") at width 10 with sortDirection="asc" → "Language ▲" = 10 chars
@@ -302,16 +355,25 @@ describe("SortedTable", () => {
         { header: cell.header("Lines"), width: 10 },
         { header: cell.header("Edits"), width: 10 },
       ];
-      const table = new SortedTable({ columns: tightCols, rows, maxHeight: 10, sort: { column: 0, direction: "asc" }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        {
+          columns: tightCols,
+          rows,
+          maxHeight: 10,
+          sort: { column: 0, direction: "asc" },
+          tui: mockTui,
+        },
+        makeTheme(),
+      );
       const lines = table.render(80);
-      const header = lines[0];
+      const header = lines[0]!;
       // "VeryLongName" is 12 chars, width=10, " ▲" takes 2 → max raw = 8
       expect(strip(header)).toContain("VeryLong ▲");
       expect(strip(header)).not.toContain("VeryLongName");
     });
 
     it("shows no triangle when sort is omitted", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
       const lines = table.render(80);
       const header = lines[0];
       expect(header).not.toContain("▲");
@@ -323,12 +385,15 @@ describe("SortedTable", () => {
   describe("cursor navigation", () => {
     function highlightTheme() {
       return makeTheme({
-        bg: (color: string, text: string) => color === "selectedBg" ? `[[H]]${text}[[/H]]` : text,
+        bg: (color: string, text: string) => (color === "selectedBg" ? `[[H]]${text}[[/H]]` : text),
       });
     }
 
     it("highlights the first row with selectedBg background by default", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
       const lines = table.render(80);
 
       // Header unaffected
@@ -344,7 +409,10 @@ describe("SortedTable", () => {
     });
 
     it("down arrow moves highlight to the next row", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
 
       table.handleInput("\x1b[B");
       const lines = table.render(80);
@@ -359,7 +427,10 @@ describe("SortedTable", () => {
     });
 
     it("up arrow moves highlight to the previous row", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
 
       // Move down twice then back up once
       table.handleInput("\x1b[B");
@@ -376,7 +447,10 @@ describe("SortedTable", () => {
     });
 
     it("cursor does not go above first row", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
 
       // Already at row 0, pressing up multiple times should keep highlight on row 0
       table.handleInput("\x1b[A");
@@ -389,7 +463,10 @@ describe("SortedTable", () => {
     });
 
     it("cursor does not go past last row", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
 
       // Move to last row (index 2), then try to go further
       for (let i = 0; i < 5; i++) table.handleInput("\x1b[B");
@@ -401,7 +478,10 @@ describe("SortedTable", () => {
     });
 
     it("handles empty rows gracefully with no highlight", () => {
-      const table = new SortedTable({ columns, rows: [], maxHeight: 10, tui: mockTui}, highlightTheme());
+      const table = new SortedTable(
+        { columns, rows: [], maxHeight: 10, tui: mockTui },
+        highlightTheme(),
+      );
       const lines = table.render(80);
 
       // Header only, no data rows
@@ -415,24 +495,27 @@ describe("SortedTable", () => {
     });
 
     it("shows cursor triangle on focused row and alignment on others", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui}, makeTheme());
+      const table = new SortedTable({ columns, rows, maxHeight: 10, tui: mockTui }, makeTheme());
 
       // Default: first row focused
       let lines = table.render(80);
-      expect(lines[1].startsWith(CURSOR + " ")).toBe(true);
-      expect(lines[2].startsWith("  ")).toBe(true);
-      expect(lines[3].startsWith("  ")).toBe(true);
+      expect(lines[1]!.startsWith(CURSOR + " ")).toBe(true);
+      expect(lines[2]!.startsWith("  ")).toBe(true);
+      expect(lines[3]!.startsWith("  ")).toBe(true);
 
       // Move down: second row focused
       table.handleInput("\x1b[B");
       lines = table.render(80);
-      expect(lines[1].startsWith("  ")).toBe(true);
-      expect(lines[2].startsWith(CURSOR + " ")).toBe(true);
-      expect(lines[3].startsWith("  ")).toBe(true);
+      expect(lines[1]!.startsWith("  ")).toBe(true);
+      expect(lines[2]!.startsWith(CURSOR + " ")).toBe(true);
+      expect(lines[3]!.startsWith("  ")).toBe(true);
     });
 
     it("hides cursor when disabled", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, cursor: { enabled: false }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, cursor: { enabled: false }, tui: mockTui },
+        makeTheme(),
+      );
       const lines = table.render(80);
 
       // No cursor prefix on any row
@@ -440,15 +523,18 @@ describe("SortedTable", () => {
         expect(line.startsWith(CURSOR + " ")).toBe(false);
       }
       // Header should not be padded either
-      expect(lines[0].startsWith("  ")).toBe(false);
+      expect(lines[0]!.startsWith("  ")).toBe(false);
     });
 
     it("uses custom cursor char", () => {
-      const table = new SortedTable({ columns, rows, maxHeight: 10, cursor: { char: "▸" }, tui: mockTui}, makeTheme());
+      const table = new SortedTable(
+        { columns, rows, maxHeight: 10, cursor: { char: "▸" }, tui: mockTui },
+        makeTheme(),
+      );
       const lines = table.render(80);
 
-      expect(lines[1].startsWith("▸ ")).toBe(true);
-      expect(lines[2].startsWith("  ")).toBe(true);
+      expect(lines[1]!.startsWith("▸ ")).toBe(true);
+      expect(lines[2]!.startsWith("  ")).toBe(true);
     });
   });
 
@@ -466,59 +552,65 @@ describe("SortedTable", () => {
     });
 
     it("scrolls overflowing text on focused row", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Name"), width: 5 },
-      ];
+      const cols: ColumnDef[] = [{ header: cell.header("Name"), width: 5 }];
       const rows = [[cell.marquee("Hello World!", mockTui)]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // tick=0, offset=0 → "Hello" (first 5 chars)
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} Hello`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} Hello`);
 
       // Advance 150ms = 1 timer tick → offset=1 → "ello "
       vi.advanceTimersByTime(150);
       lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} ello`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} ello`);
     });
 
     it("wraps around when reaching end of content", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Col"), width: 3 },
-      ];
+      const cols: ColumnDef[] = [{ header: cell.header("Col"), width: 3 }];
       const rows = [[cell.marquee("ABCDEF", mockTui)]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // tick=0, offset=0 → "ABC"
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} ABC`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} ABC`);
 
       // Advance 600ms = 4 timer ticks → offset=4
       // With 6 chars + 5-space gap = 11 virtual chars, offset=4 → "EF " (3 chars for width 3)
       vi.advanceTimersByTime(600);
       lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} EF`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} EF`);
     });
 
     it("resets marquee when cursor moves to a different row", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Name"), width: 5 },
+      const cols: ColumnDef[] = [{ header: cell.header("Name"), width: 5 }];
+      const rows = [
+        [cell.marquee("Hello World!", mockTui)],
+        [cell.marquee("Another Long", mockTui)],
       ];
-      const rows = [[cell.marquee("Hello World!", mockTui)], [cell.marquee("Another Long", mockTui)]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // Advance ticks on row 0
       table.render(20);
       vi.advanceTimersByTime(150); // tick=3, offset=1 → "ello "
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} ello`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} ello`);
 
       // Move to row 1 — tick resets (cells call invalidate on handleInput)
       table.handleInput("\x1b[B");
       vi.advanceTimersByTime(0);
       lines = table.render(20);
       // Row 1 is now focused, marquee starts from beginning
-      expect(strip(lines[2])).toContain(`${CURSOR} Anoth`);
+      expect(strip(lines[2]!)).toContain(`${CURSOR} Anoth`);
     });
 
     it("non-marquee columns truncate on focused row while marquee columns scroll", () => {
@@ -527,18 +619,21 @@ describe("SortedTable", () => {
         { header: cell.header("Fixed"), width: 4 },
       ];
       const rows = [[cell.marquee("ABCDEFGHIJKLMNOP", mockTui), cell.text("XYZ")]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // tick=0: marquee shows "ABCDEFGHIJ"
       let lines = table.render(30);
-      const r1 = strip(lines[1]);
+      const r1 = strip(lines[1]!);
       expect(r1).toContain(`${CURSOR} ABCDEFGHIJ`);
       expect(r1).toContain("XYZ");
 
       // Advance 150ms = 1 tick → offset=1 → "BCDEFGHIJK"
       vi.advanceTimersByTime(150);
       lines = table.render(30);
-      const r1b = strip(lines[1]);
+      const r1b = strip(lines[1]!);
       expect(r1b).toContain(`${CURSOR} BCDEFGHIJK`);
       // Fixed column content never changes
       expect(r1b).toContain("XYZ");
@@ -547,64 +642,70 @@ describe("SortedTable", () => {
     });
 
     it("shows ellipsis on unfocused marquee columns, scrolling on focused", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Name"), width: 5 },
+      const cols: ColumnDef[] = [{ header: cell.header("Name"), width: 5 }];
+      const rows = [
+        [cell.marquee("Longish Name", mockTui)],
+        [cell.marquee("Long Text Here!", mockTui)],
       ];
-      const rows = [[cell.marquee("Longish Name", mockTui)], [cell.marquee("Long Text Here!", mockTui)]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // Focused row 0 — marquee starts at "Longi" (no ellipsis when focused)
       let lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} Longi`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} Longi`);
 
       // Move cursor to row 1 — row 0 becomes unfocused, shows ellipsis
       table.handleInput("\x1b[B");
       vi.advanceTimersByTime(0);
       lines = table.render(20);
-      const unfocused = strip(lines[1]); // row 0 unfocused
+      const unfocused = strip(lines[1]!); // row 0 unfocused
       expect(unfocused).toContain("  Long…"); // truncated with ellipsis
       expect(unfocused).not.toContain("ongis"); // would appear if marquee was active
 
       // Focused row 1 shows "Long " at offset 0 (exactly 5 chars)
-      expect(strip(lines[2])).toContain(`${CURSOR} Long`);
+      expect(strip(lines[2]!)).toContain(`${CURSOR} Long`);
 
       // Advance ticks — unfocused row stays same (with ellipsis), focused advances
       vi.advanceTimersByTime(300); // 2 ticks, offset=2
       lines = table.render(20);
-      expect(strip(lines[1])).toContain("  Long…"); // unchanged
-      expect(strip(lines[2])).toContain(`${CURSOR} ng T`); // focused advanced
+      expect(strip(lines[1]!)).toContain("  Long…"); // unchanged
+      expect(strip(lines[2]!)).toContain(`${CURSOR} ng T`); // focused advanced
     });
 
     it("starts marquee after resize from wide to narrow", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Col"), width: "fill" },
-      ];
+      const cols: ColumnDef[] = [{ header: cell.header("Col"), width: "fill" }];
       const rows = [[cell.marquee("Hello World!!!!!", mockTui)]]; // 16 chars, overflows when fill < 16
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // Width=80: fill column = 80, text fits → no marquee needed
       let lines = table.render(80);
-      expect(strip(lines[1])).toContain("Hello World!!!!!");
+      expect(strip(lines[1]!)).toContain("Hello World!!!!!");
 
       // Width=15: fill = 15 < 16 → marquee at offset 0
       // Note: invalidate() is called on all cells via table.invalidate() when
       // the render width changes. Since we create cells with marquee,
       // they manage their own lifecycle.
       lines = table.render(15);
-      expect(strip(lines[1])).toContain(`${CURSOR} Hello World!!`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} Hello World!!`);
 
       // Advance 150ms = 1 tick → offset=1 → "ello World!!!!"
       vi.advanceTimersByTime(150);
       lines = table.render(15);
-      expect(strip(lines[1])).toContain(`${CURSOR} ello World!!!`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} ello World!!!`);
     });
 
     it("clears marquee timers on invalidate", () => {
-      const cols: ColumnDef[] = [
-        { header: cell.header("Name"), width: 5 },
-      ];
+      const cols: ColumnDef[] = [{ header: cell.header("Name"), width: 5 }];
       const rows = [[cell.marquee("Hello World!", mockTui)]];
-      const table = new SortedTable({ columns: cols, rows, maxHeight: 10, tui: mockTui }, makeTheme());
+      const table = new SortedTable(
+        { columns: cols, rows, maxHeight: 10, tui: mockTui },
+        makeTheme(),
+      );
 
       // Render with focus on row 0 + content overflow → marquee timer starts
       table.render(20);
@@ -616,7 +717,7 @@ describe("SortedTable", () => {
 
       // Re-render works cleanly (no stale state)
       const lines = table.render(20);
-      expect(strip(lines[1])).toContain(`${CURSOR} Hello`);
+      expect(strip(lines[1]!)).toContain(`${CURSOR} Hello`);
     });
   });
 });

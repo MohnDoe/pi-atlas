@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
-import { StatsSummary, TimeRange } from "../../types";
+import type { StatsSummary, TimeRange } from "../../types";
 import { Dashboard } from "../Dashboard";
 
 const mockTui = makeMockTUI();

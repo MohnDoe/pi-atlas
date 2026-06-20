@@ -1,13 +1,13 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Box, Component, Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { langPalette, modelPalette } from "../colorPalette";
 import { BarChart } from "../components/BarChart";
 import { BorderBox } from "../components/BorderBox";
-import { KpiCards, KpiData } from "../components/KpiCards";
-import { StatsSummary, type TimeRange } from "../types";
+import { KpiCards, type KpiData } from "../components/KpiCards";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
 import { formatCost, formatNumber } from "../format";
-import { langPalette, modelPalette } from "../colorPalette";
+import { type StatsSummary, type TimeRange } from "../types";
 
 const SPACER_HEIGHT = 1;
 const BAR_CHART_MAX_HEIGHT = 18;
@@ -127,7 +127,7 @@ export class Overview extends Container {
     );
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
     this.addChild(this.kpiCards);
     this.addChild(new Spacer(1));
@@ -148,7 +148,7 @@ export class Overview extends Container {
     return super.render(width);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
     this.kpiCards.invalidate();
     this.barChart.invalidate();

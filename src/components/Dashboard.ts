@@ -1,22 +1,22 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
   Container,
   matchesKey,
-  type Component,
-  type TUI,
   Spacer,
   Text,
+  type Component,
+  type TUI,
 } from "@earendil-works/pi-tui";
-import type { Theme } from "@earendil-works/pi-coding-agent";
-import { StatsSummary, type TimeRange } from "../types";
-import { RangeSelector, type RangeOption } from "./RangeSelector";
-import { TabBar } from "./TabBar";
-import { Header } from "./Header";
-import { Overview } from "../tabs/Overview";
+import { ColorPalette, langPalette, modelPalette } from "../colorPalette";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
-import { ColorPalette, langPalette, modelPalette } from "../colorPalette.js";
+import { Overview } from "../tabs/Overview";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
+import type { StatsSummary, TimeRange } from "../types";
+import { Header } from "./Header";
+import { RangeSelector, type RangeOption } from "./RangeSelector";
+import { TabBar } from "./TabBar";
 
 export class Dashboard extends Container {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
@@ -99,7 +99,7 @@ export class Dashboard extends Container {
     ];
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
     this.addChild(this.header);
     this.addChild(new Spacer(1));
@@ -178,7 +178,7 @@ export class Dashboard extends Container {
     }
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     this.tabBar.invalidate();
     this.rangeSelector.invalidate();
     this.header.invalidate();

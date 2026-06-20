@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { renderBar } from "../shared/Bar.js";
+import { describe, expect, it } from "bun:test";
+import { renderBar } from "../shared/Bar";
 
 describe("renderBar", () => {
   const filledStyle = (s: string) => s; // identity (no styling)

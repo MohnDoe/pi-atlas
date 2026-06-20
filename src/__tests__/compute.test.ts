@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { summarize } from "../compute.js";
-import { dateFromISOString } from "../format.js";
-import { emptyDay, mergeDay } from "../parser.js";
+import { describe, expect, it } from "bun:test";
+import { summarize } from "../compute";
+import { dateFromISOString } from "../format";
+import { emptyDay, mergeDay } from "../parser";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {
@@ -317,10 +317,10 @@ describe("summarize", () => {
 
     const s = summarize(days, "1d");
     expect(s.hourlySpend).toHaveLength(24);
-    expect(s.hourlySpend[10].cost).toBe(1.5);
-    expect(s.hourlySpend[14].cost).toBe(2.0);
-    expect(s.hourlySpend[0].cost).toBe(0);
-    expect(s.hourlySpend[23].cost).toBe(0);
+    expect(s.hourlySpend[10]!.cost).toBe(1.5);
+    expect(s.hourlySpend[14]!.cost).toBe(2.0);
+    expect(s.hourlySpend[0]!.cost).toBe(0);
+    expect(s.hourlySpend[23]!.cost).toBe(0);
   });
 
   it("hourlySpend is empty for 7d, 30d, All ranges", () => {

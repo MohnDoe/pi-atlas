@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { makeTheme } from "../../__tests__/components.fixtures";
-import { RangeOption, RangeSelector } from "../RangeSelector";
+import { type RangeOption, RangeSelector } from "../RangeSelector";
 
 describe("RangeSelector", () => {
   const ranges: RangeOption[] = [
@@ -29,6 +29,6 @@ describe("RangeSelector", () => {
   it("renders within width", () => {
     const rs = new RangeSelector(makeTheme(), ranges, 0);
     const lines = rs.render(40);
-    expect(lines[0].length).toBeLessThanOrEqual(40);
+    expect(lines[0]!.length).toBeLessThanOrEqual(40);
   });
 });

@@ -1,10 +1,10 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import { ColorPalette } from "../colorPalette.js";
-import { cell, type CellComponent } from "../components/cells.js";
-import { SortedTable } from "../components/SortedTable.js";
+import { ColorPalette } from "../colorPalette";
+import { cell, type CellComponent } from "../components/cells";
+import { SortedTable } from "../components/SortedTable";
 import { formatNumber } from "../format";
-import { LangStat } from "../types";
+import type { LangStat } from "../types";
 
 const EMPTY_MESSAGE = "No language data for this time range";
 
@@ -43,7 +43,7 @@ export class Languages extends Container {
     });
   }
 
-  render(width: number): string[] {
+  override render(width: number): string[] {
     this.clear();
     if (!this.isEmpty) {
       if (!this.table) {
@@ -74,7 +74,7 @@ export class Languages extends Container {
     this.table?.handleInput(data);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
     this.table?.invalidate();
   }

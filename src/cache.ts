@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { mergeDay, parseFile } from "./parser.js";
-import type { CachePayload, DayAgg, SerializedDayAgg } from "./types.js";
+import { mergeDay, parseFile } from "./parser";
+import type { CachePayload, DayAgg, SerializedDayAgg } from "./types";
 
 // ---- Signature ----
 
@@ -148,7 +148,7 @@ export async function loadAggregate(
 
   for (let i = 0; i < files.length; i++) {
     let lastCount = 0;
-    const fileMap = parseFile(files[i], (count) => {
+    const fileMap = parseFile(files[i]!, (count) => {
       lastCount = count;
     });
     totalCorrupt += lastCount;

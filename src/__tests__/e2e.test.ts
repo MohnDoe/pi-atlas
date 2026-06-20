@@ -1,13 +1,13 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Dashboard } from "../components/Dashboard";
-import { summarize } from "../compute.js";
-import { parseFile } from "../parser";
-import { DayAgg } from "../types";
-import { makeMockTUI, makeTheme } from "./components.fixtures";
 import { allRanges } from "../components/__tests__/Dashboard.test";
+import { Dashboard } from "../components/Dashboard";
+import { summarize } from "../compute";
+import { parseFile } from "../parser";
+import { type DayAgg } from "../types";
+import { makeMockTUI, makeTheme } from "./components.fixtures";
 
 const mockTui = makeMockTUI();
 

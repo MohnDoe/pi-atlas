@@ -1,4 +1,4 @@
-import { dateFromISOString } from "./format.js";
+import { dateFromISOString } from "./format";
 import type {
   DayAgg,
   DaySpend,
@@ -9,7 +9,7 @@ import type {
   StatsSummary,
   TimeRange,
   ToolStat,
-} from "./types.js";
+} from "./types";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
@@ -42,8 +42,8 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
   }
 
   // For bounded ranges, zero-fill gaps
-  const first = sorted[0].date;
-  const last = sorted[sorted.length - 1].date;
+  const first = sorted[0]!.date;
+  const last = sorted[sorted.length - 1]!.date;
 
   const spendMap = new Map<string, number>();
   for (const d of sorted) spendMap.set(d.date, d.cost);
@@ -64,7 +64,7 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
 function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
   if (range !== "1d" || filtered.length !== 1) return [];
 
-  const day = filtered[0];
+  const day = filtered[0]!;
   const hourly: HourSpend[] = [];
   for (let h = 0; h < 24; h++) {
     hourly.push({ hour: h, cost: day.hourCost[h] ?? 0 });
