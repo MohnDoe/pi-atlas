@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
-import { BorderBox } from "../components/BorderBox";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
 import { cell, type CellComponent } from "../components/cells";
 import { GridRow } from "../components/shared/GridRow";
 import { SortedTable } from "../components/SortedTable";
@@ -119,15 +119,14 @@ export class Usage extends Container {
       [25, 25, 25, 25],
     );
     this.addChild(
-      new BorderBox(
-        {
-          title: title + " · " + subtitle,
-          child: row,
-          color: "border",
-          paddingX: 1,
-        },
-        this.theme,
-      ),
+      new BorderBox(row, {
+        titles: [
+          { text: title, align: "left" },
+          { text: subtitle, align: "right" },
+        ],
+        borderColor: (s: string) => this.theme.fg("border", s),
+        padding: { left: 1, right: 1 },
+      }),
     );
 
     // Tool table section
