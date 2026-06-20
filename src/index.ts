@@ -50,15 +50,19 @@ export default function (pi: ExtensionAPI) {
       let days: Awaited<ReturnType<typeof loadAggregate>>;
       try {
         days = await ctx.ui.custom<Awaited<ReturnType<typeof loadAggregate>>>(
-          (tui, _theme, _kb, done) => {
+          async (tui, _theme, _kb, done) => {
             const loadingView = new LoadingView("Parsing session logs...", tui);
 
-            loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
-              loadingView.setProgress(p);
-              tui.requestRender();
-            })
-              .then((result) => done(result))
-              .catch((err) => done(err));
+            try {
+              const result = await loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
+                loadingView.setProgress(p);
+                tui.requestRender();
+              });
+              done(result);
+            } catch (e) {
+              done([]);
+              throw e;
+            }
 
             return loadingView;
           },
