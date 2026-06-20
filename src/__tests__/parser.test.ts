@@ -1170,7 +1170,7 @@ describe("parseFile", () => {
   });
 
   it("returns empty map for empty file", async () => {
-    const filePath = await join(tmpDir, "empty.jsonl");
+    const filePath = join(tmpDir, "empty.jsonl");
     await Bun.write(filePath, "");
     const map = await parseFile(filePath);
     expect(map.size).toBe(0);
