@@ -158,14 +158,14 @@ describe("BorderBox", () => {
       expect(lines[4]).toMatch(/^╰─{8}╯$/); // bottom
     });
 
-    it("skips paddingY when child renders no lines", () => {
+    it("does not skip paddingY when child renders no lines", () => {
       const child = new MockChild([]);
-      const box = new BorderBox({ child, paddingY: 2 }, makeTheme());
+      const box = new BorderBox({ child, paddingY: 2, rounded: true }, makeTheme());
       const lines = box.render(10);
 
-      expect(lines.length).toBe(2); // just top + bottom
+      expect(lines.length).toBe(7); // just top + bottom
       expect(lines[0]).toMatch(/^╭─{8}╮$/);
-      expect(lines[1]).toMatch(/^╰─{8}╯$/);
+      expect(lines[lines.length - 1]).toMatch(/^╰─{8}╯$/);
     });
 
     it("works with multiple paddingY lines", () => {

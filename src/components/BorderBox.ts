@@ -1,5 +1,6 @@
 import { Theme, type ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, visibleWidth } from "@earendil-works/pi-tui";
+import { BorderBox as PiTuiExtrasBorderBox } from "@mohndoe/pi-tui-extras";
 import { type ChalkInstance } from "chalk";
 
 export interface BorderBoxOptions {
@@ -82,80 +83,101 @@ export class BorderBox implements Component {
 
   render(width: number): string[] {
     if (this.cache && this.cache.width === width) return this.cache.lines;
-
-    const innerWidth = Math.max(1, width - 2);
-    const childInnerWidth = Math.max(1, innerWidth - 2 * this.paddingX);
-    const childLines = this.child.render(childInnerWidth);
-
-    const tl = this.rounded ? "╭" : "┌";
-    const tr = this.rounded ? "╮" : "┐";
-    const bl = this.rounded ? "╰" : "└";
-    const br = this.rounded ? "╯" : "┘";
-    const l = "│";
-    const r = "│";
-
-    const lines: string[] = [];
-    const borderColor =
-      typeof this.color === "string"
-        ? (s: string) => this.theme.fg(this.color as ThemeColor, s)
-        : this.color;
-
-    // Top border (with optional title)
-    lines.push(
-      borderLine({
-        left: tl,
-        right: tr,
-        innerWidth,
-        width,
-        borderColor,
-        text: this.title,
-      }),
-    );
-
-    // Shared helper for bordered lines (blank or content)
-    const borderedLine = (inner: string): string => {
-      return padLine(borderColor(l) + inner + borderColor(r), width);
-    };
-
-    // Y-padding blank line (uniform fill)
-    const blankInner = " ".repeat(innerWidth);
-
-    // PaddingY top (only when child has content)
-    if (this.paddingY > 0 && childLines.length > 0) {
-      for (let i = 0; i < this.paddingY; i++) {
-        lines.push(borderedLine(blankInner));
-      }
-    }
-
-    // Content lines
-    for (const line of childLines) {
-      const childPad = Math.max(0, childInnerWidth - visibleWidth(line));
-      const padded = " ".repeat(this.paddingX) + line + " ".repeat(childPad + this.paddingX);
-      lines.push(borderedLine(padded));
-    }
-
-    // PaddingY bottom (only when child has content)
-    if (this.paddingY > 0 && childLines.length > 0) {
-      for (let i = 0; i < this.paddingY; i++) {
-        lines.push(borderedLine(blankInner));
-      }
-    }
-
-    // Bottom border (with optional footer)
-    lines.push(
-      borderLine({
-        left: bl,
-        right: br,
-        innerWidth,
-        width,
-        borderColor,
-        text: this.footer,
-      }),
-    );
-
+    const lines = new PiTuiExtrasBorderBox(this.child, {
+      borderColor:
+        typeof this.color === "string"
+          ? (s: string) => this.theme.fg(this.color as ThemeColor, s)
+          : this.color,
+      padding: {
+        bottom: this.paddingY,
+        top: this.paddingY,
+        left: this.paddingX,
+        right: this.paddingX,
+      },
+      titles: this.title ? [{ text: this.title, align: "left" }] : [],
+      footers: this.footer ? [{ text: this.footer, align: "left" }] : [],
+      borderStyle: this.rounded ? "singleRounded" : "single",
+    }).render(width);
     this.cache = { lines, width };
     return lines;
   }
+
+  // render(width: number): string[] {
+  //   if (this.cache && this.cache.width === width) return this.cache.lines;
+  //
+  //   const innerWidth = Math.max(1, width - 2);
+  //   const childInnerWidth = Math.max(1, innerWidth - 2 * this.paddingX);
+  //   const childLines = this.child.render(childInnerWidth);
+  //
+  //   const tl = this.rounded ? "╭" : "┌";
+  //   const tr = this.rounded ? "╮" : "┐";
+  //   const bl = this.rounded ? "╰" : "└";
+  //   const br = this.rounded ? "╯" : "┘";
+  //   const l = "│";
+  //   const r = "│";
+  //
+  //   const lines: string[] = [];
+  //   const borderColor =
+  //     typeof this.color === "string"
+  //       ? (s: string) => this.theme.fg(this.color as ThemeColor, s)
+  //       : this.color;
+  //
+  //   // Top border (with optional title)
+  //   lines.push(
+  //     borderLine({
+  //       left: tl,
+  //       right: tr,
+  //       innerWidth,
+  //       width,
+  //       borderColor,
+  //       text: this.title,
+  //     }),
+  //   );
+  //
+  //   // Shared helper for bordered lines (blank or content)
+  //   const borderedLine = (inner: string): string => {
+  //     return padLine(borderColor(l) + inner + borderColor(r), width);
+  //   };
+  //
+  //   // Y-padding blank line (uniform fill)
+  //   const blankInner = " ".repeat(innerWidth);
+  //
+  //   // PaddingY top (only when child has content)
+  //   if (this.paddingY > 0 && childLines.length > 0) {
+  //     for (let i = 0; i < this.paddingY; i++) {
+  //       lines.push(borderedLine(blankInner));
+  //     }
+  //   }
+  //
+  //   // Content lines
+  //   for (const line of childLines) {
+  //     const childPad = Math.max(0, childInnerWidth - visibleWidth(line));
+  //     const padded = " ".repeat(this.paddingX) + line + " ".repeat(childPad + this.paddingX);
+  //     lines.push(borderedLine(padded));
+  //   }
+  //
+  //   // PaddingY bottom (only when child has content)
+  //   if (this.paddingY > 0 && childLines.length > 0) {
+  //     for (let i = 0; i < this.paddingY; i++) {
+  //       lines.push(borderedLine(blankInner));
+  //     }
+  //   }
+  //
+  //   // Bottom border (with optional footer)
+  //   lines.push(
+  //     borderLine({
+  //       left: bl,
+  //       right: br,
+  //       innerWidth,
+  //       width,
+  //       borderColor,
+  //       text: this.footer,
+  //     }),
+  //   );
+  //
+  //   this.cache = { lines, width };
+  //   return lines;
+  // }
 
   handleInput(data: string): void {
     this.child.handleInput?.(data);
