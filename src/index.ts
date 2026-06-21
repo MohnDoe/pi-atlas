@@ -7,6 +7,7 @@ import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
 import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
+import type { TimeRange } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
@@ -70,7 +71,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       // Phase 2: Show dashboard (handles empty state internally)
-      const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
+      const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
       const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
