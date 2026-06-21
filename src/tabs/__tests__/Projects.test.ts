@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-import { SortedTable } from "../../components/SortedTable";
 import { type ProjectStat } from "../../types";
 import { Projects } from "../Projects";
-
-const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 
 describe("Projects", () => {
   const mockTui = makeMockTUI();
@@ -20,8 +17,11 @@ describe("Projects", () => {
     const lines = tab.render(80);
     const text = lines.join("\n");
 
+    expect(lines[0]).toContain("Projects");
+    expect(lines[0]).toContain(projects.length.toString());
+
     // Headers
-    expect(text).toContain("Project");
+    expect(text).toContain("Name");
     expect(text).toContain("Sessions");
     expect(text).toContain("Cost");
     expect(text).toContain("Share %");
@@ -44,7 +44,12 @@ describe("Projects", () => {
 
   it("shows empty state when projects is empty", () => {
     const tab = new Projects([], makeTheme(), mockTui, 10);
-    const text = tab.render(80).join("\n");
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Projects");
+    // don't display 0 counter
+    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No projects data for this time range");
   });
 
@@ -70,12 +75,6 @@ describe("Projects", () => {
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
     expect(wideText).toContain("pi-usage");
-  });
-
-  it("shows cursor on first row", () => {
-    const tab = new Projects(projects, makeTheme(), mockTui, 10);
-    const lines = tab.render(80);
-    expect(lines[1]!.startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -108,7 +107,6 @@ describe("Projects", () => {
     const text = lines2.join("\n");
     expect(text).toContain("pi-usage");
     expect(text).toContain("Cost ▼");
-    expect(lines2[1]!.startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -139,7 +137,6 @@ describe("Projects", () => {
       const lines = tab.render(80);
       const text = lines.join("\n");
       expect(text).toContain("a-very-long-project");
-      expect(lines[1]!.startsWith(CURSOR)).toBe(true);
     });
   });
 });

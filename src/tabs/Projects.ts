@@ -1,5 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
+import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
 import { cell, type CellComponent } from "../components/cells";
 import { SortedTable } from "../components/SortedTable";
 import { formatCost, formatNumber } from "../format";
@@ -42,12 +43,23 @@ export class Projects extends Container {
 
   override render(width: number): string[] {
     this.clear();
+
+    const borderBoxOptions: BorderBoxOptions = {
+      borderStyle: "singleRounded",
+      borderColor: (s) => this.theme.fg("border", s),
+      titles: [{ text: "Projects", align: "left" }],
+    };
+
     if (!this.isEmpty) {
+      borderBoxOptions.titles = [
+        ...borderBoxOptions.titles!,
+        { text: this.theme.fg("dim", formatNumber(this.projects.length)), align: "right" },
+      ];
       if (!this.table) {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Project"), width: 20 },
+              { header: cell.header("Name"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Sessions"), width: 14 },
               { header: cell.header("Cost"), width: 8 },
@@ -60,9 +72,11 @@ export class Projects extends Container {
           this.theme,
         );
       }
-      this.addChild(this.table);
+      this.addChild(new BorderBox(this.table, borderBoxOptions));
     } else {
-      this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
+      this.addChild(
+        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
+      );
     }
     return super.render(width);
   }
