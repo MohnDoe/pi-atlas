@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-import { SortedTable } from "../../components/SortedTable";
 import { type ToolStat } from "../../types";
 import { Usage } from "../Usage";
 
 describe("Usage", () => {
-  const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
   const mockTui = makeMockTUI();
 
   const tokenUsage = {
@@ -39,10 +37,15 @@ describe("Usage", () => {
 
   it("renders tool table with formatted data", () => {
     const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
-    const text = tab.render(80).join("\n");
+    const lines = tab.render(80).slice(4);
+
+    const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Tools");
+    expect(lines[0]).toContain(tools.length.toString());
 
     // Headers
-    expect(text).toContain("Tool");
+    expect(text).toContain("Command");
     expect(text).toContain("Calls");
     expect(text).toContain("Share %");
 
@@ -66,7 +69,12 @@ describe("Usage", () => {
 
   it("shows empty state when tools is empty", () => {
     const tab = new Usage([], tokenUsage, makeTheme(), mockTui, 10);
-    const text = tab.render(80).join("\n");
+    const lines = tab.render(80).slice(4);
+    const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Tools");
+    // don't display 0 counter
+    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No tools data for this time range");
   });
 
@@ -98,15 +106,6 @@ describe("Usage", () => {
     }
   });
 
-  it("shows cursor on first tool row", () => {
-    const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
-    const lines = tab.render(80);
-    // Find the first line with a cursor — should be in the tool table section
-    const cursorLine = lines.find((l) => l.startsWith(CURSOR));
-    expect(cursorLine).toBeDefined();
-    expect(cursorLine).toContain("bash");
-  });
-
   it("shows sort indicator on Calls column", () => {
     const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(80);
@@ -136,14 +135,12 @@ describe("Usage", () => {
     const lines2 = tab.render(80);
     const text = lines2.join("\n");
     expect(text).toContain("bash");
-    expect(text).toContain("Tool");
+    expect(text).toContain("Command");
     expect(text).toContain("Calls ▼");
     // Token section still intact
     expect(text).toContain("5.0k");
     expect(text).toContain("4.0k");
-    const cursorLine = lines2.find((l) => l.startsWith(CURSOR));
-    expect(cursorLine).toBeDefined();
-    expect(cursorLine).toContain("bash");
+
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -172,9 +169,6 @@ describe("Usage", () => {
       const lines = tab.render(80);
       const text = lines.join("\n");
       expect(text).toContain("a-very-long-tool");
-      const cursorLine = lines.find((l) => l.startsWith(CURSOR));
-      expect(cursorLine).toBeDefined();
-      expect(cursorLine).toContain("a-very-long-tool");
     });
   });
 });

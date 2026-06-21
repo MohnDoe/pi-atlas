@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
-import { BorderBox } from "@mohndoe/pi-tui-extras";
+import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
 import { cell, type CellComponent } from "../components/cells";
 import { GridRow } from "../components/shared/GridRow";
 import { SortedTable } from "../components/SortedTable";
@@ -129,15 +129,24 @@ export class Usage extends Container {
       }),
     );
 
+    const borderBoxOptions: BorderBoxOptions = {
+      borderStyle: "singleRounded",
+      borderColor: (s) => this.theme.fg("border", s),
+      titles: [{ text: "Tools", align: "left" }],
+    };
+
     // Tool table section
     if (!this.isEmpty) {
-      this.addChild(new Spacer(1));
+      borderBoxOptions.titles = [
+        ...borderBoxOptions.titles!,
+        { text: this.theme.fg("dim", formatNumber(this.rows.length)), align: "right" },
+      ];
 
       if (!this.table) {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Tool"), width: 20 },
+              { header: cell.header("Command"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Calls"), width: 12 },
             ],
@@ -149,9 +158,11 @@ export class Usage extends Container {
           this.theme,
         );
       }
-      this.addChild(this.table);
+      this.addChild(new BorderBox(this.table, borderBoxOptions));
     } else {
-      this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
+      this.addChild(
+        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
+      );
     }
 
     return super.render(width);
