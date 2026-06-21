@@ -5,6 +5,7 @@ import { cell, type CellComponent } from "../components/cells";
 import { SortedTable } from "../components/SortedTable";
 import { formatNumber } from "../format";
 import type { LangStat } from "../types";
+import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
 
 const EMPTY_MESSAGE = "No language data for this time range";
 
@@ -45,12 +46,24 @@ export class Languages extends Container {
 
   override render(width: number): string[] {
     this.clear();
+
+    const borderBoxOptions: BorderBoxOptions = {
+      borderStyle: "singleRounded",
+      borderColor: (s) => this.theme.fg("border", s),
+      titles: [{ text: "Languages", align: "left" }],
+    };
+
     if (!this.isEmpty) {
+      borderBoxOptions.titles = [
+        ...borderBoxOptions.titles!,
+        { text: this.theme.fg("dim", formatNumber(this.languages.length)), align: "right" },
+      ];
+
       if (!this.table) {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Language"), width: 12 },
+              { header: cell.header("Name"), width: 12 },
               { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Edits"), width: 8 },
               { header: cell.header("Lines"), width: 14 },
@@ -63,9 +76,11 @@ export class Languages extends Container {
           this.theme,
         );
       }
-      this.addChild(this.table);
+      this.addChild(new BorderBox(this.table, borderBoxOptions));
     } else {
-      this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
+      this.addChild(
+        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
+      );
     }
     return super.render(width);
   }

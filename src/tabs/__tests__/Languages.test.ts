@@ -2,9 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
 import { Languages } from "../Languages";
 import { type LangStat } from "../../types";
-import { SortedTable } from "../../components/SortedTable";
-
-const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 
 describe("Languages", () => {
   const mockTui = makeMockTUI();
@@ -20,8 +17,11 @@ describe("Languages", () => {
     const lines = tab.render(80);
     const text = lines.join("\n");
 
+    expect(lines[0]).toContain("Languages");
+    expect(lines[0]).toContain(languages.length.toString());
+
     // Headers
-    expect(text).toContain("Language");
+    expect(text).toContain("Name");
     expect(text).toContain("Edits");
     expect(text).toContain("Lines");
     expect(text).toContain("Share %");
@@ -44,7 +44,14 @@ describe("Languages", () => {
 
   it("shows empty state when languages is empty", () => {
     const tab = new Languages([], makeTheme(), testPalette(), mockTui, 10);
-    const text = tab.render(80).join("\n");
+
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Languages");
+    // don't display 0 counter
+    expect(lines[0]).not.toContain("0");
+
     expect(text).toContain("No language data for this time range");
   });
 
@@ -75,13 +82,6 @@ describe("Languages", () => {
     const wideText = wideLines.join("\n");
     expect(wideText).toContain("TypeScript");
     expect(wideText).toContain("1.5k");
-  });
-
-  it("shows cursor on first row", () => {
-    const tab = new Languages(languages, makeTheme(), testPalette(), mockTui, 10);
-    const lines = tab.render(80);
-    // First data row (line 1, after header) should start with cursor
-    expect(lines[1]!.startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Lines column", () => {
@@ -115,7 +115,6 @@ describe("Languages", () => {
     const text = lines2.join("\n");
     expect(text).toContain("TypeScript");
     expect(text).toContain("Lines ▼");
-    expect(lines2[1]!.startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -154,7 +153,6 @@ describe("Languages", () => {
       const lines = tab.render(80);
       const text = lines.join("\n");
       expect(text).toContain("TypeScript");
-      expect(lines[1]!.startsWith(CURSOR)).toBe(true);
     });
   });
 });
