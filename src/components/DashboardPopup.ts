@@ -19,6 +19,9 @@ export class DashboardPopup implements Component {
           align: "right",
         },
       ],
+      footers: dashboard.updateLabel
+        ? [{ text: theme.fg("dim", theme.italic(dashboard.updateLabel)), align: "right" }]
+        : [],
       borderStyle: "singleRounded",
       borderColor: (s: string) => theme.fg("text", s),
       padding: { left: 1, right: 1 },

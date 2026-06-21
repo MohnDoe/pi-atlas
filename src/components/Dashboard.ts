@@ -36,7 +36,7 @@ export class Dashboard extends Container {
     private summaries: Map<TimeRange, StatsSummary>,
     private theme: Theme,
     private usePopup: boolean,
-    private updateLabel: string | null,
+    private _updateLabel: string | null,
     private tui: TUI,
     onClose?: () => void,
   ) {
@@ -55,6 +55,12 @@ export class Dashboard extends Container {
     this.header = new Header(this.theme, this.rangeSelector);
     this.contentHeight = this.computeContentHeight();
     this.buildTabs();
+
+   
+  }
+
+  get updateLabel(): string | null {
+    return this._updateLabel;
   }
 
   /** Compute the available content height from current terminal dimensions. */
@@ -127,9 +133,12 @@ export class Dashboard extends Container {
     }
 
     this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
-    const updateText = this.updateLabel ? this.theme.fg("dim", this.updateLabel) : "";
     const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
-    this.addChild(new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0));
+  const updateText =
+      this.updateLabel && !this.usePopup ? this.theme.fg("dim", this.updateLabel) : "";
+    this.addChild(
+      new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0),
+    );
 
     // Recompute content height — rebuild tabs if terminal was resized
     const newContentHeight = this.computeContentHeight();
