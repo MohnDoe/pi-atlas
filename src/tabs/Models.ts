@@ -5,6 +5,7 @@ import { cell, type CellComponent } from "../components/cells";
 import { SortedTable } from "../components/SortedTable";
 import { formatCost, formatModelName, formatNumber } from "../format";
 import { type ModelStat } from "../types";
+import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
 
 const EMPTY_MESSAGE = "No model data for this time range";
 
@@ -53,12 +54,21 @@ export class Models extends Container {
 
   override render(width: number): string[] {
     this.clear();
+    const borderBoxOptions: BorderBoxOptions = {
+      borderStyle: "singleRounded",
+      borderColor: (s) => this.theme.fg("border", s),
+      titles: [{ text: "Models", align: "left" }],
+    };
     if (!this.isEmpty) {
+      borderBoxOptions.titles = [
+        ...borderBoxOptions.titles!,
+        { text: this.theme.fg("dim", formatNumber(this.models.length)), align: "right" },
+      ];
       if (!this.table) {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Model"), width: 32 },
+              { header: cell.header("Name"), width: 32 },
               { header: cell.header("Provider"), width: 16 },
               { header: cell.header("Cost %"), width: "fill" },
               { header: cell.header("Calls"), width: 10 },
@@ -72,9 +82,11 @@ export class Models extends Container {
           this.theme,
         );
       }
-      this.addChild(this.table);
+      this.addChild(new BorderBox(this.table, borderBoxOptions));
     } else {
-      this.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
+      this.addChild(
+        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
+      );
     }
     return super.render(width);
   }

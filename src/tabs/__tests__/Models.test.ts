@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme, testPalette } from "../../__tests__/components.fixtures";
-import { SortedTable } from "../../components/SortedTable";
 import { type ModelStat } from "../../types";
 import { Models } from "../Models";
 
 describe("Models", () => {
-  const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
   const mockTui = makeMockTUI();
 
   const models: ModelStat[] = [
@@ -19,6 +17,10 @@ describe("Models", () => {
     const lines = tab.render(80);
 
     const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Models");
+    expect(lines[0]).toContain(models.length.toString());
+
     // formatModelName strips date suffix and capitalizes
     // Model column is 6-char fill at width 80 — truncated name visible
     expect(text).toContain("Claude");
@@ -35,7 +37,12 @@ describe("Models", () => {
 
   it("shows empty state when models is empty", () => {
     const tab = new Models([], makeTheme(), testPalette(), mockTui, 10);
-    const text = tab.render(80).join("\n");
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+
+    expect(lines[0]).toContain("Models");
+    // don't display 0 counter
+    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No model data for this time range");
   });
 
@@ -60,13 +67,6 @@ describe("Models", () => {
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
     expect(wideText).toContain("Claude Sonnet");
-  });
-
-  it("shows cursor on first row", () => {
-    const tab = new Models(models, makeTheme(), testPalette(), mockTui, 10);
-    const lines = tab.render(80);
-    // First data row (line 1, after header) should start with cursor
-    expect(lines[1]!.startsWith(CURSOR)).toBe(true);
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -103,7 +103,6 @@ describe("Models", () => {
     const text = lines2.join("\n");
     expect(text).toContain("Claude");
     expect(text).toContain("Cost ▼");
-    expect(lines2[1]!.startsWith(CURSOR)).toBe(true);
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
@@ -139,7 +138,6 @@ describe("Models", () => {
       const text = lines.join("\n");
       expect(text).toContain("C"); // first char of "Claude Sonnet 4"
       expect(text).toContain("anthr"); // provider truncated to ~5 chars at width 30
-      expect(lines[1]!.startsWith(CURSOR)).toBe(true);
     });
   });
 });
