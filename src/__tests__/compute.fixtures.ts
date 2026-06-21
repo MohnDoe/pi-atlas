@@ -1,4 +1,4 @@
-import { StatsSummary } from "../types";
+import { type StatsSummary } from "../types";
 
 export const makeSummary = (): StatsSummary => ({
   totalCost: 5.0,
@@ -12,13 +12,38 @@ export const makeSummary = (): StatsSummary => ({
   daysActive: 3,
   avgCostPerDay: 1.67,
   todayCost: 1.0,
-  languages: [],
-  models: [],
-  projects: [],
-  tools: [],
+  languages: [
+    {
+      language: "TypeScript",
+      lines: 10000,
+      edits: 5,
+    },
+  ],
+  models: [
+    {
+      model: "deeepseek-v4",
+      cost: 0.5,
+      provider: "deepseek",
+      calls: 1000,
+    },
+  ],
+  projects: [
+    {
+      cost: 0,
+      project: "pi-usage",
+      sessions: 12,
+    },
+  ],
+  tools: [
+    {
+      count: 10,
+      name: "bash",
+    },
+  ],
   dailySpend: [
     { date: "2026-06-06", cost: 1.0 },
     { date: "2026-06-07", cost: 2.0 },
     { date: "2026-06-08", cost: 2.0 },
   ],
+  hourlySpend: [],
 });

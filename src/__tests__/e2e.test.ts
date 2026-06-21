@@ -1,11 +1,12 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { allRanges } from "../components/__tests__/Dashboard.test";
 import { Dashboard } from "../components/Dashboard";
-import { summarize } from "../compute.js";
+import { summarize } from "../compute";
 import { parseFile } from "../parser";
-import { DayAgg } from "../types";
+import { type DayAgg } from "../types";
 import { makeMockTUI, makeTheme } from "./components.fixtures";
 
 const mockTui = makeMockTUI();
@@ -85,11 +86,11 @@ describe("JSONL → Dashboard", () => {
     expect(days.length).toBeGreaterThan(0);
 
     // Summarize for all ranges
-    const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-    const summaries = ranges.map((r) => summarize(days, r));
+    const ranges = allRanges;
+    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     // Render dashboard
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -152,10 +153,10 @@ describe("JSONL → Dashboard", () => {
 
     const map = parseFile(filePath);
     const days = daysFromMap(map);
-    const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-    const summaries = ranges.map((r) => summarize(days, r));
+    const ranges = allRanges;
+    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 

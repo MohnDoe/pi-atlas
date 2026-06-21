@@ -1,22 +1,35 @@
-import { readFileSync } from "node:fs";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
 import type {
-  AssistantMessageBody,
-  DayAgg,
-  MessageEntry,
-  SessionEntry,
-  SessionLogEntry,
-  SessionProjectMap,
-  ToolResultMessageBody,
-} from "./types";
-import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format.js";
+  CompactionEntry,
+  FileEntry,
+  ModelChangeEntry,
+  SessionHeader,
+  SessionMessageEntry,
+  ThinkingLevelChangeEntry,
+} from "@earendil-works/pi-coding-agent";
+import { readFileSync } from "node:fs";
+
+import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
+import type { DayAgg } from "./types";
+
+/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
+function sanitizeToolName(name: string): string {
+  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
+  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
+  return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+}
 
 // Tracks session ID → project name for cost attribution
-export const sessionProjectMap: SessionProjectMap = new Map();
+const sessionProjectMap = new Map<string, string>();
+
+export { sessionProjectMap };
 
 export function emptyDay(date: string): DayAgg {
   return {
     date,
     cost: 0,
+    hourCost: {},
     inTok: 0,
     outTok: 0,
     crTok: 0,
@@ -35,6 +48,10 @@ export function emptyDay(date: string): DayAgg {
     projectCost: {},
     projectSessions: {},
     toolCount: {},
+    compactionCount: 0,
+    compactedTokens: 0,
+    modelChanges: 0,
+    thinkingLevelCount: {},
   };
 }
 
@@ -49,6 +66,10 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   base.toolResults += update.toolResults;
 
   for (const id of update.sessionIds) base.sessionIds.add(id);
+
+  for (const [h, c] of Object.entries(update.hourCost)) {
+    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
+  }
 
   for (const [k, v] of Object.entries(update.langLines)) {
     base.langLines[k] = (base.langLines[k] ?? 0) + v;
@@ -79,13 +100,23 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
     base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
   }
 
+  // New fields
+  base.compactionCount += update.compactionCount;
+  base.compactedTokens += update.compactedTokens;
+  base.modelChanges += update.modelChanges;
+  for (const [k, v] of Object.entries(update.thinkingLevelCount)) {
+    base.thinkingLevelCount[k] = (base.thinkingLevelCount[k] ?? 0) + v;
+  }
+
   base.modelToProvider = new Map([
     ...(base.modelToProvider.size > 0 ? base.modelToProvider.entries() : []),
     ...(update.modelToProvider.size > 0 ? update.modelToProvider.entries() : []),
   ]);
 }
 
-export function parseSessionEntry(entry: SessionEntry): DayAgg {
+// ---- Session header ----
+
+export function parseSessionHeader(entry: SessionHeader): DayAgg {
   const day = emptyDay(dateFromISOString(entry.timestamp));
   day.sessionIds.add(entry.id);
 
@@ -99,22 +130,24 @@ export function parseSessionEntry(entry: SessionEntry): DayAgg {
   return day;
 }
 
+// ---- Message parsing ----
+
 export function parseUserMessage(): DayAgg {
   const day = emptyDay("");
   day.userMsgs = 1;
   return day;
 }
 
-export function parseToolResultMessage(msg: ToolResultMessageBody): DayAgg {
+export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
   const day = emptyDay("");
   day.toolResults = 1;
   if (msg.toolName) {
-    day.toolCount[msg.toolName] = 1;
+    day.toolCount[sanitizeToolName(msg.toolName)] = 1;
   }
   return day;
 }
 
-export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
+export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
   const day = emptyDay("");
   day.asstMsgs = 1;
 
@@ -147,12 +180,19 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall") {
-        day.toolCount[block.name] = (day.toolCount[block.name] ?? 0) + 1;
+        const parsedArgs =
+          block.arguments !== undefined
+            ? typeof block.arguments === "string"
+              ? JSON.parse(block.arguments)
+              : block.arguments
+            : undefined;
+        const sanitized = sanitizeToolName(block.name);
+        day.toolCount[sanitized] = (day.toolCount[sanitized] ?? 0) + 1;
 
         if (block.name === "edit" || block.name === "write") {
           mergeDay(
             day,
-            detectLanguage(block.name, block.arguments as Record<string, unknown> | undefined),
+            parseLanguageUsage(block.name, parsedArgs as Record<string, unknown> | undefined),
           );
         }
       }
@@ -162,7 +202,11 @@ export function parseAssistantMessage(msg: AssistantMessageBody): DayAgg {
   return day;
 }
 
-export function detectLanguage(
+function countNewLines(s: string): number {
+  return (s.match(/\n/g) ?? []).length;
+}
+
+export function parseLanguageUsage(
   toolName: string,
   args: Record<string, unknown> | undefined,
 ): DayAgg {
@@ -175,46 +219,101 @@ export function detectLanguage(
   if (toolName === "edit") {
     const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
     if (Array.isArray(edits)) {
-      let totalNewChars = 0;
+      let totalNewLines = 0;
       for (const edit of edits) {
-        totalNewChars += edit.newText?.length ?? 0;
+        totalNewLines += countNewLines(edit.newText ?? "") + countNewLines(edit.oldText ?? "") + 1;
+        day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
       }
-      if (totalNewChars > 0) {
-        day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewChars;
-      }
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewLines;
+    } else {
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
+      day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
     }
-    day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
   } else {
     const contentStr = args?.content as string | undefined;
     if (contentStr) {
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + contentStr.length;
+      // +1 because no new line is still a line
+      day.langLines[lang] = (day.langLines[lang] ?? 0) + countNewLines(contentStr);
     }
+    day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
   }
 
   return day;
 }
 
-export function parseMessageEntry(entry: MessageEntry): DayAgg {
+function parseAgentMessage(msg: AgentMessage): DayAgg {
+  switch (msg.role) {
+    case "user":
+      return parseUserMessage();
+    case "toolResult":
+      return parseToolResultMessage(msg as ToolResultMessage);
+    case "assistant":
+      return parseAssistantMessage(msg as AssistantMessage);
+    // skip non-cost-relevant message types
+    case "bashExecution":
+    case "custom":
+    case "branchSummary":
+    case "compactionSummary":
+    default:
+      return emptyDay("");
+  }
+}
+
+// ---- New entry types ----
+
+export function parseModelChangeEntry(entry: ModelChangeEntry): DayAgg {
   const day = emptyDay(dateFromISOString(entry.timestamp));
-  const { message: msg } = entry;
-
-  if (msg.role === "user") {
-    mergeDay(day, parseUserMessage());
-  } else if (msg.role === "toolResult") {
-    mergeDay(day, parseToolResultMessage(msg));
-  } else if (msg.role === "assistant") {
-    mergeDay(day, parseAssistantMessage(msg));
-  }
-
+  day.modelChanges = 1;
   return day;
 }
 
-export function parseSessionLogEntry(entry: SessionLogEntry): DayAgg | null {
+export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): DayAgg {
+  const day = emptyDay(dateFromISOString(entry.timestamp));
+  day.thinkingLevelCount[entry.thinkingLevel] = 1;
+  return day;
+}
+
+export function parseCompactionEntry(entry: CompactionEntry): DayAgg {
+  const day = emptyDay(dateFromISOString(entry.timestamp));
+  day.compactionCount = 1;
+  day.compactedTokens = entry.tokensBefore;
+  return day;
+}
+
+// ---- Top-level dispatch ----
+
+export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
-  if (entry.type === "session") return parseSessionEntry(entry);
-  return parseMessageEntry(entry);
+  switch (entry.type) {
+    case "session":
+      return parseSessionHeader(entry as SessionHeader);
+    case "message": {
+      const msgEntry = entry as SessionMessageEntry;
+      const hour = new Date(msgEntry.timestamp).getHours();
+      const day = emptyDay(dateFromISOString(msgEntry.timestamp));
+      mergeDay(day, parseAgentMessage(msgEntry.message));
+      if (day.cost > 0) {
+        day.hourCost[hour] = (day.hourCost[hour] ?? 0) + day.cost;
+      }
+      return day;
+    }
+    case "model_change":
+      return parseModelChangeEntry(entry as ModelChangeEntry);
+    case "thinking_level_change":
+      return parseThinkingLevelChangeEntry(entry as ThinkingLevelChangeEntry);
+    case "compaction":
+      return parseCompactionEntry(entry as CompactionEntry);
+    // Silently skip entry types with no cost-relevant data
+    case "branch_summary":
+    case "custom":
+    case "custom_message":
+    case "label":
+    case "session_info":
+    default:
+      return null;
+  }
 }
 
 // ---- Parse a full JSONL file ----
@@ -244,7 +343,7 @@ export function parseFile(
     if (!trimmed) continue;
 
     try {
-      const entry = JSON.parse(trimmed) as SessionLogEntry;
+      const entry = JSON.parse(trimmed) as FileEntry;
       const result = parseSessionLogEntry(entry);
       if (result) {
         const existing = map.get(result.date);

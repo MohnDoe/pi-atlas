@@ -200,6 +200,17 @@ export function formatCacheTimestamp(iso: string): string {
 
 // ---- Model name formatting ----
 
+/** Strip ANSI escape sequences and control characters that can break terminal rendering. */
+export function stripAnsi(text: string): string {
+  // First strip ANSI sequences
+  let clean = text.replace(
+    /[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g,
+    "",
+  );
+  // Then strip control characters that can break terminal rendering
+  return clean.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+}
+
 export function formatModelName(raw: string): string {
   // Strip date suffix (YYYYMMDD or YYYY-MM-DD)
   let name = raw.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");

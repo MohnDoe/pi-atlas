@@ -1,6 +1,7 @@
 export interface DayAgg {
   date: string; // "YYYY-MM-DD"
   cost: number;
+  hourCost: Record<number, number>; // accumulated cost per UTC hour 0-23
   inTok: number;
   outTok: number;
   crTok: number;
@@ -19,12 +20,22 @@ export interface DayAgg {
   projectCost: Record<string, number>;
   projectSessions: Record<string, Set<string>>;
   toolCount: Record<string, number>;
+  // New fields tracking pi session entry types beyond session+message
+  compactionCount: number;
+  compactedTokens: number;
+  modelChanges: number;
+  thinkingLevelCount: Record<string, number>;
 }
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
 
 export interface DaySpend {
   date: string; // "YYYY-MM-DD"
+  cost: number;
+}
+
+export interface HourSpend {
+  hour: number; // 0-23
   cost: number;
 }
 
@@ -48,7 +59,7 @@ export interface ProjectStat {
 }
 
 export interface ToolStat {
-  tool: string;
+  name: string;
   count: number;
 }
 
@@ -69,6 +80,7 @@ export interface StatsSummary {
   projects: ProjectStat[];
   tools: ToolStat[];
   dailySpend: DaySpend[];
+  hourlySpend: HourSpend[];
 }
 
 export interface CachePayload {
@@ -77,81 +89,11 @@ export interface CachePayload {
   days: SerializedDayAgg[];
 }
 
-export interface SerializedDayAgg extends Omit<DayAgg, "sessionIds" | "projectSessions"> {
+export interface SerializedDayAgg extends Omit<
+  DayAgg,
+  "sessionIds" | "projectSessions" | "modelToProvider"
+> {
   sessionIds: string[];
   projectSessions: Record<string, string[]>;
+  modelToProvider: Record<string, string>;
 }
-
-export interface TextBlock {
-  readonly type: "text";
-  readonly text: string;
-}
-
-export interface ToolCallBlock {
-  readonly type: "toolCall";
-  readonly id: string;
-  readonly name: string;
-  readonly arguments: Record<string, unknown>;
-}
-
-export type ContentBlock = TextBlock | ToolCallBlock;
-
-export interface UsageCost {
-  readonly input: number;
-  readonly output: number;
-  readonly cacheRead: number;
-  readonly cacheWrite: number;
-  readonly total: number;
-}
-
-export interface Usage {
-  readonly input: number;
-  readonly output: number;
-  readonly cacheRead: number;
-  readonly cacheWrite: number;
-  readonly totalTokens: number;
-  readonly cost?: UsageCost;
-}
-
-export interface UserMessageBody {
-  readonly role: "user";
-  readonly content?: readonly ContentBlock[];
-}
-
-export interface ToolResultMessageBody {
-  readonly role: "toolResult";
-  readonly content?: readonly ContentBlock[];
-  readonly toolName?: string;
-  readonly toolCallId?: string;
-}
-
-export interface AssistantMessageBody {
-  readonly role: "assistant";
-  readonly content?: readonly ContentBlock[];
-  readonly model?: string;
-  readonly provider?: string;
-  readonly timestamp?: number;
-  readonly usage?: Usage;
-}
-
-export type MessageBody = UserMessageBody | ToolResultMessageBody | AssistantMessageBody;
-
-export interface SessionEntry {
-  readonly type: "session";
-  readonly version: number;
-  readonly id: string;
-  readonly timestamp: string;
-  readonly cwd?: string;
-}
-
-export interface MessageEntry {
-  readonly type: "message";
-  readonly id: string;
-  readonly parentId?: string;
-  readonly timestamp: string;
-  readonly message: MessageBody;
-}
-
-export type SessionLogEntry = SessionEntry | MessageEntry;
-
-export type SessionProjectMap = Map<string, string>;

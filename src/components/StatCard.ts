@@ -1,18 +1,57 @@
-import { Box, Component, Text } from "@earendil-works/pi-tui";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
+import { Box, type Component, Text } from "@earendil-works/pi-tui";
+import { type ChalkInstance } from "chalk";
+
+interface Label {
+  text: string;
+  color?: ThemeColor | ChalkInstance;
+}
+
+interface Value {
+  text: string;
+  color: ThemeColor | ChalkInstance;
+}
+
+interface StatCardParams {
+  label: Label;
+  value: Value;
+  paddingX?: number;
+  paddingY?: number;
+}
 
 export class StatCard implements Component {
   private box: Box;
+  private DEFAULT_PADDING_X = 0;
+  private DEFAULT_PADDING_Y = 0;
 
   constructor(
-    label: string,
-    value: string,
+    params: StatCardParams,
     private theme: Theme,
-    private accentColor: ThemeColor = "accent",
   ) {
-    this.box = new Box(1, 0);
-    this.box.addChild(new Text(theme.fg("muted", label), 1, 0));
-    this.box.addChild(new Text(theme.fg(accentColor, value), 1, 0));
+    this.box = new Box(
+      params.paddingX || this.DEFAULT_PADDING_X,
+      params.paddingY || this.DEFAULT_PADDING_Y,
+    );
+    this.box.addChild(
+      new Text(
+        params.label.color
+          ? typeof params.label.color === "string"
+            ? this.theme.fg(params.label.color, params.label.text)
+            : params.label.color(params.label.text)
+          : params.label.text,
+        0,
+        0,
+      ),
+    );
+    this.box.addChild(
+      new Text(
+        typeof params.value.color === "string"
+          ? this.theme.fg(params.value.color, params.value.text)
+          : params.value.color(params.value.text),
+        0,
+        0,
+      ),
+    );
   }
 
   render(width: number): string[] {

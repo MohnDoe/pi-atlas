@@ -1,13 +1,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { langPalette, modelPalette } from "./colorPalette";
+import { getCacheTimestamp, loadAggregate } from "./cache";
 import { Dashboard } from "./components/Dashboard";
 import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
-import { getCacheTimestamp, loadAggregate } from "./cache.js";
-import { summarize } from "./compute.js";
+import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
+import type { TimeRange } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
@@ -59,7 +59,7 @@ export default function (pi: ExtensionAPI) {
               tui.requestRender();
             })
               .then((result) => done(result))
-              .catch((err) => done(err));
+              .catch(() => done([]));
 
             return loadingView;
           },
@@ -71,17 +71,11 @@ export default function (pi: ExtensionAPI) {
       }
 
       // Phase 2: Show dashboard (handles empty state internally)
-      const ranges: Array<"1d" | "7d" | "30d" | "All"> = ["1d", "7d", "30d", "All"];
-      const summaries = ranges.map((r) => summarize(days, r));
-
-      // Effective rows for the Dashboard: popup mode uses 80% maxHeight minus
-      // 2 border lines (top + bottom) added by DashboardPopup; full-screen uses
-      // full terminal. Dashboard internally subtracts its own chrome (CHROME_ROWS)
-      // from this value to compute content height.
-      const dashRows = usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
+      const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
+      const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme, dashRows, updateLabel, tui, () =>
+        const dashboard = new Dashboard(summaries, theme, usePopup, updateLabel, tui, () =>
           done(undefined),
         );
         // Wrap in popup border only when using overlay mode

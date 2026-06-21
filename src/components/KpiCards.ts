@@ -1,8 +1,9 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
+import { formatCost, formatNumber } from "../format";
 import { GridRow } from "./shared/GridRow";
 import { StatCard } from "./StatCard";
-import { formatCost, formatNumber } from "../format";
 
 export interface KpiData {
   totalCost: number;
@@ -25,18 +26,126 @@ export class KpiCards implements Component {
 
     this.topRow = new GridRow(
       [
-        new StatCard("Total", formatCost(kpis.totalCost), this.theme, "success"),
-        new StatCard("Sessions", formatNumber(kpis.sessionCount), this.theme, "accent"),
-        new StatCard("Messages", formatNumber(kpis.totalMessages), this.theme, "borderAccent"),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Total cost",
+              },
+              value: {
+                text: this.theme.bold(formatCost(kpis.totalCost)),
+                color: "success",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Sessions",
+              },
+              value: {
+                text: this.theme.bold(formatNumber(kpis.sessionCount)),
+                color: "accent",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Messages",
+              },
+              value: {
+                text: this.theme.bold(formatNumber(kpis.totalMessages)),
+                color: "borderAccent",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
       ],
       colPcts,
     );
 
     this.bottomRow = new GridRow(
       [
-        new StatCard("Active", formatNumber(kpis.daysActive), this.theme, "warning"),
-        new StatCard("Avg/Day", formatCost(kpis.avgCostPerDay), this.theme, "border"),
-        new StatCard("Tokens", formatNumber(kpis.totalTokens), this.theme, "error"),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Active days",
+              },
+              value: {
+                text: this.theme.bold(formatNumber(kpis.daysActive)),
+                color: "warning",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Avg/Day",
+              },
+              value: {
+                text: this.theme.bold(formatCost(kpis.avgCostPerDay)),
+                color: "border",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
+        new BorderBox(
+          new StatCard(
+            {
+              label: {
+                text: "Tokens",
+              },
+              value: {
+                text: this.theme.bold(formatNumber(kpis.totalTokens)),
+                color: "error",
+              },
+            },
+            this.theme,
+          ),
+          {
+            borderStyle: "single",
+            borderColor: (s: string) => this.theme.fg("borderMuted", s),
+            padding: { left: 1, right: 1 },
+          },
+        ),
       ],
       colPcts,
     );

@@ -1,14 +1,15 @@
-import { dateFromISOString } from "./format.js";
+import { dateFromISOString } from "./format";
 import type {
   DayAgg,
   DaySpend,
+  HourSpend,
   LangStat,
   ModelStat,
   ProjectStat,
   StatsSummary,
   TimeRange,
   ToolStat,
-} from "./types.js";
+} from "./types";
 
 function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
   if (range === "All") return days;
@@ -41,8 +42,8 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
   }
 
   // For bounded ranges, zero-fill gaps
-  const first = sorted[0].date;
-  const last = sorted[sorted.length - 1].date;
+  const first = sorted[0]!.date;
+  const last = sorted[sorted.length - 1]!.date;
 
   const spendMap = new Map<string, number>();
   for (const d of sorted) spendMap.set(d.date, d.cost);
@@ -58,6 +59,17 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
   }
 
   return result;
+}
+
+function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
+  if (range !== "1d" || filtered.length !== 1) return [];
+
+  const day = filtered[0]!;
+  const hourly: HourSpend[] = [];
+  for (let h = 0; h < 24; h++) {
+    hourly.push({ hour: h, cost: day.hourCost[h] ?? 0 });
+  }
+  return hourly;
 }
 
 export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
@@ -171,8 +183,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .sort((a, b) => b.cost - a.cost);
 
   const tools: ToolStat[] = Object.entries(toolCount)
-    .map(([tool, count]) => ({ tool, count }))
+    .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
+
+  const hourlySpend = buildHourlySpend(filtered, range);
 
   return {
     totalCost,
@@ -191,5 +205,6 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     projects,
     tools,
     dailySpend: fillDailySpend(filtered, range),
+    hourlySpend,
   };
 }

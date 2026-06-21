@@ -1,5 +1,11 @@
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { TimeRange } from "../types";
+
+export interface RangeOption {
+  label: string;
+  value: TimeRange;
+}
 
 export class RangeSelector implements Component {
   selectedIndex: number;
@@ -8,16 +14,35 @@ export class RangeSelector implements Component {
 
   constructor(
     private theme: Theme,
-    private ranges: string[] = ["Today", "Last 7 days", "Last 30 days", "All time"],
+    private ranges: RangeOption[] = [
+      { label: "Today", value: "1d" },
+      { label: "Last 7 days", value: "7d" },
+      { label: "Last 30 days", value: "30d" },
+      { label: "All time", value: "All" },
+    ],
     selectedIndex = 0,
   ) {
     this.selectedIndex = selectedIndex;
   }
 
+  get selectedValue(): TimeRange {
+    if (this.selectedRangeOption) return this.selectedRangeOption.value;
+    return "All";
+  }
+
+  get selectedRangeOption(): RangeOption {
+    return this.ranges[this.selectedIndex] ?? this.ranges[0]!;
+  }
+
+  get selectedLabel(): string {
+    if (this.selectedRangeOption) return this.selectedRangeOption.label;
+    return "All time";
+  }
+
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 
-    this.cachedLines = [this.theme.fg("accent", this.ranges[this.selectedIndex])];
+    this.cachedLines = [this.theme.fg("accent", this.selectedLabel)];
     this.cachedWidth = width;
     return this.cachedLines;
   }

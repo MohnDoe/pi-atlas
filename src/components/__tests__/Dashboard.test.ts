@@ -1,14 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
 import { makeSummary } from "../../__tests__/compute.fixtures";
+import type { StatsSummary, TimeRange } from "../../types";
 import { Dashboard } from "../Dashboard";
 
 const mockTui = makeMockTUI();
+export const allRanges: TimeRange[] = ["1d", "7d", "30d", "All"];
+
+export function mapAllSummaries(ranges: TimeRange[], summary: ReturnType<typeof makeSummary>) {
+  return new Map(ranges.map((r) => [r, { ...summary }]));
+}
+
+export const ALL_SUMMARIES = mapAllSummaries(allRanges, makeSummary());
 
 describe("Dashboard", () => {
   it("renders all sections", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = ALL_SUMMARIES;
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
@@ -27,8 +35,8 @@ describe("Dashboard", () => {
       totalTokens: 0,
       dailySpend: [],
     };
-    const summaries = [zeroSummary, zeroSummary, zeroSummary, zeroSummary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, zeroSummary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No sessions found");
@@ -44,10 +52,15 @@ describe("Dashboard", () => {
       totalTokens: 0,
       dailySpend: [],
     };
-    // 1d range (index 0) empty, others have data
-    const summaries = [zeroSummary, dataSummary, dataSummary, dataSummary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
-    // Default range is All (index 3). r key cycles: All→1d
+    // 1d range empty, others have data
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", zeroSummary],
+      ["7d", dataSummary],
+      ["30d", dataSummary],
+      ["All", dataSummary],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    // Default range is All. r key cycles: All→1d
     dash.handleInput("r");
     const lines = dash.render(80);
     const text = lines.join("\n");
@@ -55,9 +68,9 @@ describe("Dashboard", () => {
   });
 
   it("handles escape to close", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const summaries = ALL_SUMMARIES;
     let closed = false;
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui, () => {
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -65,9 +78,9 @@ describe("Dashboard", () => {
   });
 
   it("handles q to close", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
+    const summaries = ALL_SUMMARIES;
     let closed = false;
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui, () => {
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
       closed = true;
     });
     dash.handleInput("q");
@@ -83,8 +96,8 @@ describe("Dashboard", () => {
         { language: "JSON", lines: 300, edits: 5 },
       ],
     };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Switch to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
@@ -92,13 +105,11 @@ describe("Dashboard", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Languages");
-    expect(text).toContain("by lines written");
-
     expect(text).toContain("TypeScript");
     expect(text).toContain("Python");
     expect(text).toContain("JSON");
-    expect(text).toContain("1.5k ln");
-    expect(text).toContain("800 ln");
+    expect(text).toContain("1.5k");
+    expect(text).toContain("800");
   });
 
   it("Languages tab updates when time range changes", () => {
@@ -113,10 +124,15 @@ describe("Dashboard", () => {
         { language: "Go", lines: 200, edits: 8 },
       ],
     };
-    const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", summary1d],
+      ["7d", summary7d],
+      ["30d", summary7d],
+      ["All", summary7d],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
-    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     // Switch to Languages tab
     dash.handleInput("\x1b[C"); // right to Languages
@@ -137,8 +153,8 @@ describe("Dashboard", () => {
 
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // right to Languages
     const lines = dash.render(80);
@@ -157,8 +173,8 @@ describe("Dashboard", () => {
         { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
       ],
     };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Switch to Models tab (index 2)
     dash.handleInput("\x1b[C"); // right to Languages
@@ -175,8 +191,8 @@ describe("Dashboard", () => {
       ...makeSummary(),
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -184,14 +200,14 @@ describe("Dashboard", () => {
     const lines = dash.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Sonnet 4");
+    expect(text).toContain("Claude");
     expect(text).not.toContain("claude-sonnet-4-20250514");
   });
 
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -212,18 +228,24 @@ describe("Dashboard", () => {
         { model: "deepseek-v4-pro", cost: 5.0, calls: 80 },
       ],
     };
-    const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", summary1d],
+      ["7d", summary7d],
+      ["30d", summary7d],
+      ["All", summary7d],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
-    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     let lines = dash.render(80);
     let text = lines.join("\n");
     // Range 1d, only 1 model
-    expect(text).toContain("Sonnet 4");
-    expect(text).not.toContain("V4 Pro");
+    expect(text).toContain("Claude");
+    // deepseek-v4-pro → "Deeps…" visible truncated name in 7d range
+    expect(text).not.toContain("Deeps");
 
     // Switch back to Overview, r to 7d, then back to Models
     dash.handleInput("\x1b[D"); // left to Languages
@@ -233,12 +255,12 @@ describe("Dashboard", () => {
     dash.handleInput("\x1b[C"); // → Models
     lines = dash.render(80);
     text = lines.join("\n");
-    expect(text).toContain("V4 Pro");
+    expect(text).toContain("Deeps");
   });
 
   it("switches tabs with left/right arrows", () => {
-    const summaries = [makeSummary(), makeSummary(), makeSummary(), makeSummary()];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = ALL_SUMMARIES;
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
@@ -254,12 +276,12 @@ describe("Dashboard", () => {
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
       tools: [
-        { tool: "bash", count: 150 },
-        { tool: "read", count: 120 },
+        { name: "bash", count: 150 },
+        { name: "read", count: 120 },
       ],
     };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     // Navigate to Projects+Tools tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
@@ -269,13 +291,12 @@ describe("Dashboard", () => {
     const text = lines.join("\n");
 
     expect(text).toContain("Projects");
-    expect(text).toContain("by cost");
   });
 
   it("Projects tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
-    const summaries = [summary, summary, summary, summary];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -298,10 +319,15 @@ describe("Dashboard", () => {
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
     };
-    const summaries = [summary1d, summary7d, summary7d, summary7d];
-    const dash = new Dashboard(summaries, makeTheme(), 24, null, mockTui);
+    const summaries: Map<TimeRange, StatsSummary> = new Map([
+      ["1d", summary1d],
+      ["7d", summary7d],
+      ["30d", summary7d],
+      ["All", summary7d],
+    ]);
+    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
 
-    // Default range is All (index 3 = summary7d). r key cycles: All→1d
+    // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models

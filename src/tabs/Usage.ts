@@ -1,11 +1,12 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import { RankedBarList } from "../components/RankedBarList";
-import { formatNumber } from "../format";
-import type { StatsSummary, ToolStat } from "../types";
+import { Container, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
+import { cell, type CellComponent } from "../components/cells";
 import { GridRow } from "../components/shared/GridRow";
+import { SortedTable } from "../components/SortedTable";
 import { StatCard } from "../components/StatCard";
+import { formatNumber, stripAnsi } from "../format";
+import type { StatsSummary, ToolStat } from "../types";
 
 interface TokenUsageStat {
   total: StatsSummary["totalTokens"];
@@ -15,84 +16,164 @@ interface TokenUsageStat {
   cacheWrite: StatsSummary["totalCacheWriteTokens"];
 }
 
+const TOOL_NAME_MAX_LENGTH = 120;
+
+const EMPTY_MESSAGE = "No tools data for this time range";
+
 export class Usage extends Container {
+  private isEmpty: boolean;
+  private theme: Theme;
+  private tokenUsage: TokenUsageStat;
+  private rows: CellComponent[][] = [];
+  private table: SortedTable | null = null;
+  private tableHeight: number;
+
   constructor(
     private tools: ToolStat[],
-    private tokenUsage: TokenUsageStat,
-    private theme: Theme,
+    tokenUsage: TokenUsageStat,
+    theme: Theme,
+    private tui: TUI,
+    maxHeight: number,
   ) {
     super();
+    this.theme = theme;
+    this.tokenUsage = tokenUsage;
+    this.isEmpty = tools.length === 0;
+    // Tool table gets contentHeight - 4 to account for "Tokens" title + spacer + 2 line overhead
+    this.tableHeight = Math.max(3, maxHeight - 4);
+    this.buildRows();
   }
 
-  render(width: number): string[] {
+  /** Build row cells once in constructor. */
+  private buildRows(): void {
+    if (this.isEmpty) return;
+    const maxCount = Math.max(...this.tools.map((t) => t.count), 0);
+    this.rows = this.tools.map((t) => {
+      const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
+      return [
+        cell.marquee(stripAnsi(t.name).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
+        cell.bar(barPct, (s) => s, "transparent"),
+        cell.text(this.theme.bold(formatNumber(t.count))),
+      ];
+    });
+  }
+
+  override render(width: number): string[] {
     this.clear();
 
+    // Token section: title + stat cards
     const title = this.theme.bold("Tokens");
     const subtitle = this.theme.fg("muted", formatNumber(this.tokenUsage.total));
-    const gap = " ".repeat(Math.max(0, width - visibleWidth(title) - visibleWidth(subtitle)));
-    this.addChild(new Text(title + gap + subtitle, 0, 0));
-
     const row = new GridRow(
       [
         new StatCard(
-          "Input",
-          formatNumber(this.tokenUsage.input),
+          {
+            label: {
+              text: "Input",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.input)),
+              color: "accent",
+            },
+          },
           this.theme,
-          "accent",
         ),
         new StatCard(
-          "Output",
-          formatNumber(this.tokenUsage.output),
+          {
+            label: {
+              text: "Output",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.output)),
+              color: "accent",
+            },
+          },
+
           this.theme,
-          "accent",
         ),
         new StatCard(
-          "Cache Read",
-          formatNumber(this.tokenUsage.cacheRead),
+          {
+            label: {
+              text: "Cache Read",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.cacheRead)),
+              color: "accent",
+            },
+          },
           this.theme,
-          "accent",
         ),
         new StatCard(
-          "Cache Write",
-          formatNumber(this.tokenUsage.cacheWrite),
+          {
+            label: {
+              text: "Cache Write",
+            },
+            value: {
+              text: this.theme.bold(formatNumber(this.tokenUsage.cacheWrite)),
+              color: "accent",
+            },
+          },
           this.theme,
-          "accent",
         ),
       ],
       [25, 25, 25, 25],
     );
+    this.addChild(
+      new BorderBox(row, {
+        titles: [
+          { text: title, align: "left" },
+          { text: subtitle, align: "right" },
+        ],
+        borderColor: (s: string) => this.theme.fg("border", s),
+        padding: { left: 1, right: 1 },
+      }),
+    );
 
-    this.addChild(row);
+    const borderBoxOptions: BorderBoxOptions = {
+      borderStyle: "singleRounded",
+      borderColor: (s) => this.theme.fg("border", s),
+      titles: [{ text: "Tools", align: "left" }],
+    };
 
-    if (this.tools.length > 0) {
-      this.addChild(new Spacer(1));
-      const toolTitle = this.theme.bold("Tool Calls");
-      const totalToolCall = this.tools.reduce((prev, curr) => prev + curr.count, 0);
-      const toolSubtitle = this.theme.fg("muted", totalToolCall.toString());
-      const toolGap = " ".repeat(Math.max(0, width - visibleWidth(toolTitle) - visibleWidth(toolSubtitle)));
-      this.addChild(new Text(toolTitle + toolGap + toolSubtitle, 0, 0));
-      this.addChild(new Spacer(1));
-      this.addChild(new RankedBarList(
-        this.tools.map((t) => ({
-          name: t.tool,
-          primaryValue: t.count,
-          mainValueText: formatNumber(t.count),
-          color: chalk.white,
-        })),
-        this.theme,
-      ));
+    // Tool table section
+    if (!this.isEmpty) {
+      borderBoxOptions.titles = [
+        ...borderBoxOptions.titles!,
+        { text: this.theme.fg("dim", formatNumber(this.rows.length)), align: "right" },
+      ];
+
+      if (!this.table) {
+        this.table = new SortedTable(
+          {
+            columns: [
+              { header: cell.header("Command"), width: 20 },
+              { header: cell.header("Share %"), width: "fill" },
+              { header: cell.header("Calls"), width: 12 },
+            ],
+            rows: this.rows,
+            maxHeight: this.tableHeight,
+            sort: { column: 2, direction: "desc" },
+            tui: this.tui,
+          },
+          this.theme,
+        );
+      }
+      this.addChild(new BorderBox(this.table, borderBoxOptions));
     } else {
-      this.addChild(new Text(this.theme.fg("muted", "No tools data for this time range.")));
+      this.addChild(
+        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
+      );
     }
 
     return super.render(width);
   }
 
-  handleInput(_data: string): void {
-    this.invalidate();
+  handleInput(data: string): void {
+    this.table?.handleInput(data);
   }
 
-  invalidate(): void {
+  override invalidate(): void {
     super.invalidate();
+    this.table?.invalidate();
   }
 }

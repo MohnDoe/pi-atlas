@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { mergeDay, parseFile } from "./parser.js";
-import type { CachePayload, DayAgg, SerializedDayAgg } from "./types.js";
+import { mergeDay, parseFile } from "./parser";
+import type { CachePayload, DayAgg, SerializedDayAgg } from "./types";
 
 // ---- Signature ----
 
@@ -51,6 +51,7 @@ function serializeDay(d: DayAgg): SerializedDayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]]),
     ),
+    modelToProvider: Object.fromEntries(d.modelToProvider),
   };
 }
 
@@ -61,6 +62,7 @@ function deserializeDay(s: SerializedDayAgg): DayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)]),
     ),
+    modelToProvider: new Map(Object.entries(s.modelToProvider)),
   };
 }
 
@@ -146,7 +148,7 @@ export async function loadAggregate(
 
   for (let i = 0; i < files.length; i++) {
     let lastCount = 0;
-    const fileMap = parseFile(files[i], (count) => {
+    const fileMap = parseFile(files[i]!, (count) => {
       lastCount = count;
     });
     totalCorrupt += lastCount;
