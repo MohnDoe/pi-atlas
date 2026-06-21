@@ -132,9 +132,10 @@ export class Overview extends Container {
     this.addChild(new Spacer(1));
     this.addChild(
       new BorderBox(this.barChart, {
+        borderStyle: "singleRounded",
         titles: [{ text: this.theme.bold("Cost overtime"), align: "left" }],
         borderColor: (s: string) => this.theme.fg("border", s),
-        padding: { left: 1, right: 1, top: 1, bottom: 1 },
+        padding: { left: 1, right: 1, top: 1 },
       }),
     );
     this.addChild(new Spacer(1));
