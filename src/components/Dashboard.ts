@@ -9,6 +9,7 @@ import { Overview } from "../tabs/Overview";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
 import type { StatsSummary, TimeRange } from "../types";
+import pkg from "../../package.json" with { type: "json" };
 import { RangeSelector } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 
@@ -49,7 +50,7 @@ export class Dashboard extends BorderBox {
 
     super({
       titles: [
-        { text: theme.bold("Pi Atlas") + theme.fg("dim", " · v0.1"), align: "left" },
+            { text: theme.bold("Pi Atlas") + theme.fg("dim", ` · v${pkg.version}`), align: "left" },
         rangeLabelTitle,
       ],
       footers,
