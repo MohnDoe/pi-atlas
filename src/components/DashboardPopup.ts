@@ -11,9 +11,9 @@ export class DashboardPopup implements Component {
   private borderBox: BorderBox;
 
   constructor(dashboard: Dashboard, theme: Theme) {
-    this.borderBox = new BorderBox(dashboard, {
+    this.borderBox = new BorderBox({
       titles: [
-        { text: theme.bold("Pi Usage"), align: "left" },
+        { text: theme.bold("Pi Atlas"), align: "left" },
         {
           text: theme.fg("muted", "v0.1"),
           align: "right",
@@ -23,9 +23,10 @@ export class DashboardPopup implements Component {
         ? [{ text: theme.fg("dim", theme.italic(dashboard.updateLabel)), align: "right" }]
         : [],
       borderStyle: "singleRounded",
-      borderColor: (s: string) => theme.fg("text", s),
+      borderFn: (s: string) => theme.fg("text", s),
       padding: { left: 1, right: 1 },
     });
+    this.borderBox.addChild(dashboard);
   }
 
   render(width: number): string[] {

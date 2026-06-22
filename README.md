@@ -1,6 +1,6 @@
-# pi-usage
+# @mohndoe/pi-atlas
 
-Pi TUI extension for agent usage analytics — costs, languages, models, projects, and tools from session logs.
+Pi TUI extension providing an atlas of agent activity — costs, languages, models, projects, and tools from session logs.
 
 ## Table of Contents
 
@@ -12,13 +12,13 @@ Pi TUI extension for agent usage analytics — costs, languages, models, project
 ## Install
 
 ```bash
-git clone https://github.com/MohnDoe/pi-usage.git
-cd pi-usage
-npm install
-ln -s "$(pwd)/src/index.ts" ~/.pi/agent/extensions/pi-usage.ts
+git clone https://github.com/mohndoe/pi-atlas.git
+cd pi-atlas
+bun install
+ln -s "$(pwd)/src/index.ts" ~/.pi/agent/extensions/pi-atlas.ts
 ```
 
-Then run `/reload` in pi or restart pi to pick up the extension. The `/usage` command will be available.
+Then run `/reload` in pi or restart pi to pick up the extension. The `/atlas` command will be available.
 
 ### Dependencies
 
@@ -27,13 +27,13 @@ Then run `/reload` in pi or restart pi to pick up the extension. The `/usage` co
 
 ## Usage
 
-Type `/usage` in pi to open the interactive usage dashboard. The dashboard shows session statistics across five tabs: Overview, Languages, Models, Projects, and Usage.
+Type `/atlas` in pi to open the interactive Pi Atlas dashboard. The dashboard shows session statistics across five tabs: Overview, Languages, Models, Projects, and Usage.
 
 Press `q` or `Escape` to close the dashboard.
 
 ## Contributing
 
-This is a personal project. Issues and suggestions welcome via [GitHub issues](https://github.com/MohnDoe/pi-usage/issues).
+This is a personal project. Issues and suggestions welcome via [GitHub issues](https://github.com/MohnDoe/pi-atlas/issues).
 
 ## License
 

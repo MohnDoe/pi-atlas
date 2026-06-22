@@ -5,7 +5,7 @@ import { cell, type CellComponent } from "../components/cells";
 import { SortedTable } from "../components/SortedTable";
 import { formatNumber } from "../format";
 import type { LangStat } from "../types";
-import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
 
 const EMPTY_MESSAGE = "No language data for this time range";
 
@@ -47,17 +47,19 @@ export class Languages extends Container {
   override render(width: number): string[] {
     this.clear();
 
-    const borderBoxOptions: BorderBoxOptions = {
-      borderStyle: "singleRounded",
-      borderColor: (s) => this.theme.fg("border", s),
-      titles: [{ text: "Languages", align: "left" }],
+    const baseBorderBoxOptions = {
+      borderStyle: "singleRounded" as const,
+      borderFn: (s: string) => this.theme.fg("border", s),
     };
 
     if (!this.isEmpty) {
-      borderBoxOptions.titles = [
-        ...borderBoxOptions.titles!,
-        { text: this.theme.fg("dim", formatNumber(this.languages.length)), align: "right" },
-      ];
+      const bb = new BorderBox({
+        ...baseBorderBoxOptions,
+        titles: [
+          { text: "Languages", align: "left" },
+          { text: this.theme.fg("dim", formatNumber(this.languages.length)), align: "right" },
+        ],
+      });
 
       if (!this.table) {
         this.table = new SortedTable(
@@ -76,11 +78,15 @@ export class Languages extends Container {
           this.theme,
         );
       }
-      this.addChild(new BorderBox(this.table, borderBoxOptions));
+      bb.addChild(this.table);
+      this.addChild(bb);
     } else {
-      this.addChild(
-        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
-      );
+      const bb = new BorderBox({
+        ...baseBorderBoxOptions,
+        titles: [{ text: "Languages", align: "left" }],
+      });
+      bb.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
+      this.addChild(bb);
     }
     return super.render(width);
   }

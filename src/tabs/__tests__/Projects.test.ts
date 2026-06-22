@@ -7,7 +7,7 @@ describe("Projects", () => {
   const mockTui = makeMockTUI();
 
   const projects: ProjectStat[] = [
-    { project: "pi-usage", cost: 15.5, sessions: 42 },
+    { project: "pi-atlas", cost: 15.5, sessions: 42 },
     { project: "dotfiles", cost: 8.2, sessions: 20 },
     { project: "sandbox", cost: 1.25, sessions: 5 },
   ];
@@ -27,7 +27,7 @@ describe("Projects", () => {
     expect(text).toContain("Share %");
 
     // Project names
-    expect(text).toContain("pi-usage");
+    expect(text).toContain("pi-atlas");
     expect(text).toContain("dotfiles");
     expect(text).toContain("sandbox");
 
@@ -74,7 +74,7 @@ describe("Projects", () => {
 
     const wideLines = tab.render(80);
     const wideText = wideLines.join("\n");
-    expect(wideText).toContain("pi-usage");
+    expect(wideText).toContain("pi-atlas");
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -99,13 +99,13 @@ describe("Projects", () => {
     const tab = new Projects(projects, makeTheme(), mockTui, 10);
 
     const lines1 = tab.render(80);
-    expect(lines1.join("\n")).toContain("pi-usage");
+    expect(lines1.join("\n")).toContain("pi-atlas");
 
     tab.invalidate();
 
     const lines2 = tab.render(80);
     const text = lines2.join("\n");
-    expect(text).toContain("pi-usage");
+    expect(text).toContain("pi-atlas");
     expect(text).toContain("Cost ▼");
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;

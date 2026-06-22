@@ -46,10 +46,10 @@ export class Projects extends Container {
 
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
-      borderColor: (s) => this.theme.fg("border", s),
+      borderFn: (s) => this.theme.fg("border", s),
       titles: [{ text: "Projects", align: "left" }],
     };
-
+    let borderBox = new BorderBox(borderBoxOptions);
     if (!this.isEmpty) {
       borderBoxOptions.titles = [
         ...borderBoxOptions.titles!,
@@ -72,12 +72,12 @@ export class Projects extends Container {
           this.theme,
         );
       }
-      this.addChild(new BorderBox(this.table, borderBoxOptions));
+      borderBox = new BorderBox(borderBoxOptions);
+      borderBox.addChild(this.table);
     } else {
-      this.addChild(
-        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
-      );
+      borderBox.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
+    this.addChild(borderBox);
     return super.render(width);
   }
 

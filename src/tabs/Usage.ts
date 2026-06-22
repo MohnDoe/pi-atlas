@@ -1,5 +1,5 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Container, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import { BorderBox, type BorderBoxOptions } from "@mohndoe/pi-tui-extras";
 import { cell, type CellComponent } from "../components/cells";
 import { GridRow } from "../components/shared/GridRow";
@@ -118,22 +118,24 @@ export class Usage extends Container {
       ],
       [25, 25, 25, 25],
     );
-    this.addChild(
-      new BorderBox(row, {
-        titles: [
-          { text: title, align: "left" },
-          { text: subtitle, align: "right" },
-        ],
-        borderColor: (s: string) => this.theme.fg("border", s),
-        padding: { left: 1, right: 1 },
-      }),
-    );
+    const statRowBorderBox = new BorderBox({
+      titles: [
+        { text: title, align: "left" },
+        { text: subtitle, align: "right" },
+      ],
+      borderFn: (s: string) => this.theme.fg("border", s),
+      padding: { left: 1, right: 1 },
+    });
+    statRowBorderBox.addChild(row);
+    this.addChild(statRowBorderBox);
 
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
-      borderColor: (s) => this.theme.fg("border", s),
+      borderFn: (s) => this.theme.fg("border", s),
       titles: [{ text: "Tools", align: "left" }],
     };
+
+    let borderBox = new BorderBox(borderBoxOptions);
 
     // Tool table section
     if (!this.isEmpty) {
@@ -158,12 +160,12 @@ export class Usage extends Container {
           this.theme,
         );
       }
-      this.addChild(new BorderBox(this.table, borderBoxOptions));
+      borderBox = new BorderBox(borderBoxOptions);
+      borderBox.addChild(this.table);
     } else {
-      this.addChild(
-        new BorderBox(new Text(this.theme.fg("muted", EMPTY_MESSAGE)), borderBoxOptions),
-      );
+      borderBox.addChild(new Text(this.theme.fg("muted", EMPTY_MESSAGE)));
     }
+    this.addChild(borderBox);
 
     return super.render(width);
   }

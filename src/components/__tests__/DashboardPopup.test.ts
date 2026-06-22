@@ -168,7 +168,7 @@ describe("DashboardPopup", () => {
   it("renders Projects tab content through popup", () => {
     const summary = {
       ...makeSummary(),
-      projects: [{ project: "pi-usage", cost: 15.5, sessions: 42 }],
+      projects: [{ project: "pi-atlas", cost: 15.5, sessions: 42 }],
     };
     const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
