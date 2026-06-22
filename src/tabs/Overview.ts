@@ -38,76 +38,69 @@ export class Overview extends Container {
     const topModel = summary.models[0];
     const topProject = summary.projects[0];
 
-    this.topCards = new GridRow(
-      [
-        new BorderBox(
-          topLanguage
-            ? new StatCard(
-                {
-                  label: {
-                    text: topLanguage.language,
-                  },
-                  value: {
-                    text: this.theme.bold(formatNumber(topLanguage.lines) + " lines"),
-                    color: "text",
-                  },
-                },
-                this.theme,
-              )
-            : new Text("No data"),
-          {
-            titles: [{ text: this.theme.bold("Top Language"), align: "left" }],
-            padding: { left: 1, right: 1 },
-            borderColor: topLanguage
-              ? langPalette.getColor(topLanguage.language)
-              : (s: string) => this.theme.fg("borderMuted", s),
-          },
-        ),
-        new BorderBox(
-          topModel
-            ? new StatCard(
-                {
-                  label: {
-                    text: topModel.model,
-                  },
-                  value: {
-                    text: this.theme.bold(formatCost(topModel.cost)),
-                    color: "text",
-                  },
-                },
-                this.theme,
-              )
-            : new Text("No data."),
-          {
-            titles: [{ text: this.theme.bold("Top model"), align: "left" }],
-            padding: { left: 1, right: 1 },
-            borderColor: modelPalette.getColor(topModel?.provider || ""),
-          },
-        ),
-        new BorderBox(
-          topProject
-            ? new StatCard(
-                {
-                  label: {
-                    text: topProject.project,
-                  },
-                  value: {
-                    text: this.theme.bold(formatCost(topProject.cost)),
-                    color: "text",
-                  },
-                },
-                this.theme,
-              )
-            : new Text("No data."),
-          {
-            titles: [{ text: this.theme.bold("Top project"), align: "left" }],
-            padding: { left: 1, right: 1 },
-            borderColor: (s: string) => this.theme.fg("borderMuted", s),
-          },
-        ),
-      ],
-      [33, 33, 34],
+    const langBox = new BorderBox({
+      titles: [{ text: this.theme.bold("Top Language"), align: "left" }],
+      padding: { left: 1, right: 1 },
+      borderFn: topLanguage
+        ? langPalette.getColor(topLanguage.language)
+        : (s: string) => this.theme.fg("borderMuted", s),
+    });
+    langBox.addChild(
+      topLanguage
+        ? new StatCard(
+            {
+              label: { text: topLanguage.language },
+              value: {
+                text: this.theme.bold(formatNumber(topLanguage.lines) + " lines"),
+                color: "text",
+              },
+            },
+            this.theme,
+          )
+        : new Text("No data"),
     );
+
+    const modelBox = new BorderBox({
+      titles: [{ text: this.theme.bold("Top model"), align: "left" }],
+      padding: { left: 1, right: 1 },
+      borderFn: modelPalette.getColor(topModel?.provider || ""),
+    });
+    modelBox.addChild(
+      topModel
+        ? new StatCard(
+            {
+              label: { text: topModel.model },
+              value: {
+                text: this.theme.bold(formatCost(topModel.cost)),
+                color: "text",
+              },
+            },
+            this.theme,
+          )
+        : new Text("No data."),
+    );
+
+    const projectBox = new BorderBox({
+      titles: [{ text: this.theme.bold("Top project"), align: "left" }],
+      padding: { left: 1, right: 1 },
+      borderFn: (s: string) => this.theme.fg("borderMuted", s),
+    });
+    projectBox.addChild(
+      topProject
+        ? new StatCard(
+            {
+              label: { text: topProject.project },
+              value: {
+                text: this.theme.bold(formatCost(topProject.cost)),
+                color: "text",
+              },
+            },
+            this.theme,
+          )
+        : new Text("No data."),
+    );
+
+    this.topCards = new GridRow([langBox, modelBox, projectBox], [33, 33, 34]);
 
     const kpiCardsHeight = this.kpiCards.render(80).length;
     const topCardsHeight = this.topCards.render(80).length;
@@ -130,14 +123,14 @@ export class Overview extends Container {
     this.clear();
     this.addChild(this.kpiCards);
     this.addChild(new Spacer(1));
-    this.addChild(
-      new BorderBox(this.barChart, {
-        borderStyle: "singleRounded",
-        titles: [{ text: this.theme.bold("Cost overtime"), align: "left" }],
-        borderColor: (s: string) => this.theme.fg("border", s),
-        padding: { left: 1, right: 1, top: 1 },
-      }),
-    );
+    const costBarChartBox = new BorderBox({
+      borderStyle: "singleRounded",
+      titles: [{ text: this.theme.bold("Cost overtime"), align: "left" }],
+      borderFn: (s: string) => this.theme.fg("border", s),
+      padding: { left: 1, right: 1, top: 1 },
+    });
+    costBarChartBox.addChild(this.barChart);
+    this.addChild(costBarChartBox);
     this.addChild(new Spacer(1));
     this.addChild(this.topCards);
 
