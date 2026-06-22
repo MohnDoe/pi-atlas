@@ -10,15 +10,15 @@ import { formatCacheTimestamp } from "./format";
 import type { TimeRange } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
-const CACHE_PATH = join(homedir(), ".pi", "pi-usage-cache.json");
+const CACHE_PATH = join(homedir(), ".pi", "pi-atlas-cache.json");
 
 /** Minimum terminal dimensions for popup mode. Below this, full-screen is used. */
 const MIN_POPUP_WIDTH = 60;
 const MIN_POPUP_HEIGHT = 20;
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("usage", {
-    description: "Show pi usage statistics dashboard",
+  pi.registerCommand("atlas", {
+    description: "Show Pi Atlas usage dashboard",
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) {
         ctx.ui.notify("Stats dashboard requires interactive mode", "error");

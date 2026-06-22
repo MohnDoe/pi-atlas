@@ -72,7 +72,7 @@ describe("langFromPath", () => {
 
 describe("projectNameFromCwd", () => {
   it("extracts basename from Unix path", () => {
-    expect(projectNameFromCwd("/home/doe/Work/dev/pi-usage")).toBe("pi-usage");
+    expect(projectNameFromCwd("/home/mohndoe/Work/pi-atlas")).toBe("pi-atlas");
   });
 
   it("handles single-level path", () => {

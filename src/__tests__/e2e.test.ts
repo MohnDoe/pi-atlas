@@ -15,7 +15,7 @@ describe("JSONL → Dashboard", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `pi-usage-integration-${Date.now()}`);
+    tmpDir = join(tmpdir(), `pi-atlas-integration-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
   });
 

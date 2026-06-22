@@ -375,7 +375,7 @@ describe("parseSessionHeader", () => {
       version: 3,
       id: "s1",
       timestamp: "2026-06-09T10:00:00.000Z",
-      cwd: "/home/doe/Work/dev/my-app",
+      cwd: "/home/doe/dev/my-app",
     };
     const day = parseSessionHeader(entry);
     expect(sessionProjectMap.get("s1")).toBe("my-app");
@@ -478,7 +478,7 @@ describe("parseSessionLogEntry", () => {
       version: 3,
       id: "abc-123",
       timestamp: "2026-06-08T17:37:04.122Z",
-      cwd: "/home/doe/Work/dev/pi-usage",
+      cwd: "/home/doe/dev/pi-atlas",
     };
 
     const dayAgg = parseSessionLogEntry(entry);
@@ -1109,7 +1109,7 @@ describe("parseFile", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `pi-usage-parser-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `pi-atlas-parser-test-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
   });
 

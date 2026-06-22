@@ -272,7 +272,7 @@ describe("Dashboard", () => {
     const summary = {
       ...makeSummary(),
       projects: [
-        { project: "pi-usage", cost: 15.5, sessions: 42 },
+        { project: "pi-atlas", cost: 15.5, sessions: 42 },
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
       tools: [
@@ -310,12 +310,12 @@ describe("Dashboard", () => {
   it("Projects tab updates when time range changes", () => {
     const summary1d = {
       ...makeSummary(),
-      projects: [{ project: "pi-usage", cost: 1.0, sessions: 5 }],
+      projects: [{ project: "pi-atlas", cost: 1.0, sessions: 5 }],
     };
     const summary7d = {
       ...makeSummary(),
       projects: [
-        { project: "pi-usage", cost: 15.5, sessions: 42 },
+        { project: "pi-atlas", cost: 15.5, sessions: 42 },
         { project: "dotfiles", cost: 8.2, sessions: 20 },
       ],
     };
@@ -334,8 +334,8 @@ describe("Dashboard", () => {
     dash.handleInput("\x1b[C"); // → Projects
     let lines = dash.render(80);
     let text = lines.join("\n");
-    // 1d range: only pi-usage
-    expect(text).toContain("pi-usage");
+    // 1d range: only pi-atlas
+    expect(text).toContain("pi-atlas");
     expect(text).not.toContain("dotfiles");
 
     // Switch back to Overview, r to 7d, then back to Projects+Tools
@@ -349,6 +349,6 @@ describe("Dashboard", () => {
     lines = dash.render(80);
     text = lines.join("\n");
     expect(text).toContain("dotfiles");
-    expect(text).toContain("pi-usage");
+    expect(text).toContain("pi-atlas");
   });
 });

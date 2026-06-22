@@ -1,10 +1,10 @@
-# pi-usage Architecture
+# pi-atlas Architecture
 
 ## Module Structure
 
 ```
 src/
-├── index.ts           — Extension entry point (registers /usage command)
+├── index.ts           — Extension entry point (registers /atlas command)
 ├── types.ts           — All shared types (DayAgg, StatsSummary, session log types)
 ├── parser.ts          — JSONL file → DayAgg[]. Contains global sessionProjectMap.
 ├── compute.ts         — summarize(): DayAgg[] × TimeRange → StatsSummary (pure function)
@@ -47,25 +47,25 @@ Session logs (.jsonl)
   │                     ↑ signature matches?
   │
   └── [cache miss/force]  parseFile() per JSONL file
-          │                                     
-          ▼                                     
+          │
+          ▼
     sessionProjectMap ← session entry (extracts cwd → project name)
-          │                                     
-          ▼                                     
-    per-entry parse*():                         
+          │
+          ▼
+    per-entry parse*():
       session entry → day with sessionId + project
       user message  → day with 1 user message count
       assistant msg → day with cost, tokens, model, tool calls
       tool result   → day with tool name count
-          │                                     
-          ▼                                     
+          │
+          ▼
     mergeDay(): accumulate entry aggregates into calendar-day buckets
-          │                                     
-          ▼                                     
+          │
+          ▼
     computeSignature() → SHA-256 of file metadata
     writeCache()       → persist serialized DayAgg[]
-          │                                     
-          ▼                                     
+          │
+          ▼
     DayAgg[] (sorted by date)
           │
           ▼
@@ -116,25 +116,25 @@ interface Component {
 
 ### CHROME_ROWS (11 rows consumed by Dashboard framing)
 
-| Row(s) | Element |
-|--------|---------|
-| 1-3 | Header (3 lines: BorderBox around RangeSelector) |
-| 4 | Spacer |
-| 5 | TabBar |
-| 6 | Separator line (─) |
-| 7+ | Active tab content (variable height) |
-| -1 | Separator line (─) |
-| 0 (last) | Footer: update label + controls hint |
+| Row(s)   | Element                                          |
+| -------- | ------------------------------------------------ |
+| 1-3      | Header (3 lines: BorderBox around RangeSelector) |
+| 4        | Spacer                                           |
+| 5        | TabBar                                           |
+| 6        | Separator line (─)                               |
+| 7+       | Active tab content (variable height)             |
+| -1       | Separator line (─)                               |
+| 0 (last) | Footer: update label + controls hint             |
 
 ### Keyboard Navigation
 
-| Key | Action | Handled by |
-|-----|--------|------------|
-| ← → | Switch tabs | Dashboard → TabBar |
-| r | Cycle time range | Dashboard |
-| ↑ ↓ | Scroll table / navigate rows | Dashboard → active tab (if Models) |
-| Esc / q | Close dashboard | Dashboard |
-| Enter | No-op (consumed) | Dashboard / RangeSelector |
+| Key     | Action                       | Handled by                         |
+| ------- | ---------------------------- | ---------------------------------- |
+| ← →     | Switch tabs                  | Dashboard → TabBar                 |
+| r       | Cycle time range             | Dashboard                          |
+| ↑ ↓     | Scroll table / navigate rows | Dashboard → active tab (if Models) |
+| Esc / q | Close dashboard              | Dashboard                          |
+| Enter   | No-op (consumed)             | Dashboard / RangeSelector          |
 
 ### Component Caching Pattern
 
@@ -179,7 +179,7 @@ This is purely a layout decision — the same Dashboard component renders in bot
 
 Language statistics report **lines** — measured by splitting edited `newText` or written `content` by newline characters (`\n`). This is the number of lines added, not character length.
 
-> **Note**: The current `parser.ts` `detectLanguage()` still counts character length (`edit.newText?.length`, `contentStr.length`). Language Count in CONTEXT.md defines the canonical behavior (newline-split). The parser needs a code update to match. See ~/Work/dev/pi-usage/src/parser.ts lines ~150-170.
+> **Note**: The current `parser.ts` `detectLanguage()` still counts character length (`edit.newText?.length`, `contentStr.length`). Language Count in CONTEXT.md defines the canonical behavior (newline-split). The parser needs a code update to match.
 
 ### Cost Attribution
 

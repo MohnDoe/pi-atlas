@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "pi-usage",
+      "name": "@mohndoe/pi-atlas",
       "dependencies": {
         "@mohndoe/pi-tui-extras": "^0.1.4",
         "chalk": "^5.6.2",

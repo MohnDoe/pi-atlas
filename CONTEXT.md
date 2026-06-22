@@ -1,12 +1,12 @@
-# pi-usage
+# @mohndoe/pi-atlas
 
-A pi TUI extension that parses session logs to display agent usage statistics — cost, languages, models, projects, and tools — in an interactive terminal dashboard. Registered as the `/usage` command.
+A pi TUI extension that provides an atlas of agent activity — costs, languages, models, projects, and tools — from session logs in an interactive terminal dashboard. Registered as the `/atlas` command.
 
 ## Architecture Overview
 
 The extension has four core modules and a component layer:
 
-- **`index.ts`** — Entry point. Registers `/usage`. Uses `ctx.ui.custom()` to show a LoadingView, then the Dashboard.
+- **`index.ts`** — Entry point. Registers `/atlas`. Uses `ctx.ui.custom()` to show a LoadingView, then the Dashboard.
 - **`cache.ts`** — Loads or computes the Day Aggregate array. Tries cache first (SHA-256 directory signature), falls back to parsing all JSONL files.
 - **`parser.ts`** — Parses individual `.jsonl` files into per-calendar-day DayAgg entries. Handles session, user message, assistant message, tool result, model change, thinking level change, and compaction entry types. Silently skips branch summary, custom, custom message, label, and session info entries.
 - **`compute.ts`** — Pure function `summarize()` that filters DayAgg[] by time range and merges them into a StatsSummary.
@@ -20,11 +20,11 @@ The extension has four core modules and a component layer:
 ## Language
 
 **Command**:
-The `/usage` pi command that opens the Dashboard. No arguments. Registered in `index.ts` under the name `"usage"`.
-_Avoid_: /stats
+The `/atlas` pi command that opens the Dashboard. No arguments. Registered in `index.ts` under the name `"atlas"`.
+_Avoid_: /stats, /usage
 
 **Dashboard**:
-The full-screen or overlay TUI shown by the `/usage` command. Contains tabs for different stat views. In large terminals (≥60 cols × 20 rows), shows as a 50%-width centered popup with rounded border. In smaller terminals, fills the screen.
+The full-screen or overlay TUI shown by the `/atlas` command. Contains tabs for different stat views. In large terminals (≥60 cols × 20 rows), shows as a 50%-width centered popup with rounded border. In smaller terminals, fills the screen.
 _Avoid_: Popover, panel, window
 
 **Tab**:
@@ -89,12 +89,13 @@ _Avoid_: Metric display, info box
 
 **BorderBox**:
 A wrapper component that renders its child inside a box border (rounded ╭╮╰╯ by default, square ┌┐└┘ when `rounded: false`). Supports optional title and footer embedded in the border line. Used by:
+
 - Header to frame the Range Selector
 - DashboardPopup to wrap the entire Dashboard in overlay mode
-_Avoid_: Frame, panel
+  _Avoid_: Frame, panel
 
 **DashboardPopup**:
-A thin wrapper around Dashboard that adds a BorderBox with title "Pi Usage v0.1". Only used in overlay/popup mode (terminals ≥60×20).
+A thin wrapper around Dashboard that adds a BorderBox with title "Pi Atlas v0.1". Only used in overlay/popup mode (terminals ≥60×20).
 _Avoid_: Popup wrapper
 
 **LoadingView**:

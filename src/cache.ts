@@ -165,7 +165,7 @@ export async function loadAggregate(
   }
 
   if (totalCorrupt > 0) {
-    console.error(`pi-usage: skipped ${totalCorrupt} corrupt JSONL line(s)`);
+    console.error(`pi-atlas: skipped ${totalCorrupt} corrupt JSONL line(s)`);
   }
 
   const days = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));

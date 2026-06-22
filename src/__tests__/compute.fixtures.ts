@@ -30,7 +30,7 @@ export const makeSummary = (): StatsSummary => ({
   projects: [
     {
       cost: 0,
-      project: "pi-usage",
+      project: "pi-atlas",
       sessions: 12,
     },
   ],

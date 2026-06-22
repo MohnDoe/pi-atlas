@@ -16,7 +16,7 @@ describe("computeSignature", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `pi-usage-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `pi-atlas-test-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
   });
 
@@ -84,7 +84,7 @@ describe("cache read/write", () => {
   let cachePath: string;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `pi-usage-cache-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `pi-atlas-cache-test-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
     cachePath = join(tmpDir, "cache.json");
   });
@@ -216,7 +216,7 @@ describe("loadAggregate", () => {
   let cachePath: string;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `pi-usage-load-${Date.now()}`);
+    tmpDir = join(tmpdir(), `pi-atlas-load-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
     sessionsDir = join(tmpDir, "sessions");
     await mkdir(sessionsDir, { recursive: true });

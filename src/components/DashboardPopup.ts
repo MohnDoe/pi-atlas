@@ -13,7 +13,7 @@ export class DashboardPopup implements Component {
   constructor(dashboard: Dashboard, theme: Theme) {
     this.borderBox = new BorderBox({
       titles: [
-        { text: theme.bold("Pi Usage"), align: "left" },
+        { text: theme.bold("Pi Atlas"), align: "left" },
         {
           text: theme.fg("muted", "v0.1"),
           align: "right",
