@@ -18,7 +18,7 @@ function stylizedRangeTitle(theme: Theme, label: string): string {
 
 export class Dashboard extends BorderBox {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
-  private static readonly CHROME_ROWS = 8;
+  private static readonly CHROME_ROWS = 3;
 
   private tabBar: TabBar;
   private onClose: (() => void) | null = null;

@@ -107,7 +107,7 @@ export class Overview extends Container {
 
     const chartHeight = Math.min(
       BAR_CHART_MAX_HEIGHT,
-      maxHeight - kpiCardsHeight - topCardsHeight - SPACER_HEIGHT * 2,
+      maxHeight - kpiCardsHeight - topCardsHeight - SPACER_HEIGHT * 0,
     );
     this.barChart = new BarChart(
       this.summary.dailySpend,
@@ -121,8 +121,13 @@ export class Overview extends Container {
 
   override render(width: number): string[] {
     this.clear();
-    this.addChild(this.kpiCards);
-    this.addChild(new Spacer(1));
+    const kpiBorderBox = new BorderBox({
+      borderStyle: "singleRounded",
+      padding: { left: 1, right: 1 },
+    });
+    kpiBorderBox.addChild(this.kpiCards);
+    this.addChild(kpiBorderBox);
+
     const costBarChartBox = new BorderBox({
       borderStyle: "singleRounded",
       titles: [{ text: this.theme.bold("Cost overtime"), align: "left" }],
@@ -131,7 +136,7 @@ export class Overview extends Container {
     });
     costBarChartBox.addChild(this.barChart);
     this.addChild(costBarChartBox);
-    this.addChild(new Spacer(1));
+
     this.addChild(this.topCards);
 
     return super.render(width);
