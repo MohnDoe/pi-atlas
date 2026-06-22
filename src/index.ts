@@ -7,6 +7,7 @@ import { LoadingView } from "./components/LoadingView";
 import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
 import type { TimeRange } from "./types";
+import { RangeSelector, type RangeOption } from "./components/RangeSelector";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-atlas-cache.json");
@@ -63,7 +64,16 @@ export default function (pi: ExtensionAPI) {
       const summaries = new Map(rangesToSummarize.map((r) => [r, summarize(days, r)] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme, tui, updateLabel, () => done(undefined));
+        const rangeOptions: RangeOption[] = [
+          { label: "Today", value: "1d" },
+          { label: "Last 7 days", value: "7d" },
+          { label: "Last 30 days", value: "30d" },
+          { label: "All time", value: "All" },
+        ];
+        const rangeSelector = new RangeSelector(theme, rangeOptions, rangeOptions.length - 1);
+        const dashboard = new Dashboard(summaries, theme, tui, updateLabel, rangeSelector, () =>
+          done(undefined),
+        );
         return {
           render: (w: number) => dashboard.render(w),
           handleInput: (d: string) => {

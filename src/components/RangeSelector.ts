@@ -50,6 +50,10 @@ export class RangeSelector implements Component {
   handleInput(data: string): void {
     // enter is a no-op (selection is consumed) but must not propagate farther
     if (matchesKey(data, "enter")) return;
+
+    if (matchesKey(data, "r")) {
+      this.selectedIndex = (this.selectedIndex + 1) % this.ranges.length;
+    }
   }
 
   invalidate(): void {
