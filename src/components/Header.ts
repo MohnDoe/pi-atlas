@@ -12,11 +12,12 @@ export class Header implements Component {
     theme: Theme,
     private rangeSelector: RangeSelector,
   ) {
-    this.rangeBox = new BorderBox(this.rangeSelector, {
+    this.rangeBox = new BorderBox({
       titles: [{ text: "Range (r)", align: "left" }],
       borderStyle: "single",
-      borderColor: (s: string) => theme.fg("dim", s),
+      borderFn: (s: string) => theme.fg("dim", s),
     });
+    this.rangeBox.addChild(this.rangeSelector);
   }
 
   render(width: number): string[] {
