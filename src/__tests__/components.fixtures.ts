@@ -1,6 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { TUI } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette";
+import { type RangeOption, RangeSelector } from "../components/RangeSelector";
 
 /**
  * Pass-through mock theme for tests. All styling methods return text unchanged.
@@ -40,4 +41,14 @@ export function makeMockTUI(): TUI {
       },
     },
   } as TUI;
+}
+
+export function makeRangeSelector(theme: Theme): RangeSelector {
+  const rangeOptions: RangeOption[] = [
+    { label: "Today", value: "1d" },
+    { label: "Last 7 days", value: "7d" },
+    { label: "Last 30 days", value: "30d" },
+    { label: "All time", value: "All" },
+  ];
+  return new RangeSelector(theme, rangeOptions, rangeOptions.length - 1);
 }

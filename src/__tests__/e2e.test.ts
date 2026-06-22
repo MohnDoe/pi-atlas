@@ -7,7 +7,7 @@ import { Dashboard } from "../components/Dashboard";
 import { summarize } from "../compute";
 import { parseFile } from "../parser";
 import { type DayAgg } from "../types";
-import { makeMockTUI, makeTheme } from "./components.fixtures";
+import { makeMockTUI, makeRangeSelector, makeTheme } from "./components.fixtures";
 
 const mockTui = makeMockTUI();
 
@@ -90,7 +90,13 @@ describe("JSONL → Dashboard", () => {
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     // Render dashboard
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -102,8 +108,8 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Usage");
 
     // Range selector
-    expect(text).toContain("Range (r)");
-    expect(text).toContain("All time");
+    expect(rendered[0]).toContain("Pi Atlas");
+    expect(rendered[0]).toContain("All time [r]");
   });
 
   it("end-to-end: Navigate to Languages tab shows ranked table from parsed data", async () => {
@@ -156,7 +162,13 @@ describe("JSONL → Dashboard", () => {
     const ranges = allRanges;
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 
