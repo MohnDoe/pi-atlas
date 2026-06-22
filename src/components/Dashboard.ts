@@ -55,8 +55,6 @@ export class Dashboard extends Container {
     this.header = new Header(this.theme, this.rangeSelector);
     this.contentHeight = this.computeContentHeight();
     this.buildTabs();
-
-   
   }
 
   get updateLabel(): string | null {
@@ -133,12 +131,11 @@ export class Dashboard extends Container {
     }
 
     this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
-    const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll  Enter select");
-  const updateText =
+    const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll");
+    // only show update text outside of popup
+    const updateText =
       this.updateLabel && !this.usePopup ? this.theme.fg("dim", this.updateLabel) : "";
-    this.addChild(
-      new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0),
-    );
+    this.addChild(new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0));
 
     // Recompute content height — rebuild tabs if terminal was resized
     const newContentHeight = this.computeContentHeight();
