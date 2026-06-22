@@ -1,15 +1,18 @@
 {
   "name": "@mohndoe/pi-atlas",
   "version": "0.1.0",
-  "private": true,
-  "description": "Pi TUI extension providing an atlas of agent activity — costs, languages, models, projects, and tools from session logs.",
-  "keywords": [],
+  "description": "Pi extension providing an atlas of agent activity — costs, languages, models, projects, and tools from session logs.",
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-package"
+  ],
   "homepage": "https://github.com/MohnDoe/pi-atlas#readme",
   "bugs": {
     "url": "https://github.com/MohnDoe/pi-atlas/issues"
   },
   "license": "MIT",
-  "author": "",
+  "author": "Kevin P. <@mohndoe>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MohnDoe/pi-atlas.git"
@@ -37,5 +40,10 @@
   "peerDependencies": {
     "@earendil-works/pi-tui": ">=0.74.0 <0.77.0",
     "typescript": "^5"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
   }
 }
