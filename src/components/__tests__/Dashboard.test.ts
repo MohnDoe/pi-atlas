@@ -16,7 +16,7 @@ export const ALL_SUMMARIES = mapAllSummaries(allRanges, makeSummary());
 describe("Dashboard", () => {
   it("renders all sections", () => {
     const summaries = ALL_SUMMARIES;
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("Overview");
@@ -36,7 +36,7 @@ describe("Dashboard", () => {
       dailySpend: [],
     };
     const summaries = mapAllSummaries(allRanges, zeroSummary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     const lines = dash.render(80);
     const text = lines.join("\n");
     expect(text).toContain("No sessions found");
@@ -59,7 +59,7 @@ describe("Dashboard", () => {
       ["30d", dataSummary],
       ["All", dataSummary],
     ]);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     // Default range is All. r key cycles: All→1d
     dash.handleInput("r");
     const lines = dash.render(80);
@@ -70,7 +70,7 @@ describe("Dashboard", () => {
   it("handles escape to close", () => {
     const summaries = ALL_SUMMARIES;
     let closed = false;
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null, () => {
       closed = true;
     });
     dash.handleInput("\x1b");
@@ -80,7 +80,7 @@ describe("Dashboard", () => {
   it("handles q to close", () => {
     const summaries = ALL_SUMMARIES;
     let closed = false;
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui, () => {
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null, () => {
       closed = true;
     });
     dash.handleInput("q");
@@ -97,7 +97,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Switch to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
@@ -130,7 +130,7 @@ describe("Dashboard", () => {
       ["30d", summary7d],
       ["All", summary7d],
     ]);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
@@ -154,7 +154,7 @@ describe("Dashboard", () => {
   it("Languages tab shows empty state when no language data", () => {
     const summary = { ...makeSummary(), languages: [] };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     dash.handleInput("\x1b[C"); // right to Languages
     const lines = dash.render(80);
@@ -174,7 +174,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Switch to Models tab (index 2)
     dash.handleInput("\x1b[C"); // right to Languages
@@ -192,7 +192,7 @@ describe("Dashboard", () => {
       models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
     };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Navigate to Models tab
     dash.handleInput("\x1b[C"); // → Languages
@@ -207,7 +207,7 @@ describe("Dashboard", () => {
   it("Models tab shows empty state when no model data", () => {
     const summary = { ...makeSummary(), models: [] };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -234,7 +234,7 @@ describe("Dashboard", () => {
       ["30d", summary7d],
       ["All", summary7d],
     ]);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
@@ -260,7 +260,7 @@ describe("Dashboard", () => {
 
   it("switches tabs with left/right arrows", () => {
     const summaries = ALL_SUMMARIES;
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
@@ -281,7 +281,7 @@ describe("Dashboard", () => {
       ],
     };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Navigate to Projects+Tools tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
@@ -296,7 +296,7 @@ describe("Dashboard", () => {
   it("Projects tab shows empty states when no data", () => {
     const summary = { ...makeSummary(), projects: [], tools: [] };
     const summaries = mapAllSummaries(allRanges, summary);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -325,7 +325,7 @@ describe("Dashboard", () => {
       ["30d", summary7d],
       ["All", summary7d],
     ]);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Default range is All (= summary7d). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d

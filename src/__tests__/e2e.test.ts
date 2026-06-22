@@ -90,7 +90,7 @@ describe("JSONL → Dashboard", () => {
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
     // Render dashboard
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     const rendered = dash.render(80);
     const text = rendered.join("\n");
 
@@ -156,7 +156,7 @@ describe("JSONL → Dashboard", () => {
     const ranges = allRanges;
     const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
 
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
     // Navigate to Languages tab (index 1)
     dash.handleInput("\x1b[C"); // right arrow
 

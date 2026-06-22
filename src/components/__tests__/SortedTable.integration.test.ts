@@ -31,9 +31,8 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     const dash = new Dashboard(
       mapAllSummaries(allRanges, summary),
       makeTheme(),
-      false,
-      null,
       mockTui,
+      null,
     );
 
     // Navigate to Models tab
@@ -58,9 +57,8 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     const dash = new Dashboard(
       mapAllSummaries(allRanges, summary),
       makeTheme(),
-      false,
-      null,
       mockTui,
+      null,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -87,9 +85,8 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     const dash = new Dashboard(
       mapAllSummaries(allRanges, summary),
       makeTheme(),
-      false,
-      null,
       mockTui,
+      null,
     );
 
     dash.handleInput("\x1b[C"); // → Languages
@@ -127,7 +124,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       ["30d", summaryAll],
       ["All", summaryAll],
     ]);
-    const dash = new Dashboard(summaries, makeTheme(), false, null, mockTui);
+    const dash = new Dashboard(summaries, makeTheme(), mockTui, null);
 
     // Navigate to Models, switch to 1d
     dash.handleInput("\x1b[C"); // → Languages
@@ -185,9 +182,8 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
       const dash = new Dashboard(
         mapAllSummaries(allRanges, summary),
         makeTheme(),
-        false,
-        null,
         mockTui,
+        null,
       );
 
       // Navigate to Models tab

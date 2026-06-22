@@ -3,7 +3,6 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { getCacheTimestamp, loadAggregate } from "./cache";
 import { Dashboard } from "./components/Dashboard";
-import { DashboardPopup } from "./components/DashboardPopup";
 import { LoadingView } from "./components/LoadingView";
 import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
@@ -11,10 +10,6 @@ import type { TimeRange } from "./types";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-atlas-cache.json");
-
-/** Minimum terminal dimensions for popup mode. Below this, full-screen is used. */
-const MIN_POPUP_WIDTH = 60;
-const MIN_POPUP_HEIGHT = 20;
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("atlas", {
@@ -25,23 +20,16 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      // Determine terminal size for popup vs full-screen mode
-      const termWidth = process.stdout.columns || 80;
-      const termHeight = process.stdout.rows || 24;
-      const usePopup = termWidth >= MIN_POPUP_WIDTH && termHeight >= MIN_POPUP_HEIGHT;
-
-      const overlayOpts = usePopup
-        ? {
-            overlay: true as const,
-            overlayOptions: {
-              minWidth: 100,
-              width: "50%" as const,
-              maxHeight: "80%" as const,
-              anchor: "center" as const,
-              margin: 2,
-            },
-          }
-        : {};
+      const overlayOpts = {
+        overlay: true as const,
+        overlayOptions: {
+          minWidth: 100,
+          width: "50%" as const,
+          maxHeight: "80%" as const,
+          anchor: "center" as const,
+          margin: 2,
+        },
+      };
 
       // Read last update timestamp before loading (cache may be rewritten)
       const lastUpdate = await getCacheTimestamp(CACHE_PATH);
@@ -71,22 +59,18 @@ export default function (pi: ExtensionAPI) {
       }
 
       // Phase 2: Show dashboard (handles empty state internally)
-      const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
-      const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
+      const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];
+      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize(days, r)] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
-        const dashboard = new Dashboard(summaries, theme, usePopup, updateLabel, tui, () =>
-          done(undefined),
-        );
-        // Wrap in popup border only when using overlay mode
-        const component = usePopup ? new DashboardPopup(dashboard, theme) : dashboard;
+        const dashboard = new Dashboard(summaries, theme, tui, updateLabel, () => done(undefined));
         return {
-          render: (w: number) => component.render(w),
+          render: (w: number) => dashboard.render(w),
           handleInput: (d: string) => {
-            component.handleInput(d);
+            dashboard.handleInput(d);
             tui.requestRender();
           },
-          invalidate: () => component.invalidate(),
+          invalidate: () => dashboard.invalidate(),
         };
       }, overlayOpts);
     },

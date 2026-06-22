@@ -1,12 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import {
-  Container,
-  matchesKey,
-  Spacer,
-  Text,
-  type Component,
-  type TUI,
-} from "@earendil-works/pi-tui";
+import { matchesKey, Spacer, Text, type Component, type TUI } from "@earendil-works/pi-tui";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
 import { ColorPalette, langPalette, modelPalette } from "../colorPalette";
 import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
@@ -18,7 +12,7 @@ import { Header } from "./Header";
 import { RangeSelector, type RangeOption } from "./RangeSelector";
 import { TabBar } from "./TabBar";
 
-export class Dashboard extends Container {
+export class Dashboard extends BorderBox {
   /** Rows consumed by header, spacers, dividers, tab bar, and footer (non-content chrome). */
   private static readonly CHROME_ROWS = 8;
 
@@ -35,12 +29,26 @@ export class Dashboard extends Container {
   constructor(
     private summaries: Map<TimeRange, StatsSummary>,
     private theme: Theme,
-    private usePopup: boolean,
-    private _updateLabel: string | null,
     private tui: TUI,
+    updateLabel: string | null,
     onClose?: () => void,
   ) {
-    super();
+    // BorderBox footer with update label (styled to match current DashboardPopup look)
+    const footers = updateLabel
+      ? [{ text: theme.fg("dim", theme.italic(updateLabel)), align: "right" as const }]
+      : [];
+
+    super({
+      titles: [
+        { text: theme.bold("Pi Atlas"), align: "left" as const },
+        { text: theme.fg("muted", "v0.1"), align: "right" as const },
+      ],
+      footers,
+      borderStyle: "singleRounded",
+      borderFn: (s: string) => theme.fg("text", s),
+      padding: { left: 1, right: 1 },
+    });
+
     this.onClose = onClose ?? null;
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
@@ -57,15 +65,13 @@ export class Dashboard extends Container {
     this.buildTabs();
   }
 
-  get updateLabel(): string | null {
-    return this._updateLabel;
-  }
-
-  /** Compute the available content height from current terminal dimensions. */
+  /** Compute the available content height from current terminal dimensions.
+   *  Total popup = 80% of terminal. Subtract chrome rows (inside border) and
+   *  2 border lines (top + bottom from BorderBox). */
   private computeContentHeight(): number {
     const termHeight = this.tui.terminal.rows;
-    const dashRows = this.usePopup ? Math.floor(termHeight * 0.8) - 2 : termHeight;
-    return Math.max(5, dashRows - Dashboard.CHROME_ROWS);
+    const dashRows = Math.floor(termHeight * 0.8);
+    return Math.max(5, dashRows - Dashboard.CHROME_ROWS - 2);
   }
 
   private get currentSummary(): StatsSummary {
@@ -104,12 +110,21 @@ export class Dashboard extends Container {
   }
 
   override render(width: number): string[] {
+    // Clear BorderBox render cache so timer-driven child updates
+    // (e.g. marquee scrolling) are reflected in the output.
+    // Direct property access works because TS private is compile-time only.
+    // TODO: fix marquee animation
+    // this.borderCache = null;
     this.clear();
+
+    const innerWidth = width - 2 - 2;
     this.addChild(this.header);
     this.addChild(new Spacer(1));
 
     this.addChild(this.tabBar);
-    this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
+    this.addChild(
+      new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(innerWidth, 60))), 0, 0),
+    );
 
     const allEmpty = [...this.summaries.values()].every((s) => s.sessionCount === 0);
 
@@ -130,12 +145,11 @@ export class Dashboard extends Container {
       }
     }
 
-    this.addChild(new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(width, 60))), 0, 0));
+    this.addChild(
+      new Text(this.theme.fg("borderMuted", "─".repeat(Math.max(innerWidth, 60))), 0, 0),
+    );
     const controls = this.theme.fg("dim", "Esc/q close  ←→ tabs  r range  ↑↓ scroll");
-    // only show update text outside of popup
-    const updateText =
-      this.updateLabel && !this.usePopup ? this.theme.fg("dim", this.updateLabel) : "";
-    this.addChild(new Text(`${updateText}${updateText ? "  ·  " : ""}${controls}`, 0, 0));
+    this.addChild(new Text(controls, 0, 0));
 
     // Recompute content height — rebuild tabs if terminal was resized
     const newContentHeight = this.computeContentHeight();
@@ -147,7 +161,10 @@ export class Dashboard extends Container {
     return super.render(width);
   }
 
-  handleInput(data: string): void {
+  override handleInput(data: string): void {
+    // Invalidate BorderBox render cache so next render() picks up state changes.
+    this.invalidate();
+
     if (matchesKey(data, "escape") || data === "q" || data === "Q") {
       this.onClose?.();
       return;
@@ -165,7 +182,6 @@ export class Dashboard extends Container {
       this.rangeSelector.selectedIndex =
         (this.rangeSelector.selectedIndex + 1) % this.rangeOptions.length;
       this.buildTabs();
-      this.invalidate();
       return;
     }
 
@@ -180,11 +196,13 @@ export class Dashboard extends Container {
       if (tabIndex >= 1) {
         this.tabs[tabIndex]?.handleInput?.(data);
         this.tabs[tabIndex]?.invalidate?.();
+        return;
       }
     }
   }
 
   override invalidate(): void {
+    super.invalidate();
     this.tabBar.invalidate();
     this.rangeSelector.invalidate();
     this.header.invalidate();
