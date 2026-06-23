@@ -24,7 +24,7 @@ describe("Overview", () => {
     ],
   };
 
-  it("renders KpiCards followed by spacer followed by BarChart", () => {
+  it("renders KpiCards followed by BarChart", () => {
     const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
     const lines = overview.render(80);
 
@@ -43,14 +43,12 @@ describe("Overview", () => {
     const kpiCostIdx = lines.findIndex(
       (l) => l.includes("12.34") || l.includes("$12.34") || l.includes("Total"),
     );
-    const spacerIdx = lines.findIndex((l) => l.trim() === "");
-    expect(spacerIdx).toBeGreaterThan(kpiCostIdx);
 
-    // Chart content (█ or label) should appear after the spacer
+    // Chart content (█ or label) should appear after the KPIs
     const chartIdx = lines.findIndex(
-      (l, i) => i > spacerIdx && (l.includes("█") || l.includes("No data") || l.includes("Mon")),
+      (l) => l.includes("█") || l.includes("No data") || l.includes("Mon"),
     );
-    expect(chartIdx).toBeGreaterThan(spacerIdx);
+    expect(chartIdx).toBeGreaterThan(kpiCostIdx);
   });
 
   it("adapts bar chart height to available space after KpiCards", () => {
@@ -61,8 +59,6 @@ describe("Overview", () => {
     // Chart should still render (not zero lines)
     const text = lines.join("\n");
     expect(text).toContain("█");
-    // Should have spacer before chart
-    expect(lines.some((l) => l.trim() === "")).toBe(true);
   });
 
   it("shows 'No data' when daily spend is empty", () => {
