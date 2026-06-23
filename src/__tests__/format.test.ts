@@ -27,6 +27,18 @@ describe("formatModelName", () => {
   it("strips YYYY-MM-DD date suffix", () => {
     expect(formatModelName("some-model-2025-05-14")).toBe("Some Model");
   });
+
+  it("handles underscore separators", () => {
+    expect(formatModelName("deepseek_v4_pro")).toBe("Deepseek V4 Pro");
+  });
+
+  it("handles mixed separators", () => {
+    expect(formatModelName("claude-opus_4")).toBe("Claude Opus 4");
+  });
+
+  it("handles empty string", () => {
+    expect(formatModelName("")).toBe("");
+  });
 });
 
 describe("langFromPath", () => {
@@ -71,6 +83,22 @@ describe("langFromPath", () => {
     expect(langFromPath("/src/Foo.PY")).toBe("Python");
   });
 
+  it("handles multi-dot filenames", () => {
+    expect(langFromPath("/src/foo.min.js")).toBe("JavaScript");
+  });
+
+  it("handles hidden files (dotfiles) as extensions", () => {
+    expect(langFromPath("/src/.gitignore")).toBe("Gitignore");
+  });
+
+  it("handles Jinja compound extensions", () => {
+    expect(langFromPath("/templates/page.html.j2")).toBe("Jinja");
+  });
+
+  it("handles file named only .extension", () => {
+    expect(langFromPath("/src/.ts")).toBe("TypeScript");
+  });
+
   it("maps all EXT_TO_LANG entries correctly", () => {
     for (const [ext, expected] of Object.entries(EXT_TO_LANG)) {
       expect(langFromPath(`/file.${ext}`)).toBe(expected);
@@ -90,6 +118,19 @@ describe("projectNameFromCwd", () => {
   it("strips trailing slash like basename", () => {
     expect(projectNameFromCwd("/home/doe/proj/")).toBe("proj");
   });
+
+  it("handles root path", () => {
+    expect(projectNameFromCwd("/")).toBe("");
+  });
+
+  it("handles empty string", () => {
+    expect(projectNameFromCwd("")).toBe("");
+  });
+
+  it("handles relative path components", () => {
+    expect(projectNameFromCwd(".")).toBe(".");
+    expect(projectNameFromCwd("..")).toBe("..");
+  });
 });
 
 describe("dateFromISOString", () => {
@@ -99,6 +140,14 @@ describe("dateFromISOString", () => {
 
   it("works on date-only", () => {
     expect(dateFromISOString("2026-12-31")).toBe("2026-12-31");
+  });
+
+  it("handles empty string", () => {
+    expect(dateFromISOString("")).toBe("");
+  });
+
+  it("handles short string", () => {
+    expect(dateFromISOString("2026")).toBe("2026");
   });
 });
 
@@ -124,6 +173,26 @@ describe("formatNumber", () => {
     expect(formatNumber(1_000_000_000)).toBe("1.00B");
     expect(formatNumber(2_500_000_000)).toBe("2.50B");
   });
+
+  it("handles negative numbers (no suffix — current behavior)", () => {
+    // Negative numbers fall through all n >= threshold checks
+    expect(formatNumber(-500)).toBe("-500");
+    expect(formatNumber(-1500)).toBe("-1500");
+    expect(formatNumber(-2_500_000)).toBe("-2500000");
+  });
+
+  it("handles boundary values", () => {
+    expect(formatNumber(999)).toBe("999");
+    expect(formatNumber(1000)).toBe("1.0k");
+    expect(formatNumber(999_999)).toBe("1000.0k");
+    expect(formatNumber(1_000_000)).toBe("1.00M");
+    expect(formatNumber(999_999_999)).toBe("1000.00M");
+    expect(formatNumber(1_000_000_000)).toBe("1.00B");
+  });
+
+  it("handles large numbers beyond billions", () => {
+    expect(formatNumber(1_000_000_000_000)).toBe("1000.00B");
+  });
 });
 
 describe("formatCost", () => {
@@ -141,6 +210,17 @@ describe("formatCost", () => {
   it("formats millions with M", () => {
     expect(formatCost(1_000_000)).toBe("$1.0M");
     expect(formatCost(2_500_000)).toBe("$2.5M");
+  });
+
+  it("handles boundary values", () => {
+    expect(formatCost(999.99)).toBe("$999.99");
+    expect(formatCost(1000)).toBe("$1.0k");
+    expect(formatCost(999_999)).toBe("$1000.0k");
+    expect(formatCost(1_000_000)).toBe("$1.0M");
+  });
+
+  it("handles costs above billions", () => {
+    expect(formatCost(1_000_000_000)).toBe("$1000.0M");
   });
 });
 
