@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  EXT_TO_LANG,
   MONTH_NAMES,
   dateFromISOString,
   formatCacheTimestamp,
@@ -8,6 +9,7 @@ import {
   formatNumber,
   langFromPath,
   projectNameFromCwd,
+  stripAnsi,
 } from "../format";
 
 describe("formatModelName", () => {
@@ -155,60 +157,72 @@ describe("formatCacheTimestamp", () => {
   });
 
   it("shows date for older dates this year", () => {
-    const old = new Date("2026-01-15T14:30:00Z");
+    const year = new Date().getFullYear();
+    const old = new Date(year, 0, 15, 14, 30, 0);
     const iso = old.toISOString();
     const result = formatCacheTimestamp(iso);
-    expect(result).toMatch(/^Jan 15,/);
+    const monthName = MONTH_NAMES[old.getMonth()];
+    const day = old.getDate();
+    expect(result).toMatch(new RegExp(`^${monthName} ${day},`));
+    expect(result).not.toContain(String(year));
   });
 
   it("shows date with year for previous year", () => {
-    const old = new Date("2025-06-10T09:15:00Z");
+    const year = new Date().getFullYear() - 1;
+    const old = new Date(year, 5, 10, 9, 15, 0);
     const iso = old.toISOString();
     const result = formatCacheTimestamp(iso);
-    expect(result).toMatch(/2025/);
+    expect(result).toMatch(new RegExp(String(year)));
   });
 
   // ---- Timezone-awareness tests ----
 
-  it("formats time in local timezone (not UTC)", () => {
+  it("formats time in local timezone", () => {
     const d = new Date("2026-06-15T07:30:00Z");
     const iso = d.toISOString();
     const result = formatCacheTimestamp(iso);
 
+    // Compute expected local time using the same algorithm as the source
     const localHr = d.getHours();
     const localMin = d.getMinutes();
-    const utcHr = d.getUTCHours();
-
     const h12 = localHr % 12 || 12;
     const ampm = localHr >= 12 ? "PM" : "AM";
     const expectedLocal = `${h12}:${String(localMin).padStart(2, "0")} ${ampm}`;
 
+    // Always asserts local time format is shown
     expect(result).toContain(expectedLocal);
 
-    // When local time differs from UTC, verify UTC time is NOT shown
-    if (localHr !== utcHr) {
+    // When the machine is not in UTC, also verify the UTC time is absent.
+    // In UTC (offset=0) this guard is skipped because local===UTC,
+    // so timezone correctness can only be fully validated on non-UTC CI.
+    if (d.getTimezoneOffset() !== 0) {
+      const utcHr = d.getUTCHours();
       const utcH12 = utcHr % 12 || 12;
       const utcAmpm = utcHr >= 12 ? "PM" : "AM";
       expect(result).not.toContain(`${utcH12}:${String(localMin).padStart(2, "0")} ${utcAmpm}`);
     }
   });
 
-  it("uses local month/day (not UTC) for older date display", () => {
+  it("uses local month/day for older date display", () => {
     const d = new Date("2026-01-15T12:00:00Z");
     const iso = d.toISOString();
     const result = formatCacheTimestamp(iso);
 
+    // Compute expected local date using the same algorithm as the source
     const localMonth = d.getMonth();
     const localDay = d.getDate();
-    const utcMonth = d.getUTCMonth();
-    const utcDay = d.getUTCDate();
+    const localStr = `${MONTH_NAMES[localMonth]} ${localDay},`;
 
-    // Output should contain local month/day
-    expect(result).toMatch(new RegExp(`${MONTH_NAMES[localMonth]} ${localDay},`));
+    expect(result).toMatch(new RegExp(localStr));
 
-    // If local date differs from UTC date, verify UTC date is NOT shown
-    if (localMonth !== utcMonth || localDay !== utcDay) {
-      expect(result).not.toMatch(new RegExp(`${MONTH_NAMES[utcMonth]} ${utcDay},`));
+    // When the machine is not in UTC, also verify UTC date is absent.
+    if (d.getTimezoneOffset() !== 0) {
+      const utcMonth = d.getUTCMonth();
+      const utcDay = d.getUTCDate();
+      const utcStr = `${MONTH_NAMES[utcMonth]} ${utcDay},`;
+      if (localStr !== utcStr) {
+        expect(result).not.toMatch(new RegExp(utcStr));
+      }
     }
   });
 
