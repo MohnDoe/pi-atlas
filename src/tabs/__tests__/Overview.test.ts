@@ -3,6 +3,7 @@ import { makeTheme } from "../../__tests__/components.fixtures";
 import { Overview } from "../Overview";
 import { type StatsSummary } from "../../types";
 import { makeSummary } from "../../__tests__/compute.fixtures";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 describe("Overview", () => {
   const mockSummary: StatsSummary = {
@@ -77,12 +78,18 @@ describe("Overview", () => {
 
   it("invalidate clears cache and re-renders at new width", () => {
     const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
-    overview.render(80);
+
+    const linesBefore = overview.render(80);
+    for (const line of linesBefore) {
+      expect(visibleWidth(line)).toBeLessThanOrEqual(80);
+      expect(visibleWidth(line)).toBeGreaterThanOrEqual(78);
+    }
     overview.invalidate();
 
     const lines = overview.render(60);
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(60);
+      expect(visibleWidth(line)).toBeLessThanOrEqual(60);
+      expect(visibleWidth(line)).toBeGreaterThanOrEqual(58);
     }
   });
 });
