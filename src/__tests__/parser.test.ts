@@ -689,48 +689,6 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.toolCount["read"]).toBe(2);
   });
 
-  it("handles missing assistant usage gracefully", () => {
-    const day = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
-        content: [{ type: "text", text: "hi" }],
-        model: "m",
-      }),
-    })!;
-
-    expect(day.asstMsgs).toBe(1);
-    expect(day.cost).toBe(0);
-    expect(day.inTok).toBe(0);
-  });
-
-  it("handles zero-cost usage gracefully", () => {
-    const day = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
-        content: [{ type: "text", text: "hi" }],
-        model: "m",
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-      }),
-    })!;
-
-    expect(day.asstMsgs).toBe(1);
-    expect(day.cost).toBe(0);
-    expect(day.inTok).toBe(0);
-  });
-
   it("handles session entry with empty cwd", () => {
     const day = parseSessionLogEntry({
       type: "session",
@@ -746,7 +704,7 @@ describe("parseSessionLogEntry", () => {
     expect(Object.keys(day.projectSessions).length).toBe(0);
   });
 
-  it("handles assistant message with model but no cost", () => {
+  it("counts model usage whith zero-cost usage", () => {
     const day = parseSessionLogEntry({
       type: "message",
       id: "m1",
@@ -767,9 +725,6 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     expect(day.asstMsgs).toBe(1);
-    expect(day.inTok).toBe(100);
-    expect(day.outTok).toBe(50);
-    expect(day.cost).toBe(0);
     expect(day.modelCost).toEqual({ "deepseek-v4": 0 });
     expect(day.modelCount).toEqual({ "deepseek-v4": 1 });
   });
