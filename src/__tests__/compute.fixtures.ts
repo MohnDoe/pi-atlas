@@ -40,6 +40,11 @@ export const makeSummary = (): StatsSummary => ({
       name: "bash",
     },
   ],
+  providers: [],
+  compactionCount: 0,
+  compactedTokens: 0,
+  modelChanges: 0,
+  thinkingLevelCount: {},
   dailySpend: [
     { date: "2026-06-06", cost: 1.0 },
     { date: "2026-06-07", cost: 2.0 },

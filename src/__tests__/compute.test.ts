@@ -323,6 +323,127 @@ describe("summarize", () => {
     expect(s.hourlySpend[23]!.cost).toBe(0);
   });
 
+  it("returns providers sorted by cost descending", () => {
+    const d = emptyDay("2026-06-08");
+    mergeDay(d, {
+      ...emptyDay(""),
+      providerCost: { anthropic: 5.0, openai: 1.0, free: 0 },
+      providerCount: { anthropic: 15, openai: 5, free: 100 },
+    });
+    const days = [d];
+
+    const s = summarize(days, "All");
+    expect(s.providers).toEqual([
+      { provider: "anthropic", cost: 5.0, calls: 15 },
+      { provider: "openai", cost: 1.0, calls: 5 },
+      { provider: "free", cost: 0, calls: 100 },
+    ]);
+  });
+
+  it("surfaces entry-type fields (compaction, modelChanges, thinkingLevel)", () => {
+    const d = emptyDay("2026-06-08");
+    mergeDay(d, {
+      ...emptyDay(""),
+      compactionCount: 2,
+      compactedTokens: 15000,
+      modelChanges: 3,
+      thinkingLevelCount: { low: 1, high: 2 },
+    });
+    const days = [d];
+
+    const s = summarize(days, "All");
+    expect(s.compactionCount).toBe(2);
+    expect(s.compactedTokens).toBe(15000);
+    expect(s.modelChanges).toBe(3);
+    expect(s.thinkingLevelCount).toEqual({ low: 1, high: 2 });
+  });
+
+  it("attaches provider to model stats from modelToProvider", () => {
+    const d = emptyDay("2026-06-08");
+    mergeDay(d, {
+      ...emptyDay(""),
+      modelCost: { sonnet: 2.0, haiku: 0.5 },
+      modelCount: { sonnet: 5, haiku: 2 },
+      modelToProvider: new Map([
+        ["sonnet", "anthropic"],
+        ["haiku", "anthropic"],
+      ]),
+    });
+    const days = [d];
+
+    const s = summarize(days, "All");
+    expect(s.models).toHaveLength(2);
+    expect(s.models.find((m) => m.model === "sonnet")?.provider).toBe("anthropic");
+    expect(s.models.find((m) => m.model === "haiku")?.provider).toBe("anthropic");
+  });
+
+  it("deduplicates session IDs across days", () => {
+    const d1 = emptyDay("2026-06-01");
+    d1.cost = 1;
+    d1.sessionIds = new Set(["shared-session"]);
+    const d2 = emptyDay("2026-06-02");
+    d2.cost = 2;
+    d2.sessionIds = new Set(["shared-session"]);
+    const d3 = emptyDay("2026-06-03");
+    d3.cost = 3;
+    d3.sessionIds = new Set(["unique-session"]);
+    const days = [d1, d2, d3];
+
+    const s = summarize(days, "All");
+    expect(s.sessionCount).toBe(2);
+    expect(s.totalCost).toBe(6);
+    expect(s.daysActive).toBe(3);
+  });
+
+  it("accumulates project stats across days", () => {
+    const d1 = emptyDay("2026-06-01");
+    d1.cost = 10;
+    d1.sessionIds = new Set(["s1"]);
+    d1.projectCost = { pi: 10 };
+    d1.projectSessions = { pi: new Set(["s1"]) };
+
+    const d2 = emptyDay("2026-06-02");
+    d2.cost = 5;
+    d2.sessionIds = new Set(["s2"]);
+    d2.projectCost = { pi: 5, other: 5 };
+    d2.projectSessions = { pi: new Set(["s2"]), other: new Set(["s2"]) };
+
+    const s = summarize([d1, d2], "All");
+    expect(s.projects).toHaveLength(2);
+    // pi: cost=15, sessions=2; other: cost=5, sessions=1
+    // sorted by cost desc
+    expect(s.projects[0]).toEqual({ project: "pi", cost: 15, sessions: 2 });
+    expect(s.projects[1]).toEqual({ project: "other", cost: 5, sessions: 1 });
+  });
+
+  it("excludes days with zero sessions from daysActive", () => {
+    const d1 = emptyDay("2026-06-01");
+    d1.cost = 10;
+    d1.sessionIds = new Set(["s1"]);
+    const d2 = emptyDay("2026-06-02");
+    d2.cost = 5;
+    d2.sessionIds = new Set(["s2"]);
+    const d3 = emptyDay("2026-06-03");
+    d3.cost = 20;
+    d3.sessionIds = new Set(); // no sessions
+
+    const s = summarize([d1, d2, d3], "All");
+    expect(s.daysActive).toBe(2);
+    expect(s.totalCost).toBe(35); // d3 still counts toward total
+    expect(s.avgCostPerDay).toBeCloseTo(17.5); // 35 / 2
+  });
+
+  it("fillDailySpend returns single entry for single day in bounded range", () => {
+    const today = dateFromISOString(new Date().toISOString());
+    const d = emptyDay(today);
+    d.cost = 5;
+    d.sessionIds = new Set(["s1"]);
+
+    const s = summarize([d], "1d");
+    expect(s.dailySpend).toHaveLength(1);
+    expect(s.dailySpend[0]).toEqual({ date: today, cost: 5 });
+  });
+
   it("hourlySpend is empty for 7d, 30d, All ranges", () => {
     const d = emptyDay("2026-06-01");
     d.cost = 5;
@@ -332,5 +453,16 @@ describe("summarize", () => {
     expect(summarize(days, "7d").hourlySpend).toEqual([]);
     expect(summarize(days, "30d").hourlySpend).toEqual([]);
     expect(summarize(days, "All").hourlySpend).toEqual([]);
+  });
+
+  it("hourlySpend is empty when 1d range has no matching days", () => {
+    // Date is in the past, not matching today
+    const d = emptyDay("2026-06-01");
+    d.cost = 5;
+    d.sessionIds = new Set(["s1"]);
+
+    const s = summarize([d], "1d");
+    expect(s.hourlySpend).toEqual([]);
+    expect(s.dailySpend).toEqual([]);
   });
 });
