@@ -661,15 +661,24 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.toolCount["read"]).toBe(2);
   });
 
-  it("handles missing usage gracefully", () => {
-    const session = parseSessionLogEntry({
-      type: "session",
-      version: 3,
-      id: "s1",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      cwd: "/home/doe/proj",
+  it("handles missing assistant usage gracefully", () => {
+    const day = parseSessionLogEntry({
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: mkAsst({
+        content: [{ type: "text", text: "hi" }],
+        model: "m",
+      }),
     })!;
 
+    expect(day.asstMsgs).toBe(1);
+    expect(day.cost).toBe(0);
+    expect(day.inTok).toBe(0);
+  });
+
+  it("handles zero-cost usage gracefully", () => {
     const day = parseSessionLogEntry({
       type: "message",
       id: "m1",
@@ -689,13 +698,12 @@ describe("parseSessionLogEntry", () => {
       }),
     })!;
 
-    mergeDay(session, day);
-    expect(session.asstMsgs).toBe(1);
-    expect(session.cost).toBe(0);
-    expect(session.inTok).toBe(0);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.cost).toBe(0);
+    expect(day.inTok).toBe(0);
   });
 
-  it("handles session entry without cwd", () => {
+  it("handles session entry with empty cwd", () => {
     const day = parseSessionLogEntry({
       type: "session",
       version: 3,
