@@ -1,7 +1,15 @@
 # Pi Atlas
 
-[![npm](https://img.shields.io/npm/v/@mohndoe/pi-atlas)](https://www.npmjs.com/package/@mohndoe/pi-atlas)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<p align="center">
+  <strong>See your AI usage directly in Pi.</strong>
+</p>
+<p align="center">
+  <a href="https://www.npmjs.com/package/@mohndoe/pi-atlas"><img src="https://img.shields.io/npm/v/@mohndoe/pi-atlas" alt="Version"></a>
+  <img src="https://img.shields.io/badge/coverage-97%25-green" alt="Coverage">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&colorA=222222&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=flat&colorA=222222" alt="Bun">
+  <a href="https://github.com/mohndoe/pi-atlas/blob/main/LICENSE"><img src="https://img.shields.io/github/license/mohndoe/pi-atlas?style=flat&colorA=222222&colorB=58A6FF" alt="License"></a>
+</p>
 
 A terminal UI extension for [pi](https://pi.dev) that turns your agent session logs into an interactive dashboard — costs, languages, models, projects, tools, and token usage at a glance.
 
@@ -19,15 +27,6 @@ A terminal UI extension for [pi](https://pi.dev) that turns your agent session l
 - **Zero dependencies beyond pi** — uses only the pi TUI and the `pi-tui-extras` component library
 
 ## Dashboard
-
-The dashboard opens as a centered overlay popup (50% width, max 80% height). Navigate with the keyboard:
-
-| Key            | Action                                           |
-| -------------- | ------------------------------------------------ |
-| `←` `→`        | Switch tabs                                      |
-| `r`            | Cycle time range (Today → 7d → 30d → All)        |
-| `↑` `↓`        | Scroll table rows (Models, Projects, Usage tabs) |
-| `q` / `Escape` | Close dashboard                                  |
 
 ### Tabs
 
