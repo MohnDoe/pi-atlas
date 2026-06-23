@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { KpiCards } from "../KpiCards";
+import { makeTheme } from "./components.fixtures";
+import { KpiCards } from "./KpiCards";
 
 describe("KpiCards", () => {
   const kpis = {

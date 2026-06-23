@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { summarize } from "../compute";
-import { dateFromISOString } from "../format";
-import { emptyDay, mergeDay } from "../parser";
+import { summarize } from "./compute";
+import { dateFromISOString } from "./format";
+import { emptyDay, mergeDay } from "./parser";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {

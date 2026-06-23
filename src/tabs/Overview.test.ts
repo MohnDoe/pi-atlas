@@ -1,9 +1,9 @@
-import { describe, it, expect } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { Overview } from "../Overview";
-import { type StatsSummary } from "../../types";
-import { makeSummary } from "../../__tests__/compute.fixtures";
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { describe, expect, it } from "bun:test";
+import { makeTheme } from "../components/components.fixtures";
+import { makeSummary } from "../compute.fixtures";
+import { type StatsSummary } from "../types";
+import { Overview } from "./Overview";
 
 describe("Overview", () => {
   const mockSummary: StatsSummary = {

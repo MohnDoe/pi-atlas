@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { type RangeOption, RangeSelector } from "../RangeSelector";
+import { makeTheme } from "./components.fixtures";
+import { type RangeOption, RangeSelector } from "./RangeSelector";
 
 describe("RangeSelector", () => {
   const ranges: RangeOption[] = [

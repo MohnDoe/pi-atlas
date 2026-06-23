@@ -10,7 +10,7 @@ import {
   langFromPath,
   projectNameFromCwd,
   stripAnsi,
-} from "../format";
+} from "./format";
 
 describe("formatModelName", () => {
   it("handles standard model names", () => {

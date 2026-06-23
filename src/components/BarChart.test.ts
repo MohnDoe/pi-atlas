@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import type { HourSpend } from "../../types";
-import { BarChart } from "../BarChart";
+import { makeTheme } from "./components.fixtures";
+import type { HourSpend } from "../types";
+import { BarChart } from "./BarChart";
 
 describe("BarChart", () => {
   const dailySpend = [

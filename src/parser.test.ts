@@ -1,23 +1,3 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import {
-  parseLanguageUsage,
-  emptyDay,
-  mergeDay,
-  parseAssistantMessage,
-  parseCompactionEntry,
-  parseFile,
-  parseModelChangeEntry,
-  parseSessionHeader,
-  parseSessionLogEntry,
-  parseThinkingLevelChangeEntry,
-  parseToolResultMessage,
-  parseUserMessage,
-  sessionProjectMap,
-} from "../parser";
-import type { DayAgg } from "../types";
 import type {
   AssistantMessage as PiAssistantMessage,
   ToolResultMessage as PiToolResultMessage,
@@ -30,7 +10,26 @@ import type {
   SessionMessageEntry,
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
-import { unlink } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdir, rm, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  emptyDay,
+  mergeDay,
+  parseAssistantMessage,
+  parseCompactionEntry,
+  parseFile,
+  parseLanguageUsage,
+  parseModelChangeEntry,
+  parseSessionHeader,
+  parseSessionLogEntry,
+  parseThinkingLevelChangeEntry,
+  parseToolResultMessage,
+  parseUserMessage,
+  sessionProjectMap,
+} from "./parser";
+import type { DayAgg } from "./types";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {

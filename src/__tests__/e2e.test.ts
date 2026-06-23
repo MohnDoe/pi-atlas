@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allRanges } from "../components/__tests__/Dashboard.test";
+import { makeMockTUI, makeRangeSelector, makeTheme } from "../components/components.fixtures";
 import { Dashboard } from "../components/Dashboard";
+import { allRanges } from "../components/Dashboard.test";
 import { summarize } from "../compute";
 import { parseFile } from "../parser";
-import { type DayAgg } from "../types";
-import { makeMockTUI, makeRangeSelector, makeTheme } from "./components.fixtures";
+import type { DayAgg } from "../types";
 
 const mockTui = makeMockTUI();
 
