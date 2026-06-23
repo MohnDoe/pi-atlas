@@ -846,6 +846,8 @@ describe("mergeDay", () => {
     const b: DayAgg = {
       ...emptyDay("2026-06-08"),
       cost: 1,
+      crTok: 100,
+      cwTok: 200,
       inTok: 100,
       outTok: 50,
       userMsgs: 2,
@@ -855,6 +857,8 @@ describe("mergeDay", () => {
 
     mergeDay(a, b);
     expect(a.cost).toBe(1);
+    expect(a.crTok).toBe(100);
+    expect(a.cwTok).toBe(200);
     expect(a.inTok).toBe(100);
     expect(a.outTok).toBe(50);
     expect(a.userMsgs).toBe(2);
@@ -942,19 +946,6 @@ describe("mergeDay", () => {
     mergeDay(a, b);
     expect(a.projectSessions["proj1"]?.has("s1")).toBe(true);
     expect(a.projectSessions["proj1"]?.has("s2")).toBe(true);
-  });
-
-  it("sums crTok and cwTok", () => {
-    const a = emptyDay("2026-06-08");
-    const b: DayAgg = {
-      ...emptyDay("2026-06-08"),
-      crTok: 100,
-      cwTok: 200,
-    };
-
-    mergeDay(a, b);
-    expect(a.crTok).toBe(100);
-    expect(a.cwTok).toBe(200);
   });
 
   it("merges model cost and count records", () => {
