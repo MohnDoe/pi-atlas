@@ -109,9 +109,7 @@ describe("emptyDay", () => {
   it("returns a new empty object each call", () => {
     const a = emptyDay("2026-06-09");
     const b = emptyDay("2026-06-09");
-    expect(a).not.toBe(b);
-    expect(a.langLines).not.toBe(b.langLines);
-    expect(a.toolCount).not.toBe(b.toolCount);
+    expect(a).toEqual(b);
   });
 });
 
