@@ -25,11 +25,11 @@ describe("Usage", () => {
     const text = tab.render(80).join("\n");
 
     expect(text).toContain("Tokens");
-    expect(text).toContain("10.0k");
+    expect(text).toContain("10k");
     expect(text).toContain("Input");
-    expect(text).toContain("5.0k");
+    expect(text).toContain("5k");
     expect(text).toContain("Output");
-    expect(text).toContain("4.0k");
+    expect(text).toContain("4k");
     expect(text).toContain("Cache Read");
     expect(text).toContain("500");
     expect(text).toContain("Cache Write");
@@ -138,8 +138,8 @@ describe("Usage", () => {
     expect(text).toContain("Command");
     expect(text).toContain("Calls ▼");
     // Token section still intact
-    expect(text).toContain("5.0k");
-    expect(text).toContain("4.0k");
+    expect(text).toContain("5k");
+    expect(text).toContain("4k");
 
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;

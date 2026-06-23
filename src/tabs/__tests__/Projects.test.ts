@@ -37,8 +37,8 @@ describe("Projects", () => {
     expect(text).toContain("5");
 
     // Costs formatted
-    expect(text).toContain("$15.50");
-    expect(text).toContain("$8.20");
+    expect(text).toContain("$15.5");
+    expect(text).toContain("$8.2");
     expect(text).toContain("$1.25");
   });
 

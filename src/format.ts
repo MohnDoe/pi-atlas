@@ -137,19 +137,32 @@ export const MONTH_NAMES = [
   "Dec",
 ];
 
+const numberFormatter = new Intl.NumberFormat("en-EN", {
+  style: "decimal",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+const usdFormatter = new Intl.NumberFormat("en-EN", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 // ---- Number formatting ----
 
 export function formatNumber(n: number): string {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + "B";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  if (n >= 1_000_000_000) return numberFormatter.format(n / 1_000_000_000) + "B";
+  if (n >= 1_000_000) return numberFormatter.format(n / 1_000_000) + "M";
+  if (n >= 1_000) return numberFormatter.format(n / 1_000) + "k";
   return String(n);
 }
 
 export function formatCost(n: number): string {
-  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "k";
-  return "$" + n.toFixed(2);
+  if (n >= 1_000_000) return usdFormatter.format(n / 1_000_000) + "M";
+  if (n >= 1_000) return usdFormatter.format(n / 1_000) + "k";
+  return usdFormatter.format(n);
 }
 
 // ---- Timestamp formatting ----

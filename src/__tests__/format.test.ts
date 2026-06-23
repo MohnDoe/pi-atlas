@@ -159,19 +159,24 @@ describe("formatNumber", () => {
   });
 
   it("formats thousands with k", () => {
-    expect(formatNumber(1000)).toBe("1.0k");
+    expect(formatNumber(1000)).toBe("1k");
     expect(formatNumber(1500)).toBe("1.5k");
-    expect(formatNumber(999999)).toBe("1000.0k");
+    expect(formatNumber(1510)).toBe("1.51k");
+    expect(formatNumber(1517)).toBe("1.52k");
+    expect(formatNumber(999999)).toBe("1,000k");
   });
 
   it("formats millions with M", () => {
-    expect(formatNumber(1_000_000)).toBe("1.00M");
-    expect(formatNumber(2_500_000)).toBe("2.50M");
+    expect(formatNumber(1_000_000)).toBe("1M");
+    expect(formatNumber(2_500_000)).toBe("2.5M");
   });
 
   it("formats billions with B", () => {
-    expect(formatNumber(1_000_000_000)).toBe("1.00B");
-    expect(formatNumber(2_500_000_000)).toBe("2.50B");
+    expect(formatNumber(1_000_000_000)).toBe("1B");
+    expect(formatNumber(2_500_000_000)).toBe("2.5B");
+    expect(formatNumber(12_530_000_000)).toBe("12.53B");
+    expect(formatNumber(12_533_000_000)).toBe("12.53B");
+    expect(formatNumber(12_538_000_000)).toBe("12.54B");
   });
 
   it("handles negative numbers (no suffix — current behavior)", () => {
@@ -183,44 +188,44 @@ describe("formatNumber", () => {
 
   it("handles boundary values", () => {
     expect(formatNumber(999)).toBe("999");
-    expect(formatNumber(1000)).toBe("1.0k");
-    expect(formatNumber(999_999)).toBe("1000.0k");
-    expect(formatNumber(1_000_000)).toBe("1.00M");
-    expect(formatNumber(999_999_999)).toBe("1000.00M");
-    expect(formatNumber(1_000_000_000)).toBe("1.00B");
+    expect(formatNumber(1000)).toBe("1k");
+    expect(formatNumber(999_999)).toBe("1,000k");
+    expect(formatNumber(1_000_000)).toBe("1M");
+    expect(formatNumber(999_999_999)).toBe("1,000M");
+    expect(formatNumber(1_000_000_000)).toBe("1B");
   });
 
   it("handles large numbers beyond billions", () => {
-    expect(formatNumber(1_000_000_000_000)).toBe("1000.00B");
+    expect(formatNumber(1_000_000_000_000)).toBe("1,000B");
   });
 });
 
 describe("formatCost", () => {
-  it("formats small costs with $ and two decimals", () => {
-    expect(formatCost(0)).toBe("$0.00");
-    expect(formatCost(1.5)).toBe("$1.50");
+  it("formats small costs with $ and least decimals possible", () => {
+    expect(formatCost(0)).toBe("$0");
+    expect(formatCost(1.5)).toBe("$1.5");
     expect(formatCost(999.99)).toBe("$999.99");
   });
 
   it("formats thousands with k", () => {
-    expect(formatCost(1000)).toBe("$1.0k");
+    expect(formatCost(1000)).toBe("$1k");
     expect(formatCost(1500)).toBe("$1.5k");
   });
 
   it("formats millions with M", () => {
-    expect(formatCost(1_000_000)).toBe("$1.0M");
+    expect(formatCost(1_000_000)).toBe("$1M");
     expect(formatCost(2_500_000)).toBe("$2.5M");
   });
 
   it("handles boundary values", () => {
     expect(formatCost(999.99)).toBe("$999.99");
-    expect(formatCost(1000)).toBe("$1.0k");
-    expect(formatCost(999_999)).toBe("$1000.0k");
-    expect(formatCost(1_000_000)).toBe("$1.0M");
+    expect(formatCost(1000)).toBe("$1k");
+    expect(formatCost(999_999)).toBe("$1,000k");
+    expect(formatCost(1_000_000)).toBe("$1M");
   });
 
   it("handles costs above billions", () => {
-    expect(formatCost(1_000_000_000)).toBe("$1000.0M");
+    expect(formatCost(1_000_000_000)).toBe("$1,000M");
   });
 });
 
