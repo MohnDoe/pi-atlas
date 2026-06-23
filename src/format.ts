@@ -204,7 +204,7 @@ export function formatCacheTimestamp(iso: string): string {
 export function stripAnsi(text: string): string {
   // First strip ANSI sequences
   let clean = text.replace(
-    /[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]|(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))/g,
+    /(?:\u001B\][\s\S]*?(?:\u0007|\u001B\\|\u009C))|[\u001B\u009B][[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]/g,
     "",
   );
   // Then strip control characters that can break terminal rendering

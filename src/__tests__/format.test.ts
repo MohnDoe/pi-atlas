@@ -70,6 +70,12 @@ describe("langFromPath", () => {
     expect(langFromPath("/src/Foo.TS")).toBe("TypeScript");
     expect(langFromPath("/src/Foo.PY")).toBe("Python");
   });
+
+  it("maps all EXT_TO_LANG entries correctly", () => {
+    for (const [ext, expected] of Object.entries(EXT_TO_LANG)) {
+      expect(langFromPath(`/file.${ext}`)).toBe(expected);
+    }
+  });
 });
 
 describe("projectNameFromCwd", () => {
@@ -135,6 +141,43 @@ describe("formatCost", () => {
   it("formats millions with M", () => {
     expect(formatCost(1_000_000)).toBe("$1.0M");
     expect(formatCost(2_500_000)).toBe("$2.5M");
+  });
+});
+
+describe("stripAnsi", () => {
+  it("passes through plain text unchanged", () => {
+    expect(stripAnsi("hello world")).toBe("hello world");
+  });
+
+  it("strips ANSI color codes", () => {
+    expect(stripAnsi("\x1b[32mgreen\x1b[0m")).toBe("green");
+  });
+
+  it("strips ANSI cursor and erase sequences", () => {
+    expect(stripAnsi("\x1b[2J\x1b[Hclear")).toBe("clear");
+  });
+
+  it("strips ANSI underline codes", () => {
+    expect(stripAnsi("\x1b[4munderlined\x1b[24m")).toBe("underlined");
+  });
+
+  it("strips control characters", () => {
+    expect(stripAnsi("line1\x00line2")).toBe("line1line2");
+    expect(stripAnsi("a\x08b")).toBe("ab");
+  });
+
+  it("strips zero-width and formatting characters", () => {
+    expect(stripAnsi("a\u200Bb")).toBe("ab");
+    expect(stripAnsi("a\uFEFFb")).toBe("ab");
+  });
+
+  it("strips OSC sequences (\x1b]...\x07)", () => {
+    const osc = "\x1b]0;My Title\x07content";
+    expect(stripAnsi(osc)).toBe("content");
+  });
+
+  it("handles empty string", () => {
+    expect(stripAnsi("")).toBe("");
   });
 });
 
