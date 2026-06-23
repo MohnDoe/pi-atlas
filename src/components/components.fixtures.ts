@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { TUI } from "@earendil-works/pi-tui";
 import { ColorPalette } from "../colorPalette";
-import { type RangeOption, RangeSelector } from "../components/RangeSelector";
+import { RangeSelector, type RangeOption } from "./RangeSelector";
 
 /**
  * Pass-through mock theme for tests. All styling methods return text unchanged.

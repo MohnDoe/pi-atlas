@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeTheme, testPalette } from "../../__tests__/components.fixtures";
-import { type ModelStat } from "../../types";
-import { Models } from "../Models";
+import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
+import { type ModelStat } from "../types";
+import { Models } from "./Models";
 
 describe("Models", () => {
   const mockTui = makeMockTUI();

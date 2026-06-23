@@ -63,6 +63,12 @@ export interface ToolStat {
   count: number;
 }
 
+export interface ProviderStat {
+  provider: string;
+  cost: number;
+  calls: number;
+}
+
 export interface StatsSummary {
   totalCost: number;
   sessionCount: number;
@@ -79,6 +85,11 @@ export interface StatsSummary {
   models: ModelStat[];
   projects: ProjectStat[];
   tools: ToolStat[];
+  providers: ProviderStat[];
+  compactionCount: number;
+  compactedTokens: number;
+  modelChanges: number;
+  thinkingLevelCount: Record<string, number>;
   dailySpend: DaySpend[];
   hourlySpend: HourSpend[];
 }

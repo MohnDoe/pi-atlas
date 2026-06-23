@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { LoadingView } from "../LoadingView";
+import { LoadingView } from "./LoadingView";
 
 describe("LoadingView", () => {
   it("renders with 0% progress", () => {

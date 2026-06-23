@@ -17,7 +17,7 @@ import type { DayAgg } from "./types";
 function sanitizeToolName(name: string): string {
   // Remove any character below 0x20 (control chars) except 0x09 (\t) which
   // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
-  return name.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+  return name.replace(/[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
 }
 
 // Tracks session ID → project name for cost attribution

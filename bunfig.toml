@@ -1,0 +1,37 @@
+[test]
+root = "src"
+coverageThreshold = { lines = 0.85, functions = 0.90, statements = 0.80 }
+coveragePathIgnorePatterns = [
+  # Test files
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "**/*.e2e.ts",
+  "**/*.fixtures.ts",
+
+  # Configuration files
+  "*.config.js",
+  "*.config.ts",
+  "webpack.config.*",
+  "vite.config.*",
+
+  # Build output
+  "dist/**",
+  "build/**",
+  ".next/**",
+
+  # Generated code
+  "generated/**",
+  "**/*.generated.ts",
+
+  # Vendor/third-party
+  "vendor/**",
+  "third-party/**",
+
+  # Utilities that don't need testing
+  "src/utils/constants.ts",
+  "src/types/**",
+
+  "node_modules/**",
+  # ignores linked local-dev package
+  "../pi-tui-extras/**",
+]

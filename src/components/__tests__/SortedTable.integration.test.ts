@@ -1,13 +1,10 @@
-/**
- * Integration test: Dashboard → Models → SortedTable keyboard interaction.
- */
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeRangeSelector, makeTheme } from "../../__tests__/components.fixtures";
-import { makeSummary } from "../../__tests__/compute.fixtures";
-import { Dashboard } from "../Dashboard";
-import { SortedTable } from "../SortedTable";
-import { allRanges, mapAllSummaries } from "./Dashboard.test";
+import { describe, expect, it } from "bun:test";
+import { makeSummary } from "../../compute.fixtures";
 import type { StatsSummary, TimeRange } from "../../types";
+import { makeMockTUI, makeRangeSelector, makeTheme } from "../components.fixtures";
+import { Dashboard } from "../Dashboard";
+import { allRanges, mapAllSummaries } from "../Dashboard.test";
+import { SortedTable } from "../SortedTable";
 
 const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();

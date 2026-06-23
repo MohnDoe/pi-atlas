@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
-import { Languages } from "../Languages";
-import { type LangStat } from "../../types";
+import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
+import { type LangStat } from "../types";
+import { Languages } from "./Languages";
 
 describe("Languages", () => {
   const mockTui = makeMockTUI();

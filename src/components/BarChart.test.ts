@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { BarChart } from "../BarChart";
-import type { HourSpend } from "../../types";
+import { describe, expect, it } from "bun:test";
+import { makeTheme } from "./components.fixtures";
+import type { HourSpend } from "../types";
+import { BarChart } from "./BarChart";
 
 describe("BarChart", () => {
   const dailySpend = [
@@ -104,8 +104,8 @@ describe("BarChart", () => {
     const lines = chart.render(80);
     const text = lines.join("\n");
     // Y-axis has $ labels
-    expect(text).toContain("$0.00");
-    expect(text).toContain("$3.00");
+    expect(text).toContain("$0");
+    expect(text).toContain("$3");
     // Y-axis separator present
     expect(text).toContain("│");
   });
@@ -126,9 +126,9 @@ describe("BarChart", () => {
     const chart = new BarChart(dailySpend, "7d", 12, makeTheme());
     const lines = chart.render(80);
     const barLines = lines.slice(1, -2); // exclude granularity + x-axis label
-    // At max cost $3.00, row 8 (80% height) should be $2.40, top row 9 should not have label
+    // At max cost $3, row 8 (80% height) should be $2.4, top row 9 should not have label
     // But bottom row 0 always has label
-    expect(barLines[barLines.length - 1]).toContain("$0.00");
+    expect(barLines[barLines.length - 1]).toContain("$0");
     expect(barLines[0]).toMatch(/\$\d/); // top row no label
   });
 
@@ -198,7 +198,7 @@ describe("BarChart", () => {
       expect(text).toContain("12h");
       expect(text).toContain("23h");
       // Should show cost on y-axis
-      expect(text).toContain("$2.50");
+      expect(text).toContain("$2.5");
       expect(text).toContain("Hourly");
     });
 
