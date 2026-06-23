@@ -414,6 +414,7 @@ describe("parseAssistantMessage", () => {
           type: "toolCall" as const,
           id: "c1",
           name: "edit",
+          //@ts-expect-error
           arguments: JSON.stringify({ path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
         },
       ],
@@ -434,6 +435,7 @@ describe("parseAssistantMessage", () => {
 
   it("handles toolCall with undefined arguments", () => {
     const msg = mkAsst({
+      //@ts-expect-error
       content: [{ type: "toolCall" as const, id: "c1", name: "read" }],
     });
     const day = parseAssistantMessage(msg);
@@ -909,6 +911,7 @@ describe("parseSessionLogEntry", () => {
         id: "cm1",
         parentId: "p",
         timestamp: "2026-06-08T10:00:00.000Z",
+        //@ts-expect-error
         contentType: "my-type",
         message: "hi",
       }),
@@ -922,6 +925,7 @@ describe("parseSessionLogEntry", () => {
         id: "si1",
         parentId: "p",
         timestamp: "2026-06-08T10:00:00.000Z",
+        //@ts-expect-error
         totalTokens: 100,
       }),
     ).toBeNull();
