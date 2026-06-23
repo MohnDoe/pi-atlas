@@ -220,6 +220,21 @@ describe("parseLanguageUsage", () => {
     expect(day.langLines).toEqual({});
     expect(day.langEdits).toEqual({});
   });
+
+  it("parses unknown file extensions as 'Other'", () => {
+    const day = parseSessionLogEntry({
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: mkAsst({
+        content: [tc("write", { path: "/x/config.xyz", content: "abc" })],
+        model: "m",
+      }),
+    })!;
+
+    expect(day.langLines["Other"]).toBe(1);
+  });
 });
 
 describe("parseAssistantMessage", () => {
@@ -727,30 +742,6 @@ describe("parseSessionLogEntry", () => {
     expect(day.asstMsgs).toBe(1);
     expect(day.modelCost).toEqual({ "deepseek-v4": 0 });
     expect(day.modelCount).toEqual({ "deepseek-v4": 1 });
-  });
-
-  it("parses unknown file extensions as 'Other'", () => {
-    const session = parseSessionLogEntry({
-      type: "session",
-      version: 3,
-      id: "s1",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      cwd: "/home/doe/proj",
-    })!;
-
-    const day = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
-        content: [tc("write", { path: "/x/config.xyz", content: "abc" })],
-        model: "m",
-      }),
-    })!;
-
-    mergeDay(session, day);
-    expect(session.langLines["Other"]).toBe(1);
   });
 
   it("returns null for unknown entry types", () => {
