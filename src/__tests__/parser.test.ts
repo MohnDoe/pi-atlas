@@ -177,10 +177,28 @@ describe("parseLanguageUsage", () => {
     expect(day.langEdits["TypeScript"]).toBe(1);
   });
 
-  it("handles non-array edits gracefully", () => {
+  it("handles non-array (string) edits gracefully", () => {
     const day = parseLanguageUsage("edit", {
       path: "/src/foo.ts",
       edits: "not-an-array",
+    });
+    expect(day.langLines["TypeScript"]).toBe(1);
+    expect(day.langEdits["TypeScript"]).toBe(1);
+  });
+
+  it("handles edits set undefined gracefully", () => {
+    const day = parseLanguageUsage("edit", {
+      path: "/src/foo.ts",
+      edits: undefined,
+    });
+    expect(day.langLines["TypeScript"]).toBe(1);
+    expect(day.langEdits["TypeScript"]).toBe(1);
+  });
+
+  it("handles edits set to null gracefully", () => {
+    const day = parseLanguageUsage("edit", {
+      path: "/src/foo.ts",
+      edits: null,
     });
     expect(day.langLines["TypeScript"]).toBe(1);
     expect(day.langEdits["TypeScript"]).toBe(1);
