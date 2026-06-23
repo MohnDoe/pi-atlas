@@ -132,7 +132,7 @@ export class Usage extends Container {
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
       borderFn: (s) => this.theme.fg("border", s),
-      titles: [{ text: "Tools", align: "left" }],
+      titles: [{ text: this.theme.bold("Tools"), align: "left" }],
     };
 
     let borderBox = new BorderBox(borderBoxOptions);
@@ -141,7 +141,7 @@ export class Usage extends Container {
     if (!this.isEmpty) {
       borderBoxOptions.titles = [
         ...borderBoxOptions.titles!,
-        { text: this.theme.fg("dim", formatNumber(this.rows.length)), align: "right" },
+        { text: this.theme.fg("muted", "by calls"), align: "right" },
       ];
 
       if (!this.table) {

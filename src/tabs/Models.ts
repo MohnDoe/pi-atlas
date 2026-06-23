@@ -62,8 +62,8 @@ export class Models extends Container {
       const bb = new BorderBox({
         ...baseBorderBoxOptions,
         titles: [
-          { text: "Models", align: "left" },
-          { text: this.theme.fg("dim", formatNumber(this.models.length)), align: "right" },
+          { text: this.theme.bold("Models"), align: "left" },
+          { text: this.theme.fg("muted", "by cost"), align: "right" },
         ],
       });
       if (!this.table) {

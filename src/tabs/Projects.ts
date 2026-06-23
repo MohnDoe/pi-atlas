@@ -47,13 +47,13 @@ export class Projects extends Container {
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
       borderFn: (s) => this.theme.fg("border", s),
-      titles: [{ text: "Projects", align: "left" }],
+      titles: [{ text: this.theme.bold("Projects"), align: "left" }],
     };
     let borderBox = new BorderBox(borderBoxOptions);
     if (!this.isEmpty) {
       borderBoxOptions.titles = [
         ...borderBoxOptions.titles!,
-        { text: this.theme.fg("dim", formatNumber(this.projects.length)), align: "right" },
+        { text: this.theme.fg("muted", "by cost"), align: "right" },
       ];
       if (!this.table) {
         this.table = new SortedTable(
@@ -62,7 +62,7 @@ export class Projects extends Container {
               { header: cell.header("Name"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Sessions"), width: 14 },
-              { header: cell.header("Cost"), width: 8 },
+              { header: cell.header("Cost"), width: 10 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,

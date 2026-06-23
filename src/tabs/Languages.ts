@@ -56,8 +56,8 @@ export class Languages extends Container {
       const bb = new BorderBox({
         ...baseBorderBoxOptions,
         titles: [
-          { text: "Languages", align: "left" },
-          { text: this.theme.fg("dim", formatNumber(this.languages.length)), align: "right" },
+          { text: this.theme.bold("Languages"), align: "left" },
+          { text: this.theme.fg("muted", "by lines written"), align: "right" },
         ],
       });
 

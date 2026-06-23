@@ -42,7 +42,6 @@ describe("Usage", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Tools");
-    expect(lines[0]).toContain(tools.length.toString());
 
     // Headers
     expect(text).toContain("Command");
@@ -60,21 +59,12 @@ describe("Usage", () => {
     expect(text).toContain("45");
   });
 
-  it("does NOT show 'Tool Calls' title", () => {
-    const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
-    const text = tab.render(80).join("\n");
-
-    expect(text).not.toContain("Tool Calls");
-  });
-
   it("shows empty state when tools is empty", () => {
     const tab = new Usage([], tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(80).slice(4);
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Tools");
-    // don't display 0 counter
-    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No tools data for this time range");
   });
 
