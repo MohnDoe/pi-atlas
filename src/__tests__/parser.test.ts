@@ -334,7 +334,7 @@ describe("parseAssistantMessage", () => {
     expect(day.projectCost["beta"]).toBe(0.05);
   });
 
-  it("handles missing usage gracefully", () => {
+  it("handles zero-cost usage gracefully", () => {
     const msg = mkAsst({
       content: [{ type: "text", text: "hi" }],
       usage: {
@@ -345,6 +345,16 @@ describe("parseAssistantMessage", () => {
         totalTokens: 0,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
       },
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.inTok).toBe(0);
+    expect(day.cost).toBe(0);
+  });
+
+  it("handles missing usage gracefully", () => {
+    const msg = mkAsst({
+      content: [{ type: "text", text: "hi" }],
     });
     const day = parseAssistantMessage(msg);
     expect(day.asstMsgs).toBe(1);
