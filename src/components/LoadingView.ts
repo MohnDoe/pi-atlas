@@ -1,38 +1,72 @@
-import { type Component } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { Spacer, Text } from "@earendil-works/pi-tui";
+import { BorderBox } from "@mohndoe/pi-tui-extras";
+import { alignInWidth } from "@mohndoe/pi-tui-extras/src/core/align";
+import pkg from "../../package.json" with { type: "json" };
+import type { LoadingProgress } from "../cache";
+import { renderBar } from "./shared/Bar";
 
-export class LoadingView implements Component {
-  private progress = 0;
-  private message: string;
-  private cachedLines: string[] | null = null;
-  private cachedWidth = -1;
-  private tui: { requestRender: () => void } | null;
+export class LoadingView extends BorderBox {
+  private progress: LoadingProgress = {
+    pct: 0,
+    total: 0,
+    done: 0,
+  };
+  private bar: Text;
+  private progressText: Text;
 
-  constructor(message = "Parsing session logs...", tui?: { requestRender: () => void }) {
-    this.message = message;
-    this.tui = tui ?? null;
+  constructor(
+    message = "Parsing session logs...",
+    private theme: Theme,
+  ) {
+    super({
+      titles: [
+        { text: theme.bold("Pi Atlas") + theme.fg("dim", ` · v${pkg.version}`), align: "left" },
+      ],
+      padding: {
+        top: 1,
+        bottom: 1,
+        left: 1,
+        right: 1,
+      },
+    });
+
+    this.bar = new Text("", 0, 0);
+    this.progressText = new Text("", 0, 0);
+
+    this.addChild(new Text(this.theme.fg("text", message), 0, 0));
+    this.addChild(new Spacer(1));
+    this.addChild(this.bar);
+    this.addChild(this.progressText);
   }
 
-  setProgress(p: number): void {
+  setProgress(p: LoadingProgress): void {
     this.progress = p;
     this.invalidate();
   }
 
-  render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+  override render(width: number): string[] {
+    const innerWidth = width - 2 - 2;
+    this.bar.setText(
+      renderBar(
+        innerWidth,
+        this.progress.pct,
+        (s) => this.theme.fg("success", s),
+        (s) => this.theme.fg("dim", s),
+        "█",
+        "░",
+      ),
+    );
 
-    const barW = Math.min(40, width - 10);
-    const filled = Math.round((this.progress / 100) * barW);
-    const bar = "█".repeat(filled) + "░".repeat(barW - filled);
+    const progressText = this.progress.done + this.theme.fg("dim", "/" + this.progress.total);
+    this.progressText.setText(alignInWidth(progressText, innerWidth, "right"));
 
-    const lines = ["", `  ${this.message}`, `  [${bar}] ${this.progress}%`, ""];
-
-    this.cachedLines = lines;
-    this.cachedWidth = width;
-    return lines;
+    return super.render(width);
   }
 
-  invalidate(): void {
-    this.cachedLines = null;
-    this.cachedWidth = -1;
+  override invalidate(): void {
+    super.invalidate();
+    this.bar.invalidate();
+    this.progressText.invalidate();
   }
 }
