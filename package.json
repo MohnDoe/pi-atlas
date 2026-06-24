@@ -44,6 +44,7 @@
   "pi": {
     "extensions": [
       "./src/index.ts"
-    ]
+    ],
+    "image": "https://github.com/mohndoe/pi-atlas/raw/main/media/screenshot.png"
   }
 }
