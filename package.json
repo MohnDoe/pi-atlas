@@ -1,6 +1,6 @@
 {
   "name": "@mohndoe/pi-atlas",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pi extension providing an atlas of agent activity — costs, languages, models, projects, and tools from session logs.",
   "keywords": [
     "pi",
