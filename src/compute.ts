@@ -199,8 +199,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
 
   const providers: ProviderStat[] = Object.entries(providerCost)
     .map(([provider, cost]) => ({ provider, cost, calls: providerCount[provider] ?? 0 }))
-    .sort((a, b) => b.calls - a.calls)
-    .sort((a, b) => b.cost - a.cost);
+    .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
   const hourlySpend = buildHourlySpend(filtered, range);
 
