@@ -8,6 +8,7 @@ import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
 import type { TimeRange } from "./types";
 import { RangeSelector, type RangeOption } from "./components/RangeSelector";
+import type { OverlayOptions } from "@earendil-works/pi-tui";
 
 const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
 const CACHE_PATH = join(homedir(), ".pi", "pi-atlas-cache.json");
@@ -22,14 +23,14 @@ export default function (pi: ExtensionAPI) {
       }
 
       const overlayOpts = {
-        overlay: true as const,
+        overlay: true,
         overlayOptions: {
           minWidth: 100,
-          width: "50%" as const,
-          maxHeight: "80%" as const,
-          anchor: "center" as const,
+          width: "50%",
+          maxHeight: "80%",
+          anchor: "top-center",
           margin: 2,
-        },
+        } as OverlayOptions,
       };
 
       // Read last update timestamp before loading (cache may be rewritten)
@@ -37,27 +38,29 @@ export default function (pi: ExtensionAPI) {
       const updateLabel = lastUpdate ? `Last update : ${formatCacheTimestamp(lastUpdate)}` : null;
 
       // Phase 1: Show loading, parse session logs
-      let days: Awaited<ReturnType<typeof loadAggregate>>;
+      let days: Awaited<ReturnType<typeof loadAggregate> | undefined>;
       try {
-        days = await ctx.ui.custom<Awaited<ReturnType<typeof loadAggregate>>>(
-          (tui, _theme, _kb, done) => {
-            const loadingView = new LoadingView("Parsing session logs...", tui);
+        days = await ctx.ui.custom<typeof days>((tui, theme, _kb, done) => {
+          const loadingView = new LoadingView("Parsing session logs...", theme, () =>
+            done(undefined),
+          );
 
-            loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
-              loadingView.setProgress(p);
-              tui.requestRender();
-            })
-              .then((result) => done(result))
-              .catch(() => done([]));
+          loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
+            loadingView.setProgress(p);
+            tui.requestRender();
+          })
+            .then((result) => done(result))
+            .catch(() => done([]));
 
-            return loadingView;
-          },
-          overlayOpts,
-        );
-      } catch {
+          return loadingView;
+        }, overlayOpts);
+      } catch (e) {
         ctx.ui.notify("Failed to parse session logs", "error");
+        ctx.ui.notify(e as string, "error");
         return;
       }
+
+      if (days === undefined) return;
 
       // Phase 2: Show dashboard (handles empty state internally)
       const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];

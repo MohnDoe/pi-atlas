@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  type LoadingProgress,
   computeSignature,
   getCacheTimestamp,
   isCacheValid,
@@ -644,12 +645,12 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const progress: number[] = [];
+    const progress: LoadingProgress[] = [];
     await loadAggregate(cachePath, sessionsDir, false, (p) => progress.push(p));
 
     // Should have reported some progress and reached 100%
     expect(progress.length).toBeGreaterThan(0);
-    expect(progress[progress.length - 1]).toBe(100);
+    expect(progress[progress.length - 1]!.pct).toBe(100);
   });
 
   it("reports intermediate progress with multiple files", async () => {
@@ -679,10 +680,10 @@ describe("loadAggregate", () => {
       }) + "\n",
     );
 
-    const progress: number[] = [];
+    const progress: LoadingProgress[] = [];
     await loadAggregate(cachePath, sessionsDir, true, (p) => progress.push(p));
 
-    // Two files: should get 50 and 100
-    expect(progress).toEqual([50, 100]);
+    // Two files: should get 50% and 100%
+    expect(progress.map((p) => p.pct)).toEqual([50, 100]);
   });
 });
