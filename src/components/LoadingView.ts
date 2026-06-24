@@ -6,6 +6,18 @@ import pkg from "../../package.json" with { type: "json" };
 import type { LoadingProgress } from "../cache";
 import { renderBar } from "./shared/Bar";
 
+function formatRemainingTime(ms: number): string {
+  if (ms < 60000)
+    return `~${new Intl.NumberFormat("en-EN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      style: "decimal",
+    }).format(ms / 1000)}s`;
+  const m = Math.floor(ms / 60000);
+  const s = Math.round((ms % 60000) / 1000);
+  return `~${m}m ${s}s`;
+}
+
 export class LoadingView extends BorderBox {
   private progress: LoadingProgress = {
     pct: 0,
@@ -60,9 +72,14 @@ export class LoadingView extends BorderBox {
       ),
     );
 
-    const progressSplitText = this.progress.done + this.theme.fg("dim", "/" + this.progress.total);
+    const remainingStr =
+      this.progress.remainingTimeMs != null
+        ? this.theme.fg("dim", formatRemainingTime(this.progress.remainingTimeMs) + " remaining · ")
+        : "";
+    const loadingRightText =
+      remainingStr + this.progress.done + this.theme.fg("dim", "/" + this.progress.total);
     this.loadingText.setText(
-      alignInWidthLR(this.theme.fg("text", this.message), progressSplitText, innerWidth),
+      alignInWidthLR(this.theme.fg("text", this.message), loadingRightText, innerWidth),
     );
 
     return super.render(width);

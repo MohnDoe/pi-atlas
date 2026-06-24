@@ -132,6 +132,7 @@ export interface LoadingProgress {
   total: number;
   done: number;
   pct: number;
+  remainingTimeMs?: number;
 }
 
 export async function loadAggregate(
@@ -158,6 +159,7 @@ export async function loadAggregate(
   let totalCorrupt = 0;
 
   const slowDelayMs = Number(process.env["PI_ATLAS_SLOW_DELAY_MS"] ?? 0);
+  const parseStart = performance.now();
 
   for (let i = 0; i < files.length; i++) {
     if (slowDelayMs > 0) {
@@ -180,12 +182,19 @@ export async function loadAggregate(
         map.set(date, day);
       }
     }
-    if (onProgress)
+    if (onProgress) {
+      const done = i + 1;
+      const elapsedMs = performance.now() - parseStart;
+      // Minimum 3 samples before showing estimate (too noisy before that)
+      const remainingTimeMs =
+        done >= 3 ? Math.round((elapsedMs / done) * (files.length - done)) : undefined;
       onProgress({
-        done: i + 1,
+        done,
         total: files.length,
-        pct: Math.round(((i + 1) / files.length) * 100),
+        pct: Math.round((done / files.length) * 100),
+        remainingTimeMs,
       });
+    }
   }
 
   if (totalCorrupt > 0) {
