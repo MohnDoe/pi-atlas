@@ -13,6 +13,10 @@
 
 A terminal UI extension for [pi](https://pi.dev) that turns your agent session logs into an interactive dashboard — costs, languages, models, projects, tools, and token usage at a glance.
 
+<p align="center">
+ <img alt="pi-atlas screenshot" src="./media/screenshot.png" />
+</p>
+
 ---
 
 ## Features
