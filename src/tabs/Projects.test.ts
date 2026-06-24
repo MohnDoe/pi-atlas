@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-import { type ProjectStat } from "../../types";
-import { Projects } from "../Projects";
+import { makeMockTUI, makeTheme } from "../components/components.fixtures";
+import { type ProjectStat } from "../types";
+import { Projects } from "./Projects";
 
 describe("Projects", () => {
   const mockTui = makeMockTUI();
@@ -18,7 +18,6 @@ describe("Projects", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Projects");
-    expect(lines[0]).toContain(projects.length.toString());
 
     // Headers
     expect(text).toContain("Name");
@@ -37,8 +36,8 @@ describe("Projects", () => {
     expect(text).toContain("5");
 
     // Costs formatted
-    expect(text).toContain("$15.50");
-    expect(text).toContain("$8.20");
+    expect(text).toContain("$15.5");
+    expect(text).toContain("$8.2");
     expect(text).toContain("$1.25");
   });
 
@@ -48,8 +47,6 @@ describe("Projects", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Projects");
-    // don't display 0 counter
-    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No projects data for this time range");
   });
 

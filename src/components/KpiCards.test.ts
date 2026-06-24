@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { KpiCards } from "../KpiCards";
+import { makeTheme } from "./components.fixtures";
+import { KpiCards } from "./KpiCards";
 
 describe("KpiCards", () => {
   const kpis = {
@@ -22,7 +22,7 @@ describe("KpiCards", () => {
     expect(text).toContain("12.34");
     expect(text).toContain("42");
     expect(text).toContain("1.5k");
-    expect(text).toContain("250.0k");
+    expect(text).toContain("250k");
     expect(text).toContain("7");
     expect(text).toContain("1.76");
   });
@@ -50,13 +50,13 @@ describe("KpiCards", () => {
   it("formats large token numbers", () => {
     const cards = new KpiCards({ ...kpis, totalTokens: 1500000 }, makeTheme());
     const lines = cards.render(80);
-    expect(lines.join("\n")).toContain("1.50M");
+    expect(lines.join("\n")).toContain("1.5M");
   });
 
   it("formats large costs with compact notation", () => {
     const cards = new KpiCards({ ...kpis, totalCost: 5432.1 }, makeTheme());
     const lines = cards.render(80);
-    expect(lines.join("\n")).toContain("$5.4k");
+    expect(lines.join("\n")).toContain("$5.43k");
   });
 
   it("formats very large costs with M notation", () => {

@@ -1,7 +1,7 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI } from "../../__tests__/components.fixtures";
-import { cell } from "../cells";
+import { cell } from "./cells";
+import { makeMockTUI } from "./components.fixtures";
 
 describe("cell.text", () => {
   it("renders content truncated to width", () => {

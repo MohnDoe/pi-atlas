@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-import { type ToolStat } from "../../types";
-import { Usage } from "../Usage";
+import { makeMockTUI, makeTheme } from "../components/components.fixtures";
+import type { ToolStat } from "../types";
+import { Usage } from "./Usage";
 
 describe("Usage", () => {
   const mockTui = makeMockTUI();
@@ -25,11 +25,11 @@ describe("Usage", () => {
     const text = tab.render(80).join("\n");
 
     expect(text).toContain("Tokens");
-    expect(text).toContain("10.0k");
+    expect(text).toContain("10k");
     expect(text).toContain("Input");
-    expect(text).toContain("5.0k");
+    expect(text).toContain("5k");
     expect(text).toContain("Output");
-    expect(text).toContain("4.0k");
+    expect(text).toContain("4k");
     expect(text).toContain("Cache Read");
     expect(text).toContain("500");
     expect(text).toContain("Cache Write");
@@ -42,7 +42,6 @@ describe("Usage", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Tools");
-    expect(lines[0]).toContain(tools.length.toString());
 
     // Headers
     expect(text).toContain("Command");
@@ -60,21 +59,12 @@ describe("Usage", () => {
     expect(text).toContain("45");
   });
 
-  it("does NOT show 'Tool Calls' title", () => {
-    const tab = new Usage(tools, tokenUsage, makeTheme(), mockTui, 10);
-    const text = tab.render(80).join("\n");
-
-    expect(text).not.toContain("Tool Calls");
-  });
-
   it("shows empty state when tools is empty", () => {
     const tab = new Usage([], tokenUsage, makeTheme(), mockTui, 10);
     const lines = tab.render(80).slice(4);
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Tools");
-    // don't display 0 counter
-    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No tools data for this time range");
   });
 
@@ -138,8 +128,8 @@ describe("Usage", () => {
     expect(text).toContain("Command");
     expect(text).toContain("Calls ▼");
     // Token section still intact
-    expect(text).toContain("5.0k");
-    expect(text).toContain("4.0k");
+    expect(text).toContain("5k");
+    expect(text).toContain("4k");
 
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;

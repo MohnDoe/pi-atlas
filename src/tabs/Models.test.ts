@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeTheme, testPalette } from "../../__tests__/components.fixtures";
-import { type ModelStat } from "../../types";
-import { Models } from "../Models";
+import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
+import { type ModelStat } from "../types";
+import { Models } from "./Models";
 
 describe("Models", () => {
   const mockTui = makeMockTUI();
@@ -19,7 +19,6 @@ describe("Models", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Models");
-    expect(lines[0]).toContain(models.length.toString());
 
     // formatModelName strips date suffix and capitalizes
     // Model column is 6-char fill at width 80 — truncated name visible
@@ -41,8 +40,6 @@ describe("Models", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Models");
-    // don't display 0 counter
-    expect(lines[0]).not.toContain("0");
     expect(text).toContain("No model data for this time range");
   });
 

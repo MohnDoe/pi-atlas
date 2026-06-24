@@ -47,9 +47,13 @@ export class Usage extends Container {
   /** Build row cells once in constructor. */
   private buildRows(): void {
     if (this.isEmpty) return;
+    const totalCount = this.tools.reduce((sum, item) => sum + item.count, 0);
     const maxCount = Math.max(...this.tools.map((t) => t.count), 0);
     this.rows = this.tools.map((t) => {
-      const barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
+      let barPct = 0;
+      if (totalCount > 0) {
+        barPct = maxCount > 0 ? (t.count / maxCount) * 100 : 0;
+      }
       return [
         cell.marquee(stripAnsi(t.name).slice(0, TOOL_NAME_MAX_LENGTH), this.tui),
         cell.bar(barPct, (s) => s, "transparent"),
@@ -132,7 +136,7 @@ export class Usage extends Container {
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
       borderFn: (s) => this.theme.fg("border", s),
-      titles: [{ text: "Tools", align: "left" }],
+      titles: [{ text: this.theme.bold("Tools"), align: "left" }],
     };
 
     let borderBox = new BorderBox(borderBoxOptions);
@@ -141,7 +145,7 @@ export class Usage extends Container {
     if (!this.isEmpty) {
       borderBoxOptions.titles = [
         ...borderBoxOptions.titles!,
-        { text: this.theme.fg("dim", formatNumber(this.rows.length)), align: "right" },
+        { text: this.theme.fg("muted", "by calls"), align: "right" },
       ];
 
       if (!this.table) {

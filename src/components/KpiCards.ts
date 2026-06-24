@@ -20,7 +20,7 @@ export class KpiCards implements Component {
   constructor(kpis: KpiData, theme: Theme) {
     this.theme = theme;
 
-    const colPcts = [16, 16, 16, 16, 16, 17];
+    const colPcts = [17, 17, 17, 17, 17, 15];
 
     const totalCostCard = new StatCard(
       {

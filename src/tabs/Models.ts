@@ -36,10 +36,8 @@ export class Models extends Container {
     const totalCost = this.models.reduce((sum, item) => sum + item.cost, 0);
     const maxCost = Math.max(...this.models.map((m) => m.cost), 0);
     this.rows = this.models.map((m) => {
-      let pct = 0;
       let barPct = 0;
       if (totalCost > 0) {
-        pct = (m.cost * 100) / totalCost;
         barPct = maxCost > 0 ? (m.cost / maxCost) * 100 : 0;
       }
       return [
@@ -62,8 +60,8 @@ export class Models extends Container {
       const bb = new BorderBox({
         ...baseBorderBoxOptions,
         titles: [
-          { text: "Models", align: "left" },
-          { text: this.theme.fg("dim", formatNumber(this.models.length)), align: "right" },
+          { text: this.theme.bold("Models"), align: "left" },
+          { text: this.theme.fg("muted", "by cost"), align: "right" },
         ],
       });
       if (!this.table) {

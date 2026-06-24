@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { Overview } from "../Overview";
-import { type StatsSummary } from "../../types";
-import { makeSummary } from "../../__tests__/compute.fixtures";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { describe, expect, it } from "bun:test";
+import { makeTheme } from "../components/components.fixtures";
+import { makeSummary } from "../compute.fixtures";
+import { type StatsSummary } from "../types";
+import { Overview } from "./Overview";
 
 describe("Overview", () => {
   const mockSummary: StatsSummary = {
@@ -24,7 +25,7 @@ describe("Overview", () => {
     ],
   };
 
-  it("renders KpiCards followed by spacer followed by BarChart", () => {
+  it("renders KpiCards followed by BarChart", () => {
     const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
     const lines = overview.render(80);
 
@@ -43,14 +44,12 @@ describe("Overview", () => {
     const kpiCostIdx = lines.findIndex(
       (l) => l.includes("12.34") || l.includes("$12.34") || l.includes("Total"),
     );
-    const spacerIdx = lines.findIndex((l) => l.trim() === "");
-    expect(spacerIdx).toBeGreaterThan(kpiCostIdx);
 
-    // Chart content (█ or label) should appear after the spacer
+    // Chart content (█ or label) should appear after the KPIs
     const chartIdx = lines.findIndex(
-      (l, i) => i > spacerIdx && (l.includes("█") || l.includes("No data") || l.includes("Mon")),
+      (l) => l.includes("█") || l.includes("No data") || l.includes("Mon"),
     );
-    expect(chartIdx).toBeGreaterThan(spacerIdx);
+    expect(chartIdx).toBeGreaterThan(kpiCostIdx);
   });
 
   it("adapts bar chart height to available space after KpiCards", () => {
@@ -61,8 +60,6 @@ describe("Overview", () => {
     // Chart should still render (not zero lines)
     const text = lines.join("\n");
     expect(text).toContain("█");
-    // Should have spacer before chart
-    expect(lines.some((l) => l.trim() === "")).toBe(true);
   });
 
   it("shows 'No data' when daily spend is empty", () => {
@@ -81,12 +78,18 @@ describe("Overview", () => {
 
   it("invalidate clears cache and re-renders at new width", () => {
     const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
-    overview.render(80);
+
+    const linesBefore = overview.render(80);
+    for (const line of linesBefore) {
+      expect(visibleWidth(line)).toBeLessThanOrEqual(80);
+      expect(visibleWidth(line)).toBeGreaterThanOrEqual(78);
+    }
     overview.invalidate();
 
     const lines = overview.render(60);
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(60);
+      expect(visibleWidth(line)).toBeLessThanOrEqual(60);
+      expect(visibleWidth(line)).toBeGreaterThanOrEqual(58);
     }
   });
 });

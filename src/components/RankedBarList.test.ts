@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import chalk from "chalk";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { RankedBarList } from "../RankedBarList";
+import { makeTheme } from "./components.fixtures";
+import { RankedBarList } from "./RankedBarList";
 
 describe("RankedBarList", () => {
   it("renders a single item with 100% bar width", () => {

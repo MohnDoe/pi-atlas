@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { makeMockTUI, makeRangeSelector, makeTheme } from "../../__tests__/components.fixtures";
-import { makeSummary } from "../../__tests__/compute.fixtures";
-import type { StatsSummary, TimeRange } from "../../types";
-import { Dashboard } from "../Dashboard";
+import { makeMockTUI, makeRangeSelector, makeTheme } from "./components.fixtures";
+import { makeSummary } from "../compute.fixtures";
+import type { StatsSummary, TimeRange } from "../types";
+import { Dashboard } from "./Dashboard";
 
 const mockTui = makeMockTUI();
 export const allRanges: TimeRange[] = ["1d", "7d", "30d", "All"];

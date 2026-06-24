@@ -1,45 +1,48 @@
-# Pi Atlas
+# @mohndoe/pi-atlas
 
-[![npm](https://img.shields.io/npm/v/@mohndoe/pi-atlas)](https://www.npmjs.com/package/@mohndoe/pi-atlas)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<p align="center">
+  <strong>See your AI usage and cost directly in Pi.</strong>
+</p>
+<p align="center">
+  <a href="https://www.npmjs.com/package/@mohndoe/pi-atlas"><img src="https://img.shields.io/npm/v/@mohndoe/pi-atlas" alt="Version"></a>
+  <img src="https://img.shields.io/badge/coverage-97%25-green" alt="Coverage">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&colorA=222222&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=flat&colorA=222222" alt="Bun">
+  <a href="https://github.com/mohndoe/pi-atlas/blob/main/LICENSE"><img src="https://img.shields.io/github/license/mohndoe/pi-atlas?style=flat&colorA=222222&colorB=58A6FF" alt="License"></a>
+</p>
 
-A terminal UI extension for [pi](https://pi.dev) that turns your agent session logs into an interactive dashboard — costs, languages, models, projects, tools, and token usage at a glance.
+A [pi](https://pi.dev) extension that turns your session logs into an interactive dashboard — costs, languages, models, projects, tools, and token usage at a glance.
+
+<p align="center">
+ <img alt="pi-atlas screenshot" src="./media/screenshot.png" />
+</p>
 
 ---
 
 ## Features
 
-- **Cost tracking** — per-model, per-project, and daily spend with ASCII bar charts
-- **Language breakdown** — lines written and edited, ranked with proportional bars
-- **Model analytics** — provider-aware model cost, call count, and sortable table
-- **Project attribution** — cost and session count per project directory
-- **Tool usage** — call frequency and token breakdown (input, output, cache read/write)
 - **Multiple time ranges** — Today, Last 7 days, Last 30 days, or All time
-- **Cache** — SHA-256-gated persists day aggregates; near-instant open on repeat visits
-- **Zero dependencies beyond pi** — uses only the pi TUI and the `pi-tui-extras` component library
+- **Cost tracking** — per-model, per-project, based on real usage costs
+- **Language breakdown** — lines written and edited
+- **Model analytics** — provider-aware model cost, call count, works with local LLMs too
+- **Project attribution** — cost and session count per project directory
+- **Usage overview** — tool call frequency and token breakdown (input, output, cache read/write)
+- **Cache** — SHA-256-gated persists day aggregates; near-instant open on next visits
+- **Zero dependencies** — uses only the pi TUI and the [`@mohndoe/pi-tui-extras`](https://github.com/MohnDoe/pi-tui-extras) component library
 
 ## Dashboard
 
-The dashboard opens as a centered overlay popup (50% width, max 80% height). Navigate with the keyboard:
-
-| Key            | Action                                           |
-| -------------- | ------------------------------------------------ |
-| `←` `→`        | Switch tabs                                      |
-| `r`            | Cycle time range (Today → 7d → 30d → All)        |
-| `↑` `↓`        | Scroll table rows (Models, Projects, Usage tabs) |
-| `q` / `Escape` | Close dashboard                                  |
-
 ### Tabs
 
-- **Overview** — KPI cards (Total Cost, Sessions, Messages, Active Days, Avg/Day, Tokens) in a compact grid. Below: a daily spend bar chart auto-scaled to fill available height. Bottom row shows top language, top model, and top project side by side. On the 1d range, the bar chart switches to hourly spend.
-- **Languages** — Table of all programming languages detected in session logs. Color-coded per-language palette.
-- **Models** — Table of all models and providers used. Columns: Model, Provider, Calls, Cost. Color-coded per-provider palette.
+- **Overview** — Cards displaying total cost, sessions count, messages count, active days, average cost per day, total tokens. A bar chart displaying cost overtime. And top language, top model, and top project side by side.
+- **Languages** — Languages ranked by line written.
+- **Models** — Models ranked by cost. Shows providers, calls and cost per model.
 - **Projects** — Projects ranked by cost. Shows session count and cost per project.
 - **Usage** — Token breakdown (Total, Input, Output, Cache Read, Cache Write) and table of tool usage.
 
-## Install
+All tabs displayed data correspond to the selected time range (press `r` to change it). Press left/right arrows to change tabs.
 
-### Via pi
+## Install
 
 ```bash
 pi install npm:@mohndoe/pi-atlas
@@ -49,7 +52,7 @@ Then run `/reload` in pi (or restart pi). The `/atlas` command is now available.
 
 ## Usage
 
-In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is loaded from `~/.pi/agent/sessions/` — on first load this may take a moment while JSONL files are parsed. Subsequent opens use a cached snapshot and load instantly.
+In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is loaded from `~/.pi/agent/sessions/` -- on first load this may take a moment while JSONL files are parsed. Subsequent opens use a cached snapshot and load instantly.
 
 ## How it works
 

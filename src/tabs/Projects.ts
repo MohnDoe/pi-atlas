@@ -29,9 +29,14 @@ export class Projects extends Container {
   /** Build row cells once in constructor. Data is stable per Projects instance. */
   private buildRows(): void {
     if (this.isEmpty) return;
+
+    const totalCost = this.projects.reduce((sum, item) => sum + item.cost, 0);
     const maxCost = Math.max(...this.projects.map((p) => p.cost), 0);
     this.rows = this.projects.map((p) => {
-      const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+      let barPct = 0;
+      if (totalCost > 0) {
+        barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+      }
       return [
         cell.marquee(p.project, this.tui),
         cell.bar(barPct, (s) => s, "transparent"),
@@ -47,13 +52,13 @@ export class Projects extends Container {
     const borderBoxOptions: BorderBoxOptions = {
       borderStyle: "singleRounded",
       borderFn: (s) => this.theme.fg("border", s),
-      titles: [{ text: "Projects", align: "left" }],
+      titles: [{ text: this.theme.bold("Projects"), align: "left" }],
     };
     let borderBox = new BorderBox(borderBoxOptions);
     if (!this.isEmpty) {
       borderBoxOptions.titles = [
         ...borderBoxOptions.titles!,
-        { text: this.theme.fg("dim", formatNumber(this.projects.length)), align: "right" },
+        { text: this.theme.fg("muted", "by cost"), align: "right" },
       ];
       if (!this.table) {
         this.table = new SortedTable(
@@ -62,7 +67,7 @@ export class Projects extends Container {
               { header: cell.header("Name"), width: 20 },
               { header: cell.header("Share %"), width: "fill" },
               { header: cell.header("Sessions"), width: 14 },
-              { header: cell.header("Cost"), width: 8 },
+              { header: cell.header("Cost"), width: 10 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,

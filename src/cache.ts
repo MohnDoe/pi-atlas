@@ -105,6 +105,9 @@ export async function isCacheValid(cachePath: string, sessionsDir: string): Prom
   return cached.signature === currentSig;
 }
 
+/** Sleep helper for debug delay */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 // ---- Aggregate loading ----
 
 async function findAllJsonlFiles(dir: string): Promise<string[]> {
@@ -125,15 +128,24 @@ async function findAllJsonlFiles(dir: string): Promise<string[]> {
   await walk(dir);
   return result;
 }
+export interface LoadingProgress {
+  total: number;
+  done: number;
+  pct: number;
+  remainingTimeMs?: number;
+}
 
 export async function loadAggregate(
   cachePath: string,
   sessionsDir: string,
   force = false,
-  onProgress?: (p: number) => void,
+  onProgress?: (p: LoadingProgress) => void,
 ): Promise<DayAgg[]> {
+  // Debug flags: PI_ATLAS_FORCE_CACHE=1 skips cache, PI_ATLAS_SLOW_DELAY_MS=<ms> adds per-file delay
+  const effectiveForce = force || Boolean(Number(process.env["PI_ATLAS_FORCE_CACHE"] ?? 0));
+
   // Try cache first
-  if (!force) {
+  if (!effectiveForce) {
     const valid = await isCacheValid(cachePath, sessionsDir);
     if (valid) {
       const cached = await readCache(cachePath);
@@ -146,7 +158,16 @@ export async function loadAggregate(
   const map = new Map<string, DayAgg>();
   let totalCorrupt = 0;
 
+  const slowDelayMs = Number(process.env["PI_ATLAS_SLOW_DELAY_MS"] ?? 0);
+  const parseStart = performance.now();
+
   for (let i = 0; i < files.length; i++) {
+    if (slowDelayMs > 0) {
+      // Progress callback to show we're alive before first file
+      if (i === 0 && onProgress) onProgress({ total: 0, done: 0, pct: 0 });
+      await sleep(slowDelayMs);
+    }
+
     let lastCount = 0;
     const fileMap = parseFile(files[i]!, (count) => {
       lastCount = count;
@@ -161,7 +182,19 @@ export async function loadAggregate(
         map.set(date, day);
       }
     }
-    if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+    if (onProgress) {
+      const done = i + 1;
+      const elapsedMs = performance.now() - parseStart;
+      // Minimum 3 samples before showing estimate (too noisy before that)
+      const remainingTimeMs =
+        done >= 3 ? Math.round((elapsedMs / done) * (files.length - done)) : undefined;
+      onProgress({
+        done,
+        total: files.length,
+        pct: Math.round((done / files.length) * 100),
+        remainingTimeMs,
+      });
+    }
   }
 
   if (totalCorrupt > 0) {

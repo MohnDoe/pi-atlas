@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, makeTheme } from "../../__tests__/components.fixtures";
-
-import { cell } from "../cells";
-import { type ColumnDef, SortedTable } from "../SortedTable";
+import { cell } from "./cells";
+import { makeMockTUI, makeTheme } from "./components.fixtures";
+import { type ColumnDef, SortedTable } from "./SortedTable";
 
 const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();

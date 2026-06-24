@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  type LoadingProgress,
   computeSignature,
   getCacheTimestamp,
+  isCacheValid,
   loadAggregate,
   readCache,
   writeCache,
-} from "../cache";
-import { emptyDay } from "../parser";
-import { type DayAgg } from "../types";
+} from "./cache";
+import { emptyDay } from "./parser";
+import type { DayAgg } from "./types";
 
 describe("computeSignature", () => {
   let tmpDir: string;
@@ -72,10 +74,72 @@ describe("computeSignature", () => {
     expect(sig.length).toBeGreaterThan(0);
   });
 
+  it("scans nested subdirectories two levels deep", async () => {
+    const lvl1 = join(tmpDir, "project-a");
+    const lvl2 = join(lvl1, "nested");
+    await mkdir(lvl2, { recursive: true });
+    await writeFile(join(lvl2, "s1.jsonl"), "data\n");
+
+    const sig = await computeSignature(tmpDir);
+    expect(sig).toBeTruthy();
+    expect(sig.length).toBeGreaterThan(0);
+  });
+
   it("ignores non-.jsonl files", async () => {
     await writeFile(join(tmpDir, "README.md"), "docs\n");
     const sig = await computeSignature(tmpDir);
     expect(sig).toBe("");
+  });
+});
+
+describe("isCacheValid", () => {
+  let tmpDir: string;
+  let cachePath: string;
+  let sessionsDir: string;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `pi-atlas-isvalid-${Date.now()}`);
+    await mkdir(tmpDir, { recursive: true });
+    cachePath = join(tmpDir, "cache.json");
+    sessionsDir = join(tmpDir, "sessions");
+    await mkdir(sessionsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns false when cache file does not exist", async () => {
+    const valid = await isCacheValid(cachePath, sessionsDir);
+    expect(valid).toBe(false);
+  });
+
+  it("returns false when cache signature differs from current", async () => {
+    // Write a session file, compute its signature, write cache with that sig
+    await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
+    const sig = await computeSignature(sessionsDir);
+    const d = emptyDay("2026-06-08");
+    await writeCache(cachePath, sig, [d]);
+
+    const validBefore = await isCacheValid(cachePath, sessionsDir);
+    expect(validBefore).toBe(true);
+
+    // Add a session file that changes the real signature
+    await writeFile(join(sessionsDir, "s2.jsonl"), "data\n");
+
+    const valid = await isCacheValid(cachePath, sessionsDir);
+    expect(valid).toBe(false);
+  });
+
+  it("returns true when cache signature matches current", async () => {
+    // Write a session file, compute its signature, write cache with that sig
+    await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
+    const sig = await computeSignature(sessionsDir);
+    const d = emptyDay("2026-06-08");
+    await writeCache(cachePath, sig, [d]);
+
+    const valid = await isCacheValid(cachePath, sessionsDir);
+    expect(valid).toBe(true);
   });
 });
 
@@ -121,6 +185,18 @@ describe("cache read/write", () => {
     expect(payload).toBeNull();
   });
 
+  it("returns null when cached JSON lacks a signature", async () => {
+    await writeFile(cachePath, JSON.stringify({ days: [] }));
+    const payload = await readCache(cachePath);
+    expect(payload).toBeNull();
+  });
+
+  it("returns null when cached JSON has signature but days is not an array", async () => {
+    await writeFile(cachePath, JSON.stringify({ signature: "sig", days: {} }));
+    const payload = await readCache(cachePath);
+    expect(payload).toBeNull();
+  });
+
   it("returns generatedAt from valid cache", async () => {
     const d = emptyDay("2026-06-08");
     await writeCache(cachePath, "sig-abc", [d]);
@@ -135,10 +211,49 @@ describe("cache read/write", () => {
     expect(ts).toBeNull();
   });
 
-  it("returns null for corrupt cache", async () => {
-    await writeFile(cachePath, "not-json");
-    const ts = await getCacheTimestamp(cachePath);
-    expect(ts).toBeNull();
+  it("preserves hourCost values through round-trip (numeric keys become strings in JSON)", async () => {
+    const d = emptyDay("2026-06-08");
+    d.hourCost = { 10: 0.5, 14: 1.25 };
+    const days: DayAgg[] = [d];
+    await writeCache(cachePath, "sig-hc", days);
+
+    // Read raw JSON — numeric keys are stored as strings
+    const raw = await readFile(cachePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed.days[0].hourCost).toEqual({ "10": 0.5, "14": 1.25 });
+
+    // Round-trip via loadAggregate
+    const sesDir = join(tmpDir, "sessions");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    const sig = await computeSignature(sesDir);
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            ...parsed.days[0],
+            modelToProvider: {},
+          },
+        ],
+      }),
+    );
+    const loaded = await loadAggregate(cachePath, sesDir);
+    expect(loaded).toHaveLength(1);
+    // Numeric access still works via JS coercion
+    expect(loaded[0]!.hourCost[10]).toBe(0.5);
+    expect(loaded[0]!.hourCost[14]).toBe(1.25);
   });
 
   it("serializes and deserializes modelToProvider Map", async () => {
@@ -261,6 +376,90 @@ describe("loadAggregate", () => {
     expect(days[0]!.userMsgs).toBe(1);
   });
 
+  it("merges data from multiple files sharing the same date", async () => {
+    const projA = join(sessionsDir, "proj-a");
+    const projB = join(sessionsDir, "proj-b");
+    await mkdir(projA, { recursive: true });
+    await mkdir(projB, { recursive: true });
+
+    // Two files, same date, different sessions
+    await writeFile(
+      join(projA, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:01:00.000Z",
+          message: { role: "user", content: [{ type: "text", text: "hi from a" }] },
+        }),
+      ].join("\n"),
+    );
+
+    await writeFile(
+      join(projB, "s2.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s2",
+          timestamp: "2026-06-08T14:00:00.000Z",
+          cwd: "/home/doe/proj-b",
+        }),
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T14:01:00.000Z",
+          message: { role: "user", content: [{ type: "text", text: "hi from b" }] },
+        }),
+      ].join("\n"),
+    );
+
+    const days = await loadAggregate(cachePath, sessionsDir, true);
+    expect(days).toHaveLength(1);
+    expect(days[0]!.date).toBe("2026-06-08");
+    expect(days[0]!.userMsgs).toBe(2); // one from each file
+    expect(days[0]!.sessionIds.size).toBe(2); // s1 and s2 merged
+  });
+
+  it("writes a cache file on disk after parsing", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+      ].join("\n"),
+    );
+
+    await loadAggregate(cachePath, sessionsDir);
+
+    // Verify the cache file was written
+    const payload = await readCache(cachePath);
+    expect(payload).not.toBeNull();
+    expect(payload!.days).toHaveLength(1);
+    expect(payload!.days[0]!.date).toBe("2026-06-08");
+    expect(payload!.generatedAt).toBeTruthy();
+
+    // Verify the signature corresponds to the actual session files
+    const realSig = await computeSignature(sessionsDir);
+    expect(payload!.signature).toBe(realSig);
+  });
+
   it("caches results and reuses them", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
@@ -363,6 +562,73 @@ describe("loadAggregate", () => {
     }
   });
 
+  it("force=true re-parses even when valid cache exists", async () => {
+    // Create a session file
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-a",
+        }),
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:01:00.000Z",
+          message: { role: "user", content: [{ type: "text", text: "hi" }] },
+        }),
+      ].join("\n"),
+    );
+
+    // Compute the real signature for these files
+    const realSig = await computeSignature(sessionsDir);
+
+    // Write a cache file directly with the correct signature but STALE data
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: realSig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            date: "2026-06-08",
+            cost: 0,
+            inTok: 0,
+            outTok: 0,
+            crTok: 0,
+            cwTok: 0,
+            userMsgs: 9999, // stale: real data has 1
+            asstMsgs: 0,
+            toolResults: 0,
+            sessionIds: [],
+            langLines: {},
+            langEdits: {},
+            modelCost: {},
+            modelCount: {},
+            providerCost: {},
+            providerCount: {},
+            modelToProvider: {},
+            projectCost: {},
+            projectSessions: {},
+            toolCount: {},
+          },
+        ],
+      }),
+    );
+
+    // force=true should ignore the stale cache and re-parse
+    const days = await loadAggregate(cachePath, sessionsDir, true);
+    expect(days).toHaveLength(1);
+    expect(days[0]!.userMsgs).toBe(1);
+    expect(days[0]!.asstMsgs).toBe(0);
+  });
+
   it("calls onProgress during parsing", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
@@ -379,10 +645,45 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const progress: number[] = [];
+    const progress: LoadingProgress[] = [];
     await loadAggregate(cachePath, sessionsDir, false, (p) => progress.push(p));
 
-    // Should have reported some progress
+    // Should have reported some progress and reached 100%
     expect(progress.length).toBeGreaterThan(0);
+    expect(progress[progress.length - 1]!.pct).toBe(100);
+  });
+
+  it("reports intermediate progress with multiple files", async () => {
+    const projA = join(sessionsDir, "a");
+    const projB = join(sessionsDir, "b");
+    await mkdir(projA, { recursive: true });
+    await mkdir(projB, { recursive: true });
+
+    await writeFile(
+      join(projA, "s1.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    await writeFile(
+      join(projB, "s2.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s2",
+        timestamp: "2026-06-09T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+
+    const progress: LoadingProgress[] = [];
+    await loadAggregate(cachePath, sessionsDir, true, (p) => progress.push(p));
+
+    // Two files: should get 50% and 100%
+    expect(progress.map((p) => p.pct)).toEqual([50, 100]);
   });
 });

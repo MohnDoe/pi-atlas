@@ -6,6 +6,7 @@ import type {
   LangStat,
   ModelStat,
   ProjectStat,
+  ProviderStat,
   StatsSummary,
   TimeRange,
   ToolStat,
@@ -98,6 +99,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   const projectCost: Record<string, number> = {};
   const projectSessions: Record<string, Set<string>> = {};
   const toolCount: Record<string, number> = {};
+  let compactionCount = 0;
+  let compactedTokens = 0;
+  let modelChanges = 0;
+  const thinkingLevelCount: Record<string, number> = {};
 
   let modelToProvider: Map<string, string> = new Map();
 
@@ -110,10 +115,9 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     totalCacheReadTokens += day.crTok;
     totalCacheWriteTokens += day.cwTok;
 
-    modelToProvider = new Map([
-      ...(modelToProvider.size > 0 ? modelToProvider.entries() : []),
-      ...(day.modelToProvider.size > 0 ? day.modelToProvider.entries() : []),
-    ]);
+    for (const [model, provider] of day.modelToProvider) {
+      modelToProvider.set(model, provider);
+    }
 
     if (day.date === todayStr) todayCost += day.cost;
 
@@ -157,6 +161,13 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     for (const [tool, count] of Object.entries(day.toolCount)) {
       toolCount[tool] = (toolCount[tool] ?? 0) + count;
     }
+
+    compactionCount += day.compactionCount;
+    compactedTokens += day.compactedTokens;
+    modelChanges += day.modelChanges;
+    for (const [level, count] of Object.entries(day.thinkingLevelCount)) {
+      thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+    }
   }
 
   const daysActive = filtered.filter((d) => d.sessionIds.size > 0).length;
@@ -186,6 +197,10 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
 
+  const providers: ProviderStat[] = Object.entries(providerCost)
+    .map(([provider, cost]) => ({ provider, cost, calls: providerCount[provider] ?? 0 }))
+    .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
+
   const hourlySpend = buildHourlySpend(filtered, range);
 
   return {
@@ -204,6 +219,11 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     models,
     projects,
     tools,
+    providers,
+    compactionCount,
+    compactedTokens,
+    modelChanges,
+    thinkingLevelCount,
     dailySpend: fillDailySpend(filtered, range),
     hourlySpend,
   };

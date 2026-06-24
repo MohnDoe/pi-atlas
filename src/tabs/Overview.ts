@@ -6,7 +6,7 @@ import { BarChart } from "../components/BarChart";
 import { KpiCards, type KpiData } from "../components/KpiCards";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
-import { formatCost, formatNumber } from "../format";
+import { formatCost, formatModelName, formatNumber } from "../format";
 import { type StatsSummary, type TimeRange } from "../types";
 
 const SPACER_HEIGHT = 1;
@@ -39,65 +39,76 @@ export class Overview extends Container {
     const topProject = summary.projects[0];
 
     const langBox = new BorderBox({
+      borderStyle: "heavy",
       titles: [{ text: this.theme.bold("Top Language"), align: "left" }],
+      footers: topLanguage
+        ? [
+            {
+              text: this.theme.fg("muted", formatNumber(topLanguage.lines) + " ln"),
+              align: "right",
+            },
+          ]
+        : [],
       padding: { left: 1, right: 1 },
       borderFn: topLanguage
         ? langPalette.getColor(topLanguage.language)
         : (s: string) => this.theme.fg("borderMuted", s),
     });
     langBox.addChild(
-      topLanguage
-        ? new StatCard(
-            {
-              label: { text: topLanguage.language },
-              value: {
-                text: this.theme.bold(formatNumber(topLanguage.lines) + " lines"),
-                color: "text",
-              },
-            },
-            this.theme,
-          )
-        : new Text("No data"),
+      new Text(
+        topLanguage ? this.theme.fg("text", topLanguage.language) : this.theme.fg("dim", "No data"),
+        0,
+        0,
+      ),
     );
 
     const modelBox = new BorderBox({
+      borderStyle: "heavy",
       titles: [{ text: this.theme.bold("Top model"), align: "left" }],
+      footers: topModel
+        ? [
+            {
+              text: this.theme.fg("muted", formatCost(topModel.cost)),
+              align: "right",
+            },
+          ]
+        : [],
       padding: { left: 1, right: 1 },
-      borderFn: modelPalette.getColor(topModel?.provider || ""),
+      borderFn: topModel
+        ? modelPalette.getColor(topModel.provider || "")
+        : (s: string) => this.theme.fg("borderMuted", s),
     });
     modelBox.addChild(
-      topModel
-        ? new StatCard(
-            {
-              label: { text: topModel.model },
-              value: {
-                text: this.theme.bold(formatCost(topModel.cost)),
-                color: "text",
-              },
-            },
-            this.theme,
-          )
-        : new Text("No data."),
+      new Text(
+        topModel
+          ? this.theme.fg("text", formatModelName(topModel.model))
+          : this.theme.fg("dim", "No data"),
+        0,
+        0,
+      ),
     );
 
     const projectBox = new BorderBox({
+      borderStyle: "heavy",
       titles: [{ text: this.theme.bold("Top project"), align: "left" }],
-      padding: { left: 1, right: 1 },
-      borderFn: (s: string) => this.theme.fg("borderMuted", s),
-    });
-    projectBox.addChild(
-      topProject
-        ? new StatCard(
+      footers: topProject
+        ? [
             {
-              label: { text: topProject.project },
-              value: {
-                text: this.theme.bold(formatCost(topProject.cost)),
-                color: "text",
-              },
+              text: this.theme.fg("muted", formatCost(topProject.cost)),
+              align: "right",
             },
-            this.theme,
-          )
-        : new Text("No data."),
+          ]
+        : [],
+      padding: { left: 1, right: 1 },
+      borderFn: (s: string) => this.theme.fg("text", s),
+    });
+
+    projectBox.addChild(
+      new Text(
+        topProject ? this.theme.fg("text", topProject.project) : this.theme.fg("dim", "No data"),
+        0,
+        0,
+      ),
     );
 
     this.topCards = new GridRow([langBox, modelBox, projectBox], [33, 33, 34]);

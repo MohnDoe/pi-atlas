@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { makeTheme } from "../../__tests__/components.fixtures";
-import { TabBar } from "../TabBar";
+import { makeTheme } from "./components.fixtures";
+import { TabBar } from "./TabBar";
 
 describe("TabBar", () => {
   const tabs = ["Overview", "Languages", "Models", "Projects + Tools"];

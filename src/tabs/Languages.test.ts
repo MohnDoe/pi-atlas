@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { makeMockTUI, testPalette, makeTheme } from "../../__tests__/components.fixtures";
-import { Languages } from "../Languages";
-import { type LangStat } from "../../types";
+import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
+import { type LangStat } from "../types";
+import { Languages } from "./Languages";
 
 describe("Languages", () => {
   const mockTui = makeMockTUI();
@@ -18,7 +18,6 @@ describe("Languages", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Languages");
-    expect(lines[0]).toContain(languages.length.toString());
 
     // Headers
     expect(text).toContain("Name");
@@ -49,9 +48,6 @@ describe("Languages", () => {
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Languages");
-    // don't display 0 counter
-    expect(lines[0]).not.toContain("0");
-
     expect(text).toContain("No language data for this time range");
   });
 
