@@ -6,7 +6,7 @@ import { BarChart } from "../components/BarChart";
 import { KpiCards, type KpiData } from "../components/KpiCards";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
-import { formatCost, formatNumber } from "../format";
+import { formatCost, formatModelName, formatNumber } from "../format";
 import { type StatsSummary, type TimeRange } from "../types";
 
 const SPACER_HEIGHT = 1;
@@ -80,7 +80,9 @@ export class Overview extends Container {
     });
     modelBox.addChild(
       new Text(
-        topModel ? this.theme.fg("text", topModel.model) : this.theme.fg("dim", "No data"),
+        topModel
+          ? this.theme.fg("text", formatModelName(topModel.model))
+          : this.theme.fg("dim", "No data"),
         0,
         0,
       ),
