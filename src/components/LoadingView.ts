@@ -8,7 +8,7 @@ import { renderBar } from "./shared/Bar";
 
 function formatRemainingTime(ms: number): string {
   if (ms < 60000)
-    return `~${new Intl.NumberFormat("en-EN", {
+    return `~${new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
       style: "decimal",

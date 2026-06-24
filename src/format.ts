@@ -137,13 +137,13 @@ export const MONTH_NAMES = [
   "Dec",
 ];
 
-const numberFormatter = new Intl.NumberFormat("en-EN", {
+const numberFormatter = new Intl.NumberFormat("en-US", {
   style: "decimal",
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 });
 
-const usdFormatter = new Intl.NumberFormat("en-EN", {
+const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 0,
