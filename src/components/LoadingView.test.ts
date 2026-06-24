@@ -64,4 +64,53 @@ describe("LoadingView", () => {
     const lines = lv.render(80);
     expect(lines[2]).toContain("~0s remaining · 20/20");
   });
+
+  describe("handleInput", () => {
+    it("calls onClose on Escape key", () => {
+      let called = false;
+      const lv = new LoadingView("test", theme, () => {
+        called = true;
+      });
+      lv.handleInput("\x1b");
+      expect(called).toBe(true);
+    });
+
+    it("calls onClose on 'q'", () => {
+      let called = false;
+      const lv = new LoadingView("test", theme, () => {
+        called = true;
+      });
+      lv.handleInput("q");
+      expect(called).toBe(true);
+    });
+
+    it("calls onClose on 'Q'", () => {
+      let called = false;
+      const lv = new LoadingView("test", theme, () => {
+        called = true;
+      });
+      lv.handleInput("Q");
+      expect(called).toBe(true);
+    });
+
+    it("does not call onClose on other keys", () => {
+      let called = false;
+      const lv = new LoadingView("test", theme, () => {
+        called = true;
+      });
+      lv.handleInput("a");
+      lv.handleInput("Enter");
+      lv.handleInput("\x1b[C"); // right arrow
+      expect(called).toBe(false);
+    });
+
+    it("does not throw when onClose is null", () => {
+      const lv = new LoadingView("test", theme, null);
+      expect(() => {
+        lv.handleInput("\x1b");
+        lv.handleInput("q");
+        lv.handleInput("Q");
+      }).not.toThrow();
+    });
+  });
 });
