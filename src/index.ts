@@ -38,28 +38,29 @@ export default function (pi: ExtensionAPI) {
       const updateLabel = lastUpdate ? `Last update : ${formatCacheTimestamp(lastUpdate)}` : null;
 
       // Phase 1: Show loading, parse session logs
-      let days: Awaited<ReturnType<typeof loadAggregate>>;
+      let days: Awaited<ReturnType<typeof loadAggregate> | undefined>;
       try {
-        days = await ctx.ui.custom<Awaited<ReturnType<typeof loadAggregate>>>(
-          (tui, theme, _kb, done) => {
-            const loadingView = new LoadingView("Parsing session logs...", theme);
+        days = await ctx.ui.custom<typeof days>((tui, theme, _kb, done) => {
+          const loadingView = new LoadingView("Parsing session logs...", theme, () =>
+            done(undefined),
+          );
 
-            loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
-              loadingView.setProgress(p);
-              tui.requestRender();
-            })
-              .then((result) => done(result))
-              .catch(() => done([]));
+          loadAggregate(CACHE_PATH, SESSIONS_DIR, false, (p) => {
+            loadingView.setProgress(p);
+            tui.requestRender();
+          })
+            .then((result) => done(result))
+            .catch(() => done([]));
 
-            return loadingView;
-          },
-          overlayOpts,
-        );
+          return loadingView;
+        }, overlayOpts);
       } catch (e) {
         ctx.ui.notify("Failed to parse session logs", "error");
         ctx.ui.notify(e as string, "error");
         return;
       }
+
+      if (days === undefined) return;
 
       // Phase 2: Show dashboard (handles empty state internally)
       const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];

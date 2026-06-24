@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Spacer, Text } from "@earendil-works/pi-tui";
+import { matchesKey, Spacer, Text } from "@earendil-works/pi-tui";
 import { BorderBox } from "@mohndoe/pi-tui-extras";
-import { alignInWidth } from "@mohndoe/pi-tui-extras/src/core/align";
+import { alignInWidthLR } from "@mohndoe/pi-tui-extras/src/core/align";
 import pkg from "../../package.json" with { type: "json" };
 import type { LoadingProgress } from "../cache";
 import { renderBar } from "./shared/Bar";
@@ -13,11 +13,12 @@ export class LoadingView extends BorderBox {
     done: 0,
   };
   private bar: Text;
-  private progressText: Text;
+  private loadingText: Text;
 
   constructor(
-    message = "Parsing session logs...",
+    private message = "Parsing session logs...",
     private theme: Theme,
+    private onClose: (() => void) | null = null,
   ) {
     super({
       titles: [
@@ -25,19 +26,20 @@ export class LoadingView extends BorderBox {
       ],
       padding: {
         top: 1,
-        bottom: 1,
+        bottom: 0,
         left: 1,
         right: 1,
       },
     });
 
     this.bar = new Text("", 0, 0);
-    this.progressText = new Text("", 0, 0);
+    this.loadingText = new Text(this.theme.fg("text", message), 0, 0);
 
-    this.addChild(new Text(this.theme.fg("text", message), 0, 0));
-    this.addChild(new Spacer(1));
+    this.addChild(this.loadingText);
     this.addChild(this.bar);
-    this.addChild(this.progressText);
+
+    this.addChild(new Spacer(1));
+    this.addChild(new Text(this.theme.fg("dim", "Esc/q to cancel and close"), 0, 0));
   }
 
   setProgress(p: LoadingProgress): void {
@@ -51,22 +53,31 @@ export class LoadingView extends BorderBox {
       renderBar(
         innerWidth,
         this.progress.pct,
-        (s) => this.theme.fg("success", s),
-        (s) => this.theme.fg("dim", s),
+        (s) => this.theme.bold(this.theme.fg("success", s)),
+        (s) => this.theme.fg("muted", s),
         "█",
         "░",
       ),
     );
 
-    const progressText = this.progress.done + this.theme.fg("dim", "/" + this.progress.total);
-    this.progressText.setText(alignInWidth(progressText, innerWidth, "right"));
+    const progressSplitText = this.progress.done + this.theme.fg("dim", "/" + this.progress.total);
+    this.loadingText.setText(
+      alignInWidthLR(this.theme.fg("text", this.message), progressSplitText, innerWidth),
+    );
 
     return super.render(width);
+  }
+
+  override handleInput(data: string): void {
+    if (matchesKey(data, "escape") || data === "q" || data === "Q") {
+      this.onClose?.();
+      return;
+    }
   }
 
   override invalidate(): void {
     super.invalidate();
     this.bar.invalidate();
-    this.progressText.invalidate();
+    this.loadingText.invalidate();
   }
 }
