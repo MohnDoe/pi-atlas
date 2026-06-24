@@ -29,9 +29,14 @@ export class Projects extends Container {
   /** Build row cells once in constructor. Data is stable per Projects instance. */
   private buildRows(): void {
     if (this.isEmpty) return;
+
+    const totalCost = this.projects.reduce((sum, item) => sum + item.cost, 0);
     const maxCost = Math.max(...this.projects.map((p) => p.cost), 0);
     this.rows = this.projects.map((p) => {
-      const barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+      let barPct = 0;
+      if (totalCost > 0) {
+        barPct = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+      }
       return [
         cell.marquee(p.project, this.tui),
         cell.bar(barPct, (s) => s, "transparent"),

@@ -32,9 +32,13 @@ export class Languages extends Container {
    *  a new Languages is created whenever Dashboard.buildTabs() runs (range switch). */
   private buildRows(): void {
     if (this.isEmpty) return;
+    const totalLines = this.languages.reduce((sum, item) => sum + item.lines, 0);
     const maxLines = Math.max(...this.languages.map((l) => l.lines), 0);
     this.rows = this.languages.map((l) => {
-      const barPct = maxLines > 0 ? (l.lines / maxLines) * 100 : 0;
+      let barPct = 0;
+      if (totalLines > 0) {
+        barPct = maxLines > 0 ? (l.lines / maxLines) * 100 : 0;
+      }
       return [
         cell.marquee(l.language, this.tui),
         cell.bar(barPct, this.palette.getColor(l.language), "transparent"),
