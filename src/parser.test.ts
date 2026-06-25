@@ -1070,71 +1070,7 @@ describe("mergeDay", () => {
     expect(a.modelCount).toEqual({ "deepseek-v4": 5, "gpt-5": 1 });
   });
 
-  it("maps model to its provider", () => {
-    const a = parseSessionLogEntry({
-      type: "message",
-      id: "msg-1",
-      parentId: "prev",
-      timestamp: "2026-06-08T10:05:00.000Z",
-      message: mkAsst({
-        content: [{ type: "text", text: "hello" }],
-        provider: "deepseek",
-        model: "deepseek-v4-pro",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
-        },
-      }),
-    })!;
-    const b = parseSessionLogEntry({
-      type: "message",
-      id: "msg-2",
-      parentId: "msg-1",
-      timestamp: "2026-06-08T10:05:01.000Z",
-      message: mkAsst({
-        content: [{ type: "text", text: "??" }],
-        provider: "deepseek",
-        model: "deepseek-v4-pro",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
-        },
-      }),
-    })!;
 
-    const c = parseSessionLogEntry({
-      type: "message",
-      id: "msg-3",
-      parentId: "msg-2",
-      timestamp: "2026-06-08T10:05:02.000Z",
-      message: mkAsst({
-        content: [{ type: "text", text: "OK" }],
-        provider: "openai",
-        model: "gpt-4",
-        usage: {
-          input: 1000,
-          output: 200,
-          cacheRead: 100,
-          cacheWrite: 0,
-          totalTokens: 1300,
-          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
-        },
-      }),
-    })!;
-
-    mergeDay(a, b);
-    mergeDay(a, c);
-    fileModelToProvider;
-    // modelToProvider no longer lives on DayAgg — mergeDay doesn't handle it
-  });
 
   it("merges provider cost and count records", () => {
     const a = emptyDay("2026-06-08");
