@@ -20,10 +20,15 @@ export interface DayAgg {
   projectCost: Record<string, number>;
   projectSessions: Record<string, Set<string>>;
   toolCount: Record<string, number>;
+  /** Accumulated cost per skill name from assistant messages. */
   skillCost: Record<string, number>;
+  /** Invocation count per skill name (detected from user message skill tags). */
   skillCount: Record<string, number>;
+  /** Total tokens attributed to each skill. */
   skillTokens: Record<string, number>;
+  /** Total tool calls attributed to each skill. */
   skillToolCount: Record<string, number>;
+  /** Per-tool breakdown of tool calls per skill. */
   skillToolBreakdown: Record<string, Record<string, number>>;
   // New fields tracking pi session entry types beyond session+message
   compactionCount: number;
@@ -68,14 +73,23 @@ export interface ToolStat {
   count: number;
 }
 
+/** Aggregated stats for one skill across the selected time range. */
 export interface SkillStat {
+  /** Skill name (from the SKILL.md location path or the skill tag name). */
   name: string;
+  /** Total cost attributed to this skill. */
   cost: number;
+  /** Number of times the skill was invoked (user messages containing a skill tag). */
   invocations: number;
+  /** Total tokens (input+output+cache) attributed to this skill. */
   tokens: number;
+  /** Tool call statistics for this skill. */
   toolCalls: {
+    /** Total tool calls attributed to this skill across all invocations. */
     total: number;
+    /** Average tool calls per invocation. */
     avg: number;
+    /** Breakdown of tool calls by tool name. */
     calls: Record<string, number>;
   };
 }
@@ -107,6 +121,7 @@ export interface StatsSummary {
   compactedTokens: number;
   modelChanges: number;
   thinkingLevelCount: Record<string, number>;
+  /** Per-skill aggregated stats, sorted by cost descending. */
   skills: SkillStat[];
   dailySpend: DaySpend[];
   hourlySpend: HourSpend[];

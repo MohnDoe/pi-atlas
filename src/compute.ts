@@ -75,11 +75,11 @@ function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
 }
 
 function buildSkills(
-  skillCost: Record<string, number>,
-  skillCount: Record<string, number>,
-  skillTokens: Record<string, number>,
-  skillToolCount: Record<string, number>,
-  skillToolBreakdown: Record<string, Record<string, number>>,
+  skillCost: DayAgg["skillCost"],
+  skillCount: DayAgg["skillCount"],
+  skillTokens: DayAgg["skillTokens"],
+  skillToolCount: DayAgg["skillToolCount"],
+  skillToolBreakdown: DayAgg["skillToolBreakdown"],
 ): SkillStat[] {
   return Object.entries(skillCost)
     .map(([name, cost]) => ({
@@ -129,11 +129,11 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   let compactedTokens = 0;
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
-  const skillCost: Record<string, number> = {};
-  const skillCount: Record<string, number> = {};
-  const skillTokens: Record<string, number> = {};
-  const skillToolCount: Record<string, number> = {};
-  const skillToolBreakdown: Record<string, Record<string, number>> = {};
+  const skillCost: DayAgg["skillCost"] = {};
+  const skillCount: DayAgg["skillCount"] = {};
+  const skillTokens: DayAgg["skillTokens"] = {};
+  const skillToolCount: DayAgg["skillToolCount"] = {};
+  const skillToolBreakdown: DayAgg["skillToolBreakdown"] = {};
 
   let modelToProvider: Map<string, string> = new Map();
 

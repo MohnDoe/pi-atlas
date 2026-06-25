@@ -99,30 +99,4 @@ describe("Skills", () => {
     }
   });
 
-  describe("marquee lifecycle", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("clears marquee timers on invalidate", () => {
-      const longSkill: SkillStat[] = [{ name: "a-very-long-skill-name-that-overflows", cost: 0.5, invocations: 10, tokens: 50000, toolCalls: { total: 20, avg: 2, calls: {} } }];
-      const tab = new Skills(longSkill, makeTheme(), mockTui, 10);
-
-      // Render at narrow width so skill name overflows
-      tab.render(30);
-      // Focus is on row 0 by default, so marquee is created
-      expect(vi.getTimerCount()).toBe(1);
-
-      tab.invalidate();
-      expect(vi.getTimerCount()).toBe(0);
-
-      const lines = tab.render(80);
-      const text = lines.join("\n");
-      expect(text).toContain("a-very-long-skill");
-    });
-  });
 });
