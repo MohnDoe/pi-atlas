@@ -33,7 +33,6 @@ export type ModelToProvider = Map<string, string>;
 export interface SummarizeOptions {
   days: DayAgg[];
   range: TimeRange;
-  modelToProvider: ModelToProvider;
 }
 
 export interface DaySpend {

@@ -4,7 +4,7 @@ import { ColorPalette } from "../colorPalette";
 import { cell, type CellComponent } from "../components/cells";
 import { SortedTable } from "../components/SortedTable";
 import { formatCost, formatModelName, formatNumber } from "../format";
-import { type ModelStat } from "../types";
+import { type ModelStat, type ModelToProvider } from "../types";
 import { BorderBox } from "@mohndoe/pi-tui-extras";
 
 const EMPTY_MESSAGE = "No model data for this time range";
@@ -17,6 +17,7 @@ export class Models extends Container {
 
   constructor(
     private models: ModelStat[],
+    private modelToProvider: ModelToProvider,
     theme: Theme,
     private palette: ColorPalette,
     private tui: TUI,
@@ -42,8 +43,8 @@ export class Models extends Container {
       }
       return [
         cell.marquee(formatModelName(m.model), this.tui),
-        cell.text(this.theme.fg("muted", m.provider ?? "Unknown")),
-        cell.bar(barPct, this.palette.getColor(m.provider ?? "Unknown"), "transparent"),
+        cell.text(this.theme.fg("muted", this.modelToProvider.get(m.model) ?? "Unknown")),
+        cell.bar(barPct, this.palette.getColor(this.modelToProvider.get(m.model) ?? "Unknown"), "transparent"),
         cell.text(this.theme.fg("muted", formatNumber(m.calls))),
         cell.text(m.cost > 0 ? this.theme.bold(formatCost(m.cost)) : this.theme.fg("dim", "Free")),
       ];

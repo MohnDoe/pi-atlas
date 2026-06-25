@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeMockTUI, makeRangeSelector, makeTheme } from "../components/components.fixtures";
 import { Dashboard } from "../components/Dashboard";
+import { summarize } from "../compute";
 import { parseFile } from "../parser";
-import type { DayAgg } from "../types";
+import type { DayAgg, TimeRange } from "../types";
 
 const mockTui = makeMockTUI();
 
@@ -83,9 +84,13 @@ describe("JSONL → Dashboard", () => {
     const days = toDays(parsed);
     expect(days.length).toBeGreaterThan(0);
 
-    // Render dashboard — Dashboard pre-computes summaries internally
+    // Pre-compute summaries for all ranges
+    const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
+    const summaries = new Map(ranges.map((r) => [r, summarize({ days, range: r })] as const));
+
+    // Render dashboard
     const dash = new Dashboard(
-      days,
+      summaries,
       parsed.modelToProvider,
       makeTheme(),
       mockTui,
@@ -155,8 +160,11 @@ describe("JSONL → Dashboard", () => {
     const parsed = parseFile(filePath);
     const days = toDays(parsed);
 
+    const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
+    const summaries = new Map(ranges.map((r) => [r, summarize({ days, range: r })] as const));
+
     const dash = new Dashboard(
-      days,
+      summaries,
       parsed.modelToProvider,
       makeTheme(),
       mockTui,

@@ -7,7 +7,6 @@ import type {
   ModelStat,
   ProjectStat,
   ProviderStat,
-  ModelToProvider,
   StatsSummary,
   SummarizeOptions,
   TimeRange,
@@ -76,7 +75,7 @@ function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
 }
 
 export function summarize(opts: SummarizeOptions): StatsSummary {
-  const { days, range, modelToProvider } = opts;
+  const { days, range } = opts;
   const filtered = daysInRange(days, range);
 
   const todayStr = dateFromISOString(new Date().toISOString());
@@ -177,7 +176,6 @@ export function summarize(opts: SummarizeOptions): StatsSummary {
 
   const models: ModelStat[] = Object.entries(modelCost)
     .map(([model, cost]) => ({
-      provider: modelToProvider.get(model) || undefined,
       model,
       cost,
       calls: modelCount[model] ?? 0,
