@@ -2,6 +2,7 @@ import type {
   AssistantMessage as PiAssistantMessage,
   ToolResultMessage as PiToolResultMessage,
   ToolCall,
+  UserMessage,
 } from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
@@ -15,6 +16,7 @@ import { mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  activeSkill,
   emptyDay,
   mergeDay,
   parseAssistantMessage,
@@ -78,6 +80,11 @@ function tc(name: string, args?: Record<string, unknown>): ToolCall {
   return { type: "toolCall", id: "c1", name, arguments: args ?? {} };
 }
 
+// Helper: minimal UserMessage
+function mkUser(content: string): UserMessage {
+  return { role: "user", content, timestamp: 1700000000000 };
+}
+
 describe("emptyDay", () => {
   it("creates a zeroed DayAgg with the given date", () => {
     const day = emptyDay("2026-06-09");
@@ -102,6 +109,11 @@ describe("emptyDay", () => {
     expect(day.compactedTokens).toBe(0);
     expect(day.modelChanges).toBe(0);
     expect(day.thinkingLevelCount).toEqual({});
+    expect(day.skillCost).toEqual({});
+    expect(day.skillCount).toEqual({});
+    expect(day.skillTokens).toEqual({});
+    expect(day.skillToolCount).toEqual({});
+    expect(day.skillToolBreakdown).toEqual({});
     expect(day.hourCost).toEqual({});
   });
 
@@ -114,11 +126,58 @@ describe("emptyDay", () => {
 });
 
 describe("parseUserMessage", () => {
+  beforeEach(() => {
+    activeSkill.current = null;
+  });
+
   it("returns a DayAgg with userMsgs: 1", () => {
-    const day = parseUserMessage();
+    const day = parseUserMessage(mkUser("hello"));
     expect(day.userMsgs).toBe(1);
     expect(day.asstMsgs).toBe(0);
     expect(day.toolResults).toBe(0);
+  });
+
+  it("detects skill tag and increments skillCount", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser('<skill name="tdd">implement the parser</skill>'));
+    expect(activeSkill.current).toBe("tdd");
+    expect(day.skillCount).toEqual({ tdd: 1 });
+    expect(day.userMsgs).toBe(1);
+  });
+
+  it("detects skill tag case-insensitively", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser('<SKILL NAME="TDD">do it</SKILL>'));
+    expect(activeSkill.current).toBe("TDD");
+    expect(day.skillCount).toEqual({ TDD: 1 });
+  });
+
+  it("clears activeSkill when no skill tag", () => {
+    activeSkill.current = "tdd";
+    const day = parseUserMessage(mkUser("normal message"));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
+  });
+
+  it("replaces activeSkill when new skill tag appears", () => {
+    activeSkill.current = "writing";
+    const day = parseUserMessage(mkUser('<skill name="tdd">implement</skill>'));
+    expect(activeSkill.current).toBe("tdd");
+    expect(day.skillCount).toEqual({ tdd: 1 });
+  });
+
+  it("ignores malformed skill tag", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser('<skill name=>no value</skill>'));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
+  });
+
+  it("ignores skill tag with missing name attribute", () => {
+    activeSkill.current = "existing";
+    const day = parseUserMessage(mkUser('<skill>no name attr</skill>'));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
   });
 });
 
@@ -149,6 +208,29 @@ describe("parseToolResultMessage", () => {
     const msg = mkToolResult({ toolName: "test\r\t\0\u200Btool" });
     const day = parseToolResultMessage(msg);
     expect(day.toolCount["testtool"]).toBe(1);
+  });
+
+  it("attributes tool call to active skill", () => {
+    activeSkill.current = "tdd";
+    const msg = mkToolResult({ toolName: "edit" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolCount["tdd"]).toBe(1);
+    expect(day.skillToolBreakdown["tdd"]).toEqual({ edit: 1 });
+  });
+
+  it("does not attribute tool call when no active skill", () => {
+    activeSkill.current = null;
+    const msg = mkToolResult({ toolName: "bash" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolCount).toEqual({});
+    expect(day.skillToolBreakdown).toEqual({});
+  });
+
+  it("uses sanitized tool name in skill tool breakdown", () => {
+    activeSkill.current = "tdd";
+    const msg = mkToolResult({ toolName: "ls -la\n" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolBreakdown["tdd"]?.["ls -la"]).toBe(1);
   });
 });
 
@@ -480,6 +562,56 @@ describe("parseAssistantMessage", () => {
     expect(day.providerCost["deepseek"]).toBe(0.003);
     expect(day.providerCount["deepseek"]).toBe(1);
     expect(day.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+  });
+
+  it("attributes cost and tokens to active skill", () => {
+    activeSkill.current = "tdd";
+    const msg = mkAsst({
+      content: [{ type: "text", text: "hello" }],
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 10,
+        cacheWrite: 5,
+        totalTokens: 165,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.02 },
+      },
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillCost["tdd"]).toBe(0.02);
+    expect(day.skillTokens["tdd"]).toBe(165);
+  });
+
+  it("attributes tool calls to active skill from content blocks", () => {
+    activeSkill.current = "writing";
+    const msg = mkAsst({
+      content: [
+        tc("read", { path: "/f" }),
+        { ...tc("bash", { command: "ls" }), id: "c2" },
+      ],
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillToolCount["writing"]).toBe(2);
+    expect(day.skillToolBreakdown["writing"]).toEqual({ read: 1, bash: 1 });
+  });
+
+  it("does not attribute cost/tokens when no active skill", () => {
+    activeSkill.current = null;
+    const msg = mkAsst({
+      content: [{ type: "text", text: "hello" }],
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 150,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
+      },
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillCost).toEqual({});
+    expect(day.skillTokens).toEqual({});
+    expect(day.skillToolCount).toEqual({});
   });
 });
 
@@ -1201,6 +1333,55 @@ describe("mergeDay", () => {
     mergeDay(a, b);
     expect(a.modelToProvider.get("gpt-5")).toBe("openai");
   });
+
+  it("merges skillCost, skillCount, skillTokens, skillToolCount across updates", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay(""),
+      skillCost: { tdd: 0.5, writing: 0.3 },
+      skillCount: { tdd: 2, writing: 1 },
+      skillTokens: { tdd: 500, writing: 200 },
+      skillToolCount: { tdd: 3, writing: 1 },
+    };
+    const c: DayAgg = {
+      ...emptyDay(""),
+      skillCost: { tdd: 0.2 },
+      skillCount: { tdd: 1 },
+      skillTokens: { tdd: 100 },
+      skillToolCount: { tdd: 2 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.skillCost).toEqual({ tdd: 0.7, writing: 0.3 });
+    expect(a.skillCount).toEqual({ tdd: 3, writing: 1 });
+    expect(a.skillTokens).toEqual({ tdd: 600, writing: 200 });
+    expect(a.skillToolCount).toEqual({ tdd: 5, writing: 1 });
+  });
+
+  it("deep-merges skillToolBreakdown across updates", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay(""),
+      skillToolBreakdown: {
+        tdd: { read: 2, edit: 1 },
+        writing: { bash: 1 },
+      },
+    };
+    const c: DayAgg = {
+      ...emptyDay(""),
+      skillToolBreakdown: {
+        tdd: { edit: 2, write: 1 },
+      },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.skillToolBreakdown).toEqual({
+      tdd: { read: 2, edit: 3, write: 1 },
+      writing: { bash: 1 },
+    });
+  });
 });
 
 describe("parseFile", () => {
@@ -1450,6 +1631,46 @@ describe("parseFile", () => {
     const dayB = mapB.get("2026-06-08")!;
     expect(Object.keys(dayB.projectCost)).toEqual(["proj-beta"]);
     expect(dayB.projectCost["proj-beta"]).toBe(0.25);
+  });
+
+  it("does not leak activeSkill across separate files", async () => {
+    const fileA = join(tmpDir, "file-a.jsonl");
+    await writeFile(
+      fileA,
+      [
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          message: mkUser('<skill name="tdd">test</skill>'),
+        }),
+      ].join("\n"),
+    );
+
+    const fileB = join(tmpDir, "file-b.jsonl");
+    await writeFile(
+      fileB,
+      [
+        JSON.stringify({
+          type: "message",
+          id: "m2",
+          parentId: "p",
+          timestamp: "2026-06-08T11:00:00.000Z",
+          message: mkUser("no skill here"),
+        }),
+      ].join("\n"),
+    );
+
+    // Parse file with skill — sets activeSkill during parsing
+    parseFile(fileA);
+
+    // Parse file without skill — should reset activeSkill at start
+    // so the non-skill message clears it rather than attributing to "tdd"
+    const mapB = parseFile(fileB);
+    const dayB = mapB.get("2026-06-08")!;
+    // The second file's user message has no skill tag, so no skillCount
+    expect(dayB.skillCount).toEqual({});
   });
 
   it("silently skips unknown entry types (branch_summary, custom, label, session_info)", async () => {

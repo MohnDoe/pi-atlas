@@ -7,6 +7,7 @@ import type {
   ModelStat,
   ProjectStat,
   ProviderStat,
+  SkillStat,
   StatsSummary,
   TimeRange,
   ToolStat,
@@ -73,6 +74,31 @@ function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
   return hourly;
 }
 
+function buildSkills(
+  skillCost: Record<string, number>,
+  skillCount: Record<string, number>,
+  skillTokens: Record<string, number>,
+  skillToolCount: Record<string, number>,
+  skillToolBreakdown: Record<string, Record<string, number>>,
+): SkillStat[] {
+  return Object.entries(skillCost)
+    .map(([name, cost]) => ({
+      name,
+      cost,
+      invocations: skillCount[name] ?? 0,
+      tokens: skillTokens[name] ?? 0,
+      toolCalls: {
+        total: skillToolCount[name] ?? 0,
+        avg:
+          skillCount[name] > 0
+            ? (skillToolCount[name] ?? 0) / skillCount[name]
+            : 0,
+        calls: skillToolBreakdown[name] ?? {},
+      },
+    }))
+    .sort((a, b) => b.cost - a.cost);
+}
+
 export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   const filtered = daysInRange(days, range);
 
@@ -103,6 +129,11 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   let compactedTokens = 0;
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
+  const skillCost: Record<string, number> = {};
+  const skillCount: Record<string, number> = {};
+  const skillTokens: Record<string, number> = {};
+  const skillToolCount: Record<string, number> = {};
+  const skillToolBreakdown: Record<string, Record<string, number>> = {};
 
   let modelToProvider: Map<string, string> = new Map();
 
@@ -168,6 +199,27 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     for (const [level, count] of Object.entries(day.thinkingLevelCount)) {
       thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
     }
+
+    // merge skills
+    for (const [skill, cost] of Object.entries(day.skillCost)) {
+      skillCost[skill] = (skillCost[skill] ?? 0) + cost;
+    }
+    for (const [skill, count] of Object.entries(day.skillCount)) {
+      skillCount[skill] = (skillCount[skill] ?? 0) + count;
+    }
+    for (const [skill, tokens] of Object.entries(day.skillTokens)) {
+      skillTokens[skill] = (skillTokens[skill] ?? 0) + tokens;
+    }
+    for (const [skill, count] of Object.entries(day.skillToolCount)) {
+      skillToolCount[skill] = (skillToolCount[skill] ?? 0) + count;
+    }
+    for (const [skill, tools] of Object.entries(day.skillToolBreakdown)) {
+      if (!skillToolBreakdown[skill]) skillToolBreakdown[skill] = {};
+      for (const [tool, count] of Object.entries(tools)) {
+        skillToolBreakdown[skill][tool] =
+          (skillToolBreakdown[skill][tool] ?? 0) + count;
+      }
+    }
   }
 
   const daysActive = filtered.filter((d) => d.sessionIds.size > 0).length;
@@ -224,6 +276,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     compactedTokens,
     modelChanges,
     thinkingLevelCount,
+    skills: buildSkills(skillCost, skillCount, skillTokens, skillToolCount, skillToolBreakdown),
     dailySpend: fillDailySpend(filtered, range),
     hourlySpend,
   };

@@ -20,6 +20,11 @@ export interface DayAgg {
   projectCost: Record<string, number>;
   projectSessions: Record<string, Set<string>>;
   toolCount: Record<string, number>;
+  skillCost: Record<string, number>;
+  skillCount: Record<string, number>;
+  skillTokens: Record<string, number>;
+  skillToolCount: Record<string, number>;
+  skillToolBreakdown: Record<string, Record<string, number>>;
   // New fields tracking pi session entry types beyond session+message
   compactionCount: number;
   compactedTokens: number;
@@ -63,6 +68,18 @@ export interface ToolStat {
   count: number;
 }
 
+export interface SkillStat {
+  name: string;
+  cost: number;
+  invocations: number;
+  tokens: number;
+  toolCalls: {
+    total: number;
+    avg: number;
+    calls: Record<string, number>;
+  };
+}
+
 export interface ProviderStat {
   provider: string;
   cost: number;
@@ -90,6 +107,7 @@ export interface StatsSummary {
   compactedTokens: number;
   modelChanges: number;
   thinkingLevelCount: Record<string, number>;
+  skills: SkillStat[];
   dailySpend: DaySpend[];
   hourlySpend: HourSpend[];
 }
