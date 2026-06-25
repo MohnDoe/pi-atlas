@@ -119,7 +119,7 @@ describe("isCacheValid", () => {
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
     const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, sig, [d]);
+    await writeCache(cachePath, sig, [d], new Map());
 
     const validBefore = await isCacheValid(cachePath, sessionsDir);
     expect(validBefore).toBe(true);
@@ -136,7 +136,7 @@ describe("isCacheValid", () => {
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
     const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, sig, [d]);
+    await writeCache(cachePath, sig, [d], new Map());
 
     const valid = await isCacheValid(cachePath, sessionsDir);
     expect(valid).toBe(true);
@@ -162,7 +162,7 @@ describe("cache read/write", () => {
     d.cost = 1.5;
     d.sessionIds = new Set(["s1"]);
     const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-abc", days);
+    await writeCache(cachePath, "sig-abc", days, new Map());
 
     const payload = await readCache(cachePath);
     expect(payload).toBeDefined();
@@ -199,7 +199,7 @@ describe("cache read/write", () => {
 
   it("returns generatedAt from valid cache", async () => {
     const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, "sig-abc", [d]);
+    await writeCache(cachePath, "sig-abc", [d], new Map());
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).not.toBeNull();
     // generatedAt is an ISO string
@@ -215,7 +215,7 @@ describe("cache read/write", () => {
     const d = emptyDay("2026-06-08");
     d.hourCost = { 10: 0.5, 14: 1.25 };
     const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-hc", days);
+    await writeCache(cachePath, "sig-hc", days, new Map());
 
     // Read raw JSON — numeric keys are stored as strings
     const raw = await readFile(cachePath, "utf-8");
@@ -241,38 +241,35 @@ describe("cache read/write", () => {
       JSON.stringify({
         signature: sig,
         generatedAt: new Date().toISOString(),
+        modelToProvider: {},
         days: [
           {
             ...parsed.days[0],
-            modelToProvider: {},
           },
         ],
       }),
     );
-    const loaded = await loadAggregate(cachePath, sesDir);
-    expect(loaded).toHaveLength(1);
+    const { days: loadedDays } = await loadAggregate(cachePath, sesDir);
+    expect(loadedDays).toHaveLength(1);
     // Numeric access still works via JS coercion
-    expect(loaded[0]!.hourCost[10]).toBe(0.5);
-    expect(loaded[0]!.hourCost[14]).toBe(1.25);
+    expect(loadedDays[0]!.hourCost[10]).toBe(0.5);
+    expect(loadedDays[0]!.hourCost[14]).toBe(1.25);
   });
 
-  it("serializes and deserializes modelToProvider Map", async () => {
+  it("serializes and deserializes modelToProvider at cache payload level", async () => {
+    const mtp = new Map([["claude-sonnet-4", "anthropic"], ["gpt-4o", "openai"]]);
     const d = emptyDay("2026-06-08");
-    d.modelToProvider.set("claude-sonnet-4", "anthropic");
-    d.modelToProvider.set("gpt-4o", "openai");
-    const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-mtp", days);
+    await writeCache(cachePath, "sig-mtp", [d], mtp);
 
-    // Read raw cache JSON — modelToProvider should not be empty {}
+    // Read raw cache JSON — modelToProvider should be at payload level, not per-day
     const payload = await readCache(cachePath);
     expect(payload).toBeDefined();
-    expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0]!.modelToProvider).toEqual({
+    expect(payload!.modelToProvider).toEqual({
       "claude-sonnet-4": "anthropic",
       "gpt-4o": "openai",
     });
 
-    // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
+    // Load via loadAggregate round-trip
     const sesDir = join(tmpDir, "sessions");
     await mkdir(sesDir, { recursive: true });
     await writeFile(
@@ -291,6 +288,7 @@ describe("cache read/write", () => {
       JSON.stringify({
         signature: sig,
         generatedAt: new Date().toISOString(),
+        modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
         days: [
           {
             date: "2026-06-08",
@@ -309,7 +307,6 @@ describe("cache read/write", () => {
             modelCount: {},
             providerCost: {},
             providerCount: {},
-            modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
             projectCost: {},
             projectSessions: {},
             toolCount: {},
@@ -317,11 +314,11 @@ describe("cache read/write", () => {
         ],
       }),
     );
-    const loaded = await loadAggregate(cachePath, sesDir);
-    expect(loaded).toHaveLength(1);
-    expect(loaded[0]!.modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
-    expect(loaded[0]!.modelToProvider.get("gpt-4o")).toBe("openai");
-    expect(loaded[0]!.modelToProvider.size).toBe(2);
+    const { days: loadedDays, modelToProvider: loadedMtp } = await loadAggregate(cachePath, sesDir);
+    expect(loadedDays).toHaveLength(1);
+    expect(loadedMtp.get("claude-sonnet-4")).toBe("anthropic");
+    expect(loadedMtp.get("gpt-4o")).toBe("openai");
+    expect(loadedMtp.size).toBe(2);
   });
 });
 
@@ -343,7 +340,7 @@ describe("loadAggregate", () => {
   });
 
   it("returns empty array for empty sessions dir", async () => {
-    const days = await loadAggregate(cachePath, sessionsDir);
+    const { days } = await loadAggregate(cachePath, sessionsDir);
     expect(days).toEqual([]);
   });
 
@@ -370,7 +367,7 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir);
+    const { days } = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(1);
     expect(days[0]!.date).toBe("2026-06-08");
     expect(days[0]!.userMsgs).toBe(1);
@@ -423,7 +420,7 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir, true);
+    const { days } = await loadAggregate(cachePath, sessionsDir, true);
     expect(days).toHaveLength(1);
     expect(days[0]!.date).toBe("2026-06-08");
     expect(days[0]!.userMsgs).toBe(2); // one from each file
@@ -476,11 +473,11 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days1 = await loadAggregate(cachePath, sessionsDir);
+    const { days: days1 } = await loadAggregate(cachePath, sessionsDir);
     expect(days1).toHaveLength(1);
 
     // Second call should use cache
-    const days2 = await loadAggregate(cachePath, sessionsDir);
+    const { days: days2 } = await loadAggregate(cachePath, sessionsDir);
     expect(days2).toHaveLength(1);
   });
 
@@ -516,7 +513,7 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir);
+    const { days } = await loadAggregate(cachePath, sessionsDir);
     expect(days).toHaveLength(2); // two days now
   });
 
@@ -595,6 +592,7 @@ describe("loadAggregate", () => {
       JSON.stringify({
         signature: realSig,
         generatedAt: new Date().toISOString(),
+        modelToProvider: {},
         days: [
           {
             date: "2026-06-08",
@@ -613,7 +611,6 @@ describe("loadAggregate", () => {
             modelCount: {},
             providerCost: {},
             providerCount: {},
-            modelToProvider: {},
             projectCost: {},
             projectSessions: {},
             toolCount: {},
@@ -623,7 +620,7 @@ describe("loadAggregate", () => {
     );
 
     // force=true should ignore the stale cache and re-parse
-    const days = await loadAggregate(cachePath, sessionsDir, true);
+    const { days } = await loadAggregate(cachePath, sessionsDir, true);
     expect(days).toHaveLength(1);
     expect(days[0]!.userMsgs).toBe(1);
     expect(days[0]!.asstMsgs).toBe(0);

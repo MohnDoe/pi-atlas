@@ -51,7 +51,6 @@ function serializeDay(d: DayAgg): SerializedDayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]]),
     ),
-    modelToProvider: Object.fromEntries(d.modelToProvider),
   };
 }
 
@@ -62,7 +61,6 @@ function deserializeDay(s: SerializedDayAgg): DayAgg {
     projectSessions: Object.fromEntries(
       Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)]),
     ),
-    modelToProvider: new Map(Object.entries(s.modelToProvider)),
   };
 }
 
@@ -72,10 +70,12 @@ export async function writeCache(
   cachePath: string,
   signature: string,
   days: DayAgg[],
+  modelToProvider: Map<string, string>,
 ): Promise<void> {
   const payload: CachePayload = {
     signature,
     generatedAt: new Date().toISOString(),
+    modelToProvider: Object.fromEntries(modelToProvider),
     days: days.map(serializeDay),
   };
   await writeFile(cachePath, JSON.stringify(payload), "utf-8");
@@ -140,7 +140,7 @@ export async function loadAggregate(
   sessionsDir: string,
   force = false,
   onProgress?: (p: LoadingProgress) => void,
-): Promise<DayAgg[]> {
+): Promise<{ days: DayAgg[]; modelToProvider: Map<string, string> }> {
   // Debug flags: PI_ATLAS_FORCE_CACHE=1 skips cache, PI_ATLAS_SLOW_DELAY_MS=<ms> adds per-file delay
   const effectiveForce = force || Boolean(Number(process.env["PI_ATLAS_FORCE_CACHE"] ?? 0));
 
@@ -149,13 +149,19 @@ export async function loadAggregate(
     const valid = await isCacheValid(cachePath, sessionsDir);
     if (valid) {
       const cached = await readCache(cachePath);
-      if (cached) return cached.days.map(deserializeDay);
+      if (cached) {
+        return {
+          days: cached.days.map(deserializeDay),
+          modelToProvider: new Map(Object.entries(cached.modelToProvider ?? {})),
+        };
+      }
     }
   }
 
   // Parse all JSONL files
   const files = await findAllJsonlFiles(sessionsDir);
   const map = new Map<string, DayAgg>();
+  const globalModelToProvider = new Map<string, string>();
   let totalCorrupt = 0;
 
   const slowDelayMs = Number(process.env["PI_ATLAS_SLOW_DELAY_MS"] ?? 0);
@@ -169,11 +175,14 @@ export async function loadAggregate(
     }
 
     let lastCount = 0;
-    const fileMap = parseFile(files[i]!, (count) => {
+    const result = parseFile(files[i]!, (count) => {
       lastCount = count;
     });
     totalCorrupt += lastCount;
-    for (const [date, day] of fileMap) {
+    for (const [model, provider] of result.modelToProvider) {
+      globalModelToProvider.set(model, provider);
+    }
+    for (const [date, day] of result.dayMap) {
       const existing = map.get(date);
       if (existing) {
         // mergeDay is used inline in engine's loadAggregate; import it
@@ -205,7 +214,7 @@ export async function loadAggregate(
 
   // Write cache
   const sig = await computeSignature(sessionsDir);
-  await writeCache(cachePath, sig, days);
+  await writeCache(cachePath, sig, days, globalModelToProvider);
 
-  return days;
+  return { days, modelToProvider: new Map(globalModelToProvider) };
 }
