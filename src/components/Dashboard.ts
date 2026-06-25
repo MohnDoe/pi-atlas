@@ -8,7 +8,8 @@ import { Models } from "../tabs/Models";
 import { Overview } from "../tabs/Overview";
 import { Projects } from "../tabs/Projects";
 import { Usage } from "../tabs/Usage";
-import type { StatsSummary, TimeRange } from "../types";
+import { summarize } from "../compute";
+import type { DayAgg, ModelToProvider, StatsSummary, TimeRange } from "../types";
 import pkg from "../../package.json" with { type: "json" };
 import { RangeSelector } from "./RangeSelector";
 import { TabBar } from "./TabBar";
@@ -25,13 +26,15 @@ export class Dashboard extends BorderBox {
   private onClose: (() => void) | null = null;
   private tabs: Component[] = [];
   private langPalette: ColorPalette;
+  private summaries: Map<TimeRange, StatsSummary>;
   private modelPalette: ColorPalette;
   private contentHeight = 0;
 
   private rangeLabelTitle: TextDef;
 
   constructor(
-    private summaries: Map<TimeRange, StatsSummary>,
+    private days: DayAgg[],
+    private modelToProvider: ModelToProvider,
     private theme: Theme,
     private tui: TUI,
     updateLabel: string | null,
@@ -66,6 +69,11 @@ export class Dashboard extends BorderBox {
     this.modelPalette = modelPalette;
     this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Usage"], theme, 0);
     this.contentHeight = this.computeContentHeight();
+    // Pre-compute summaries for all four time ranges
+    const ranges: TimeRange[] = ["1d", "7d", "30d", "All"];
+    this.summaries = new Map(
+      ranges.map((r) => [r, summarize({ days, range: r, modelToProvider })] as const),
+    );
     this.buildTabs();
   }
 

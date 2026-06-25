@@ -1,23 +1,21 @@
 import { describe, expect, it } from "bun:test";
 import { makeMockTUI, makeRangeSelector, makeTheme } from "./components.fixtures";
-import { makeSummary } from "../compute.fixtures";
-import type { StatsSummary, TimeRange } from "../types";
+import { makeDayAggs } from "../compute.fixtures";
+import { emptyDay } from "../parser";
+import type { DayAgg, ModelToProvider, TimeRange } from "../types";
 import { Dashboard } from "./Dashboard";
 
 const mockTui = makeMockTUI();
 export const allRanges: TimeRange[] = ["1d", "7d", "30d", "All"];
 
-export function mapAllSummaries(ranges: TimeRange[], summary: ReturnType<typeof makeSummary>) {
-  return new Map(ranges.map((r) => [r, { ...summary }]));
-}
-
-export const ALL_SUMMARIES = mapAllSummaries(allRanges, makeSummary());
+const BASE_DAYS = makeDayAggs();
 
 describe("Dashboard", () => {
   it("renders all sections", () => {
-    const summaries = ALL_SUMMARIES;
+    const { days, modelToProvider } = makeDayAggs();
     const dash = new Dashboard(
-      summaries,
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -33,17 +31,9 @@ describe("Dashboard", () => {
   });
 
   it("shows 'No sessions found' when no session data exists", () => {
-    const zeroSummary = {
-      ...makeSummary(),
-      totalCost: 0,
-      sessionCount: 0,
-      totalMessages: 0,
-      totalTokens: 0,
-      dailySpend: [],
-    };
-    const summaries = mapAllSummaries(allRanges, zeroSummary);
     const dash = new Dashboard(
-      summaries,
+      [],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
@@ -55,30 +45,19 @@ describe("Dashboard", () => {
   });
 
   it("shows 'No data for this time range' when current range is empty", () => {
-    const dataSummary = { ...makeSummary(), totalCost: 5.0, sessionCount: 3 };
-    const zeroSummary = {
-      ...makeSummary(),
-      totalCost: 0,
-      sessionCount: 0,
-      totalMessages: 0,
-      totalTokens: 0,
-      dailySpend: [],
-    };
-    // 1d range empty, others have data
-    const summaries: Map<TimeRange, StatsSummary> = new Map([
-      ["1d", zeroSummary],
-      ["7d", dataSummary],
-      ["30d", dataSummary],
-      ["All", dataSummary],
-    ]);
+    // Create days from the past so no range matches
+    const d = emptyDay("2025-01-01");
+    d.cost = 5.0;
+    d.sessionIds = new Set(["s1"]);
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
       makeRangeSelector(makeTheme()),
     );
-    // Default range is All. r key cycles: All→1d
+    // Default range is All (has data). r key cycles: All→1d (empty)
     dash.handleInput("r");
     const lines = dash.render(80);
     const text = lines.join("\n");
@@ -86,10 +65,10 @@ describe("Dashboard", () => {
   });
 
   it("handles escape to close", () => {
-    const summaries = ALL_SUMMARIES;
     let closed = false;
     const dash = new Dashboard(
-      summaries,
+      BASE_DAYS.days,
+      BASE_DAYS.modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -103,10 +82,10 @@ describe("Dashboard", () => {
   });
 
   it("handles q to close", () => {
-    const summaries = ALL_SUMMARIES;
     let closed = false;
     const dash = new Dashboard(
-      summaries,
+      BASE_DAYS.days,
+      BASE_DAYS.modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -119,18 +98,26 @@ describe("Dashboard", () => {
     expect(closed).toBe(true);
   });
 
+  // ---- Languages tab ----
+
   it("renders Languages tab when active", () => {
-    const summary = {
-      ...makeSummary(),
-      languages: [
-        { language: "TypeScript", lines: 1500, edits: 45 },
-        { language: "Python", lines: 800, edits: 20 },
-        { language: "JSON", lines: 300, edits: 5 },
-      ],
-    };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 5.0;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+    d.langLines = { TypeScript: 1500, Python: 800, JSON: 300 };
+    d.langEdits = { TypeScript: 45, Python: 20, JSON: 5 };
+    d.modelCost = { "dummy": 1.0 };
+    d.modelCount = { "dummy": 1 };
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
@@ -151,38 +138,53 @@ describe("Dashboard", () => {
   });
 
   it("Languages tab updates when time range changes", () => {
-    const summary1d = {
-      ...makeSummary(),
-      languages: [{ language: "TypeScript", lines: 100, edits: 3 }],
-    };
-    const summary7d = {
-      ...makeSummary(),
-      languages: [
-        { language: "TypeScript", lines: 1500, edits: 45 },
-        { language: "Go", lines: 200, edits: 8 },
-      ],
-    };
-    const summaries: Map<TimeRange, StatsSummary> = new Map([
-      ["1d", summary1d],
-      ["7d", summary7d],
-      ["30d", summary7d],
-      ["All", summary7d],
-    ]);
+    const today = new Date().toISOString().slice(0, 10);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+
+    // Day from today (1d range) — only TypeScript
+    const dToday = emptyDay(today);
+    dToday.cost = 1.0;
+    dToday.sessionIds = new Set(["s1"]);
+    dToday.userMsgs = 1;
+    dToday.asstMsgs = 1;
+    dToday.toolResults = 1;
+    dToday.inTok = 10;
+    dToday.outTok = 10;
+    dToday.langLines = { TypeScript: 100 };
+    dToday.langEdits = { TypeScript: 3 };
+    dToday.modelCost = { "dummy": 1.0 };
+    dToday.modelCount = { "dummy": 1 };
+
+    // Day from past (7d range) — adds Python
+    const dPast = emptyDay(twoDaysAgo);
+    dPast.cost = 1.0;
+    dPast.sessionIds = new Set(["s2"]);
+    dPast.userMsgs = 1;
+    dPast.asstMsgs = 1;
+    dPast.toolResults = 1;
+    dPast.inTok = 10;
+    dPast.outTok = 10;
+    dPast.langLines = { TypeScript: 1400, Go: 200 };
+    dPast.langEdits = { TypeScript: 42, Go: 8 };
+    dPast.modelCost = { "dummy": 1.0 };
+    dPast.modelCount = { "dummy": 1 };
+
     const dash = new Dashboard(
-      summaries,
+      [dToday, dPast],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
       makeRangeSelector(makeTheme()),
     );
 
-    // Default range is All (= summary7d). r key cycles: All→1d
+    // Default range is All (= both days). r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     // Switch to Languages tab
     dash.handleInput("\x1b[C"); // right to Languages
     let lines = dash.render(80);
     let text = lines.join("\n");
-    // Range 1d, only 1 language
+    // Range 1d, only TypeScript
     expect(text).toContain("TypeScript");
     expect(text).not.toContain("Go");
 
@@ -196,10 +198,18 @@ describe("Dashboard", () => {
   });
 
   it("Languages tab shows empty state when no language data", () => {
-    const summary = { ...makeSummary(), languages: [] };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 5.0;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.modelCost = { "dummy": 1.0 };
+    d.modelCount = { "dummy": 1 };
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
@@ -214,18 +224,44 @@ describe("Dashboard", () => {
 
   // ---- Models tab ----
 
+  function makeModelDays(): { days: DayAgg[]; modelToProvider: ModelToProvider } {
+    const today = new Date().toISOString().slice(0, 10);
+    const days: DayAgg[] = [];
+    const modelToProvider: ModelToProvider = new Map([
+      ["claude-sonnet-4-20250514", "anthropic"],
+      ["deepseek-v4-pro", "deepseek"],
+      ["gemini-2.0-flash", "google"],
+    ]);
+
+    const models = [
+      { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 },
+      { model: "deepseek-v4-pro", cost: 5.67, calls: 80 },
+      { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
+    ];
+    for (const m of models) {
+      const d = emptyDay(today);
+      d.cost = m.cost;
+      d.sessionIds = new Set([`s-${m.model}`]);
+      d.userMsgs = 1;
+      d.asstMsgs = 1;
+      d.toolResults = 1;
+      d.inTok = 10;
+      d.outTok = 10;
+      d.langLines = { TypeScript: 100 };
+      d.langEdits = { TypeScript: 1 };
+      d.modelCost = { [m.model]: m.cost };
+      d.modelCount = { [m.model]: m.calls };
+      days.push(d);
+    }
+
+    return { days, modelToProvider };
+  }
+
   it("renders Models tab", () => {
-    const summary = {
-      ...makeSummary(),
-      models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 },
-        { model: "deepseek-v4-pro", cost: 5.67, calls: 80 },
-        { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
-      ],
-    };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const { days, modelToProvider } = makeModelDays();
     const dash = new Dashboard(
-      summaries,
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -243,13 +279,27 @@ describe("Dashboard", () => {
   });
 
   it("formats model names in Models tab", () => {
-    const summary = {
-      ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
-    };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 1.0;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+    d.langLines = { TypeScript: 100 };
+    d.langEdits = { TypeScript: 1 };
+    d.modelCost = { "claude-sonnet-4-20250514": 1.0 };
+    d.modelCount = { "claude-sonnet-4-20250514": 10 };
+
+    const modelToProvider: ModelToProvider = new Map([
+      ["claude-sonnet-4-20250514", "anthropic"],
+    ]);
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -267,10 +317,19 @@ describe("Dashboard", () => {
   });
 
   it("Models tab shows empty state when no model data", () => {
-    const summary = { ...makeSummary(), models: [] };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 5.0;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
@@ -285,40 +344,58 @@ describe("Dashboard", () => {
   });
 
   it("Models tab updates when time range changes", () => {
-    const summary1d = {
-      ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 5 }],
-    };
-    const summary7d = {
-      ...makeSummary(),
-      models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.0, calls: 150 },
-        { model: "deepseek-v4-pro", cost: 5.0, calls: 80 },
-      ],
-    };
-    const summaries: Map<TimeRange, StatsSummary> = new Map([
-      ["1d", summary1d],
-      ["7d", summary7d],
-      ["30d", summary7d],
-      ["All", summary7d],
+    const today = new Date().toISOString().slice(0, 10);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const modelToProvider: ModelToProvider = new Map([
+      ["claude-sonnet-4-20250514", "anthropic"],
+      ["deepseek-v4-pro", "deepseek"],
     ]);
+
+    // Today: only claude
+    const dToday = emptyDay(today);
+    dToday.cost = 1.0;
+    dToday.sessionIds = new Set(["s1"]);
+    dToday.userMsgs = 1;
+    dToday.asstMsgs = 1;
+    dToday.toolResults = 1;
+    dToday.inTok = 10;
+    dToday.outTok = 10;
+    dToday.langLines = { TypeScript: 100 };
+    dToday.langEdits = { TypeScript: 1 };
+    dToday.modelCost = { "claude-sonnet-4-20250514": 1.0 };
+    dToday.modelCount = { "claude-sonnet-4-20250514": 5 };
+
+    // Past: adds deepseek
+    const dPast = emptyDay(twoDaysAgo);
+    dPast.cost = 5.0;
+    dPast.sessionIds = new Set(["s2"]);
+    dPast.userMsgs = 1;
+    dPast.asstMsgs = 1;
+    dPast.toolResults = 1;
+    dPast.inTok = 10;
+    dPast.outTok = 10;
+    dPast.langLines = { TypeScript: 100 };
+    dPast.langEdits = { TypeScript: 1 };
+    dPast.modelCost = { "deepseek-v4-pro": 5.0 };
+    dPast.modelCount = { "deepseek-v4-pro": 80 };
+
     const dash = new Dashboard(
-      summaries,
+      [dToday, dPast],
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
       makeRangeSelector(makeTheme()),
     );
 
-    // Default range is All (= summary7d). r key cycles: All→1d
+    // Default range is All. r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
     let lines = dash.render(80);
     let text = lines.join("\n");
-    // Range 1d, only 1 model
+    // Range 1d, only Claude
     expect(text).toContain("Claude");
-    // deepseek-v4-pro → "Deeps…" visible truncated name in 7d range
     expect(text).not.toContain("Deeps");
 
     // Switch back to Overview, r to 7d, then back to Models
@@ -333,9 +410,10 @@ describe("Dashboard", () => {
   });
 
   it("switches tabs with left/right arrows", () => {
-    const summaries = ALL_SUMMARIES;
+    const { days, modelToProvider } = makeDayAggs();
     const dash = new Dashboard(
-      summaries,
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -349,30 +427,36 @@ describe("Dashboard", () => {
   // ---- Projects tab ----
 
   it("renders Project tab", () => {
-    const summary = {
-      ...makeSummary(),
-      projects: [
-        { project: "pi-atlas", cost: 15.5, sessions: 42 },
-        { project: "dotfiles", cost: 8.2, sessions: 20 },
-      ],
-      tools: [
-        { name: "bash", count: 150 },
-        { name: "read", count: 120 },
-      ],
-    };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 15.5;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+    d.langLines = { TypeScript: 100 };
+    d.langEdits = { TypeScript: 1 };
+    d.modelCost = { "dummy": 1.0 };
+    d.modelCount = { "dummy": 1 };
+    d.toolCount = { bash: 150, read: 120 };
+    d.projectCost = { "pi-atlas": 15.5, dotfiles: 8.2 };
+    d.projectSessions = { "pi-atlas": new Set(["s1"]), dotfiles: new Set(["s1"]) };
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
       makeRangeSelector(makeTheme()),
     );
 
-    // Navigate to Projects+Tools tab (index 3)
+    // Navigate to Projects tab (index 3)
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("\x1b[C"); // → Projects + Tools
+    dash.handleInput("\x1b[C"); // → Projects
     const lines = dash.render(80);
     const text = lines.join("\n");
 
@@ -380,10 +464,21 @@ describe("Dashboard", () => {
   });
 
   it("Projects tab shows empty states when no data", () => {
-    const summary = { ...makeSummary(), projects: [], tools: [] };
-    const summaries = mapAllSummaries(allRanges, summary);
+    const today = new Date().toISOString().slice(0, 10);
+    const d = emptyDay(today);
+    d.cost = 5.0;
+    d.sessionIds = new Set(["s1"]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+    d.modelCost = { "dummy": 1.0 };
+    d.modelCount = { "dummy": 1 };
+
     const dash = new Dashboard(
-      summaries,
+      [d],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
@@ -392,7 +487,7 @@ describe("Dashboard", () => {
 
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("\x1b[C"); // → Projects + Tools
+    dash.handleInput("\x1b[C"); // → Projects
     const lines = dash.render(80);
     const text = lines.join("\n");
 
@@ -400,32 +495,47 @@ describe("Dashboard", () => {
   });
 
   it("Projects tab updates when time range changes", () => {
-    const summary1d = {
-      ...makeSummary(),
-      projects: [{ project: "pi-atlas", cost: 1.0, sessions: 5 }],
-    };
-    const summary7d = {
-      ...makeSummary(),
-      projects: [
-        { project: "pi-atlas", cost: 15.5, sessions: 42 },
-        { project: "dotfiles", cost: 8.2, sessions: 20 },
-      ],
-    };
-    const summaries: Map<TimeRange, StatsSummary> = new Map([
-      ["1d", summary1d],
-      ["7d", summary7d],
-      ["30d", summary7d],
-      ["All", summary7d],
-    ]);
+    const today = new Date().toISOString().slice(0, 10);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+
+    // Today: only pi-atlas
+    const dToday = emptyDay(today);
+    dToday.cost = 1.0;
+    dToday.sessionIds = new Set(["s1"]);
+    dToday.userMsgs = 1;
+    dToday.asstMsgs = 1;
+    dToday.toolResults = 1;
+    dToday.inTok = 10;
+    dToday.outTok = 10;
+    dToday.modelCost = { "dummy": 1.0 };
+    dToday.modelCount = { "dummy": 1 };
+    dToday.projectCost = { "pi-atlas": 1.0 };
+    dToday.projectSessions = { "pi-atlas": new Set(["s1"]) };
+
+    // Past: adds dotfiles
+    const dPast = emptyDay(twoDaysAgo);
+    dPast.cost = 8.2;
+    dPast.sessionIds = new Set(["s2"]);
+    dPast.userMsgs = 1;
+    dPast.asstMsgs = 1;
+    dPast.toolResults = 1;
+    dPast.inTok = 10;
+    dPast.outTok = 10;
+    dPast.modelCost = { "dummy": 1.0 };
+    dPast.modelCount = { "dummy": 1 };
+    dPast.projectCost = { dotfiles: 8.2 };
+    dPast.projectSessions = { dotfiles: new Set(["s2"]) };
+
     const dash = new Dashboard(
-      summaries,
+      [dToday, dPast],
+      new Map(),
       makeTheme(),
       mockTui,
       null,
       makeRangeSelector(makeTheme()),
     );
 
-    // Default range is All (= summary7d). r key cycles: All→1d
+    // Default range is All. r key cycles: All→1d
     dash.handleInput("r"); // All → 1d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
@@ -436,14 +546,14 @@ describe("Dashboard", () => {
     expect(text).toContain("pi-atlas");
     expect(text).not.toContain("dotfiles");
 
-    // Switch back to Overview, r to 7d, then back to Projects+Tools
+    // Switch back to Overview, r to 7d, then back to Projects
     dash.handleInput("\x1b[D"); // ← Models
     dash.handleInput("\x1b[D"); // ← Languages
     dash.handleInput("\x1b[D"); // ← Overview
     dash.handleInput("r"); // 1d → 7d
     dash.handleInput("\x1b[C"); // → Languages
     dash.handleInput("\x1b[C"); // → Models
-    dash.handleInput("\x1b[C"); // → Projects + Tools
+    dash.handleInput("\x1b[C"); // → Projects
     lines = dash.render(80);
     text = lines.join("\n");
     expect(text).toContain("dotfiles");

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { mergeDay, parseFile } from "./parser";
-import type { CachePayload, DayAgg, SerializedDayAgg } from "./types";
+import type { CachePayload, DayAgg, ModelToProvider, SerializedDayAgg } from "./types";
 
 // ---- Signature ----
 
@@ -70,7 +70,7 @@ export async function writeCache(
   cachePath: string,
   signature: string,
   days: DayAgg[],
-  modelToProvider: Map<string, string>,
+  modelToProvider: ModelToProvider,
 ): Promise<void> {
   const payload: CachePayload = {
     signature,
@@ -140,7 +140,7 @@ export async function loadAggregate(
   sessionsDir: string,
   force = false,
   onProgress?: (p: LoadingProgress) => void,
-): Promise<{ days: DayAgg[]; modelToProvider: Map<string, string> }> {
+): Promise<{ days: DayAgg[]; modelToProvider: ModelToProvider }> {
   // Debug flags: PI_ATLAS_FORCE_CACHE=1 skips cache, PI_ATLAS_SLOW_DELAY_MS=<ms> adds per-file delay
   const effectiveForce = force || Boolean(Number(process.env["PI_ATLAS_FORCE_CACHE"] ?? 0));
 
@@ -152,7 +152,7 @@ export async function loadAggregate(
       if (cached) {
         return {
           days: cached.days.map(deserializeDay),
-          modelToProvider: new Map(Object.entries(cached.modelToProvider ?? {})),
+          modelToProvider: new Map(Object.entries(cached.modelToProvider)),
         };
       }
     }

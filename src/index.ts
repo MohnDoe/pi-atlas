@@ -4,9 +4,7 @@ import { join } from "node:path";
 import { getCacheTimestamp, loadAggregate } from "./cache";
 import { Dashboard } from "./components/Dashboard";
 import { LoadingView } from "./components/LoadingView";
-import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
-import type { TimeRange } from "./types";
 import { RangeSelector, type RangeOption } from "./components/RangeSelector";
 import type { OverlayOptions } from "@earendil-works/pi-tui";
 
@@ -63,12 +61,7 @@ export default function (pi: ExtensionAPI) {
 
       if (loadResult === undefined) return;
 
-      const { days, modelToProvider } = loadResult;
-
       // Phase 2: Show dashboard (handles empty state internally)
-      const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];
-      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize({ days, range: r, modelToProvider })] as const));
-
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const rangeOptions: RangeOption[] = [
           { label: "Today", value: "1d" },
@@ -77,7 +70,7 @@ export default function (pi: ExtensionAPI) {
           { label: "All time", value: "All" },
         ];
         const rangeSelector = new RangeSelector(theme, rangeOptions, rangeOptions.length - 1);
-        const dashboard = new Dashboard(summaries, theme, tui, updateLabel, rangeSelector, () =>
+        const dashboard = new Dashboard(loadResult.days, loadResult.modelToProvider, theme, tui, updateLabel, rangeSelector, () =>
           done(undefined),
         );
         return {

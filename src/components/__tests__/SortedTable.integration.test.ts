@@ -1,15 +1,37 @@
 import { describe, expect, it } from "bun:test";
-import { makeSummary } from "../../compute.fixtures";
-import type { StatsSummary, TimeRange } from "../../types";
+import type { DayAgg, ModelToProvider } from "../../types";
 import { makeMockTUI, makeRangeSelector, makeTheme } from "../components.fixtures";
 import { Dashboard } from "../Dashboard";
-import { allRanges, mapAllSummaries } from "../Dashboard.test";
 import { SortedTable } from "../SortedTable";
+import { emptyDay } from "../../parser";
 
 const CURSOR = SortedTable.DEFAULT_CURSOR_CHAR;
 const mockTui = makeMockTUI();
 
-const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+function modelDays(models: Array<{ model: string; cost: number; calls: number; provider: string }>): { days: DayAgg[]; modelToProvider: ModelToProvider } {
+  const today = new Date().toISOString().slice(0, 10);
+  const days: DayAgg[] = [];
+  const modelToProvider: ModelToProvider = new Map();
+
+  for (const m of models) {
+    modelToProvider.set(m.model, m.provider);
+    const d = emptyDay(today);
+    d.cost = m.cost;
+    d.sessionIds = new Set([`s-${m.model}`]);
+    d.userMsgs = 1;
+    d.asstMsgs = 1;
+    d.toolResults = 1;
+    d.inTok = 10;
+    d.outTok = 10;
+    d.langLines = { TypeScript: 100 };
+    d.langEdits = { TypeScript: 1 };
+    d.modelCost = { [m.model]: m.cost };
+    d.modelCount = { [m.model]: m.calls };
+    days.push(d);
+  }
+
+  return { days, modelToProvider };
+}
 
 describe("Dashboard → Models → SortedTable arrow key integration", () => {
   /** Check if any line contains cursor and a model name substring. */
@@ -18,15 +40,13 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
   }
 
   it("initial cursor on first model", () => {
-    const summary = {
-      ...makeSummary(),
-      models: [
-        { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
-        { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
-      ],
-    };
+    const { days, modelToProvider } = modelDays([
+      { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
+      { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
+    ]);
     const dash = new Dashboard(
-      mapAllSummaries(allRanges, summary),
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -44,16 +64,14 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
   });
 
   it("down arrow moves cursor to next row via Dashboard dispatch", () => {
-    const summary = {
-      ...makeSummary(),
-      models: [
-        { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
-        { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
-        { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
-      ],
-    };
+    const { days, modelToProvider } = modelDays([
+      { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
+      { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
+      { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
+    ]);
     const dash = new Dashboard(
-      mapAllSummaries(allRanges, summary),
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -73,16 +91,14 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
   });
 
   it("up arrow moves cursor up", () => {
-    const summary = {
-      ...makeSummary(),
-      models: [
-        { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
-        { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
-        { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
-      ],
-    };
+    const { days, modelToProvider } = modelDays([
+      { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
+      { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
+      { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
+    ]);
     const dash = new Dashboard(
-      mapAllSummaries(allRanges, summary),
+      days,
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -105,27 +121,58 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
   });
 
   it("arrow keys work across range switches", () => {
-    const summary1d = {
-      ...makeSummary(),
-      models: [{ model: "alpha-model", cost: 1, calls: 10, provider: "p1" }],
-    };
-    const summaryAll = {
-      ...makeSummary(),
-      models: [
-        { model: "alpha-model", cost: 10, calls: 100, provider: "p1" },
-        { model: "beta-model", cost: 5, calls: 50, provider: "p2" },
-        { model: "gamma-model", cost: 1, calls: 10, provider: "p3" },
-      ],
-    };
-
-    const summaries: Map<TimeRange, StatsSummary> = new Map([
-      ["1d", summary1d],
-      ["7d", summaryAll],
-      ["30d", summaryAll],
-      ["All", summaryAll],
+    const today = new Date().toISOString().slice(0, 10);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const modelToProvider: ModelToProvider = new Map([
+      ["alpha-model", "p1"],
+      ["beta-model", "p2"],
+      ["gamma-model", "p3"],
     ]);
+
+    // Today: only alpha-model
+    const dToday = emptyDay(today);
+    dToday.cost = 1.0;
+    dToday.sessionIds = new Set(["s1"]);
+    dToday.userMsgs = 1;
+    dToday.asstMsgs = 1;
+    dToday.toolResults = 1;
+    dToday.inTok = 10;
+    dToday.outTok = 10;
+    dToday.langLines = { TypeScript: 100 };
+    dToday.langEdits = { TypeScript: 1 };
+    dToday.modelCost = { "alpha-model": 1.0 };
+    dToday.modelCount = { "alpha-model": 10 };
+
+    // Past: beta and gamma
+    const dPast1 = emptyDay(twoDaysAgo);
+    dPast1.cost = 5.0;
+    dPast1.sessionIds = new Set(["s2"]);
+    dPast1.userMsgs = 1;
+    dPast1.asstMsgs = 1;
+    dPast1.toolResults = 1;
+    dPast1.inTok = 10;
+    dPast1.outTok = 10;
+    dPast1.langLines = { TypeScript: 100 };
+    dPast1.langEdits = { TypeScript: 1 };
+    dPast1.modelCost = { "beta-model": 5.0 };
+    dPast1.modelCount = { "beta-model": 50 };
+
+    const dPast2 = emptyDay(twoDaysAgo);
+    dPast2.cost = 1.0;
+    dPast2.sessionIds = new Set(["s3"]);
+    dPast2.userMsgs = 1;
+    dPast2.asstMsgs = 1;
+    dPast2.toolResults = 1;
+    dPast2.inTok = 10;
+    dPast2.outTok = 10;
+    dPast2.langLines = { TypeScript: 100 };
+    dPast2.langEdits = { TypeScript: 1 };
+    dPast2.modelCost = { "gamma-model": 1.0 };
+    dPast2.modelCount = { "gamma-model": 10 };
+
     const dash = new Dashboard(
-      summaries,
+      [dToday, dPast1, dPast2],
+      modelToProvider,
       makeTheme(),
       mockTui,
       null,
@@ -140,9 +187,7 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
     // 1d: only Alpha Model
     expect(cursorOnModel(lines, "Alpha")).toBe(true);
 
-    // Switch back to All
-    // Current range index = 0 (1d), need to cycle to 3 (All)
-    // r → 1, r → 2, r → 3
+    // Switch back to All (cycle: 1d→7d→30d→All)
     dash.handleInput("r");
     dash.handleInput("r");
     dash.handleInput("r");
@@ -158,68 +203,4 @@ describe("Dashboard → Models → SortedTable arrow key integration", () => {
 
     expect(cursorOnModel(lines, "Gamma")).toBe(true);
   });
-
-  // FIX:
-  // describe("marquee animation persists across render cycles", () => {
-  //   beforeEach(() => {
-  //     vi.useFakeTimers();
-  //   });
-  //
-  //   afterEach(() => {
-  //     vi.useRealTimers();
-  //   });
-  //
-  //   /** Extract the full visible text of the focused row. */
-  //   function focusedRowText(lines: string[]): string {
-  //     for (const line of lines) {
-  //       if (line.includes(CURSOR)) {
-  //         return strip(line);
-  //       }
-  //     }
-  //     return "";
-  //   }
-  //
-  //   it("marquee advances on successive renders (not stuck at offset 0)", () => {
-  //     // A model name long enough to overflow the ~27-char Model column at width=80
-  //     const longModel = "A-Very-Long-Model-Name-That-Overflows-And-Should-Scroll";
-  //     const summary = {
-  //       ...makeSummary(),
-  //       models: [{ model: longModel, cost: 10, calls: 100, provider: "p1" }],
-  //     };
-  //     const dash = new Dashboard(
-  //       mapAllSummaries(allRanges, summary),
-  //       makeTheme(),
-  //       mockTui,
-  //       null,
-  //       makeRangeSelector(makeTheme()),
-  //     );
-  //
-  //     // Navigate to Models tab
-  //     dash.handleInput("\x1b[C"); // → Languages
-  //     dash.handleInput("\x1b[C"); // → Models
-  //
-  //     // First render — marquee starts at offset 0
-  //     let lines = dash.render(80);
-  //     // Model column is 6-char fill — marquee starts at offset 0
-  //     const render1 = focusedRowText(lines);
-  //     expect(render1).toContain("A Very");
-  //
-  //     // Advance 150ms = 1 timer tick → marquee text should scroll
-  //     vi.advanceTimersByTime(150);
-  //     lines = dash.render(80);
-  //     const render2 = focusedRowText(lines);
-  //     expect(render2).not.toBe("");
-  //
-  //     // Content must have scrolled — slice differs from render1
-  //     expect(render2).not.toBe(render1);
-  //
-  //     // Advance another 150ms = 2nd tick → should scroll again
-  //     vi.advanceTimersByTime(150);
-  //     lines = dash.render(80);
-  //     const render3 = focusedRowText(lines);
-  //     expect(render3).not.toBe("");
-  //     expect(render3).not.toBe(render1);
-  //     expect(render3).not.toBe(render2);
-  //   });
-  // });
 });

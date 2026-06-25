@@ -11,7 +11,7 @@ import type {
 import { readFileSync } from "node:fs";
 
 import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
-import type { DayAgg } from "./types";
+import type { DayAgg, ModelToProvider } from "./types";
 
 /** Strip control characters (\n, \r, \t, etc.) from a tool name. */
 function sanitizeToolName(name: string): string {
@@ -23,9 +23,9 @@ function sanitizeToolName(name: string): string {
 // Tracks session ID → project name for cost attribution
 const sessionProjectMap = new Map<string, string>();
 // Collects model→provider pairs during a single parseFile call
-const fileModelToProvider = new Map<string, string>();
+const _fileModelToProvider: ModelToProvider = new Map();
 
-export { sessionProjectMap, fileModelToProvider };
+export { sessionProjectMap, _fileModelToProvider };
 
 export function emptyDay(date: string): DayAgg {
   return {
@@ -168,7 +168,7 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
     day.modelCost[msg.model] = msg.usage?.cost?.total || 0;
     day.modelCount[msg.model] = 1;
     if (msg.provider) {
-      fileModelToProvider.set(msg.model, msg.provider);
+      _fileModelToProvider.set(msg.model, msg.provider);
       day.providerCost[msg.provider] = msg.usage?.cost?.total || 0;
       day.providerCount[msg.provider] = 1;
     }
@@ -318,11 +318,11 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
 export function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
-): { dayMap: Map<string, DayAgg>; modelToProvider: Map<string, string> } {
+): { dayMap: Map<string, DayAgg>; modelToProvider: ModelToProvider } {
   // Each JSONL file represents one session; reset global session→project
   // tracking so costs from previous files don't leak across projects.
   sessionProjectMap.clear();
-  fileModelToProvider.clear();
+  _fileModelToProvider.clear();
 
   const map = new Map<string, DayAgg>();
 
@@ -330,7 +330,7 @@ export function parseFile(
   try {
     content = readFileSync(filePath, "utf-8");
   } catch {
-    return { dayMap: map, modelToProvider: new Map(fileModelToProvider) };
+    return { dayMap: map, modelToProvider: new Map(_fileModelToProvider) };
   }
 
   const lines = content.split("\n");
@@ -357,5 +357,5 @@ export function parseFile(
     }
   }
 
-  return { dayMap: map, modelToProvider: new Map(fileModelToProvider) };
+  return { dayMap: map, modelToProvider: new Map(_fileModelToProvider) };
 }

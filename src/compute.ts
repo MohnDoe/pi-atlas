@@ -7,6 +7,7 @@ import type {
   ModelStat,
   ProjectStat,
   ProviderStat,
+  ModelToProvider,
   StatsSummary,
   SummarizeOptions,
   TimeRange,

@@ -20,7 +20,7 @@ import {
   parseAssistantMessage,
   parseCompactionEntry,
   parseFile,
-  fileModelToProvider,
+  _fileModelToProvider,
   parseLanguageUsage,
   parseModelChangeEntry,
   parseSessionHeader,
@@ -476,11 +476,11 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
-    fileModelToProvider.clear();
+    _fileModelToProvider.clear();
     const day = parseAssistantMessage(msg);
     expect(day.providerCost["deepseek"]).toBe(0.003);
     expect(day.providerCount["deepseek"]).toBe(1);
-    expect(fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(_fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
   });
 });
 
@@ -648,7 +648,7 @@ describe("parseSessionLogEntry", () => {
       }),
     };
 
-    fileModelToProvider.clear();
+    _fileModelToProvider.clear();
     const dayAgg = parseSessionLogEntry(msgEntry)!;
 
     expect(dayAgg.cost).toBe(0.00141);
@@ -661,7 +661,7 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.modelCount["deepseek-v4-pro"]).toBe(1);
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
-    expect(fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(_fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
     const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
     expect(dayAgg.hourCost[localHour]).toBe(0.00141);
   });

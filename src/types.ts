@@ -28,10 +28,12 @@ export interface DayAgg {
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
 
+export type ModelToProvider = Map<string, string>;
+
 export interface SummarizeOptions {
   days: DayAgg[];
   range: TimeRange;
-  modelToProvider: Map<string, string>;
+  modelToProvider: ModelToProvider;
 }
 
 export interface DaySpend {
