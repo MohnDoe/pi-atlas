@@ -32,8 +32,20 @@ export class Skills extends Container {
       cell.marquee(stripAnsi(s.name), this.tui),
       cell.text(this.theme.bold(formatNumber(s.invocations))),
       cell.text(this.theme.bold(formatNumber(s.tokens))),
-      cell.text(this.theme.bold(formatNumber(s.toolCalls.total))),
-      cell.text(s.cost > 0 ? this.theme.bold(formatCost(s.cost)) : this.theme.fg("dim", formatCost(0))),
+      cell.text(
+        this.theme.bold(formatNumber(s.toolCalls.total)) +
+          (s.toolCalls.total > 0
+            ? this.theme.italic(
+                this.theme.fg(
+                  "dim",
+                  ` (~${formatNumber(parseInt(s.toolCalls.avg.toFixed(0)))} avg)`,
+                ),
+              )
+            : ""),
+      ),
+      cell.text(
+        s.cost > 0 ? this.theme.bold(formatCost(s.cost)) : this.theme.fg("dim", formatCost(0)),
+      ),
     ]);
   }
 
@@ -55,10 +67,10 @@ export class Skills extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Skill"), width: "fill" },
+              { header: cell.header("Name"), width: "fill" },
               { header: cell.header("Invocations"), width: 12 },
               { header: cell.header("Tokens"), width: 12 },
-              { header: cell.header("Tools"), width: 10 },
+              { header: cell.header("Tool calls"), width: 20 },
               { header: cell.header("Cost"), width: 12 },
             ],
             rows: this.rows,

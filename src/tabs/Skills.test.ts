@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { makeMockTUI, makeTheme } from "../components/components.fixtures";
 import type { SkillStat } from "../types";
 import { Skills } from "./Skills";
@@ -7,9 +7,27 @@ describe("Skills", () => {
   const mockTui = makeMockTUI();
 
   const skills: SkillStat[] = [
-    { name: "tdd", cost: 1.23, invocations: 42, tokens: 250000, toolCalls: { total: 150, avg: 3.57, calls: { bash: 100, read: 50 } } },
-    { name: "improve-codebase-architecture", cost: 0.89, invocations: 18, tokens: 120000, toolCalls: { total: 85, avg: 4.72, calls: { read: 45, edit: 40 } } },
-    { name: "prototype", cost: 0.45, invocations: 7, tokens: 50000, toolCalls: { total: 30, avg: 4.29, calls: { bash: 20, write: 10 } } },
+    {
+      name: "tdd",
+      cost: 1.23,
+      invocations: 42,
+      tokens: 251300,
+      toolCalls: { total: 150, avg: 3.57, calls: { bash: 100, read: 50 } },
+    },
+    {
+      name: "improve-codebase-architecture",
+      cost: 0.89,
+      invocations: 18,
+      tokens: 120000,
+      toolCalls: { total: 85, avg: 4.72, calls: { read: 45, edit: 40 } },
+    },
+    {
+      name: "prototype",
+      cost: 0.45,
+      invocations: 7,
+      tokens: 50000,
+      toolCalls: { total: 30, avg: 4.29, calls: { bash: 20, write: 10 } },
+    },
   ];
 
   it("renders column headers and skill data", () => {
@@ -17,14 +35,14 @@ describe("Skills", () => {
     const lines = tab.render(80);
     const text = lines.join("\n");
 
-    expect(text).toContain("Skill");
+    expect(text).toContain("Name");
     expect(text).toContain("Invocations");
     expect(text).toContain("Cost");
     expect(text).toContain("Tokens");
-    expect(text).toContain("Tools");
+    expect(text).toContain("Tool calls");
 
     expect(text).toContain("tdd");
-    expect(text).toContain("improve-codebase-architectu");
+    expect(text).toContain("improve-codebase-");
     expect(text).toContain("prototype");
 
     expect(text).toContain("42");
@@ -33,12 +51,14 @@ describe("Skills", () => {
     expect(text).toContain("$1.23");
     expect(text).toContain("$0.89");
     expect(text).toContain("$0.45");
-    expect(text).toContain("250k");
+    expect(text).toContain("251.3k");
     expect(text).toContain("120k");
     expect(text).toContain("50k");
-    expect(text).toContain("150");
-    expect(text).toContain("85");
-    expect(text).toContain("30");
+    expect(text).toContain("150 (~4 avg)");
+    expect(text).toContain("85 (~5 avg)");
+    expect(text).toContain("30 (~4 avg)");
+
+    console.log(text);
   });
 
   it("shows sort indicator on Cost column", () => {
@@ -91,12 +111,11 @@ describe("Skills", () => {
     expect(text).toContain("Skill");
     expect(text).toContain("Cost ▼");
     expect(text).toContain("$1.23");
-    expect(text).toContain("250k");
+    expect(text).toContain("251.3k");
 
     for (const line of lines2) {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
     }
   });
-
 });
