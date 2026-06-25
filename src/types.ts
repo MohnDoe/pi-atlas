@@ -16,7 +16,6 @@ export interface DayAgg {
   modelCount: Record<string, number>;
   providerCost: Record<string, number>;
   providerCount: Record<string, number>;
-  modelToProvider: Map<string, string>;
   projectCost: Record<string, number>;
   projectSessions: Record<string, Set<string>>;
   toolCount: Record<string, number>;
@@ -28,6 +27,12 @@ export interface DayAgg {
 }
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
+
+export interface SummarizeOptions {
+  days: DayAgg[];
+  range: TimeRange;
+  modelToProvider: Map<string, string>;
+}
 
 export interface DaySpend {
   date: string; // "YYYY-MM-DD"
@@ -97,14 +102,14 @@ export interface StatsSummary {
 export interface CachePayload {
   signature: string;
   generatedAt: string;
+  modelToProvider: Record<string, string>;
   days: SerializedDayAgg[];
 }
 
 export interface SerializedDayAgg extends Omit<
   DayAgg,
-  "sessionIds" | "projectSessions" | "modelToProvider"
+  "sessionIds" | "projectSessions"
 > {
   sessionIds: string[];
   projectSessions: Record<string, string[]>;
-  modelToProvider: Record<string, string>;
 }

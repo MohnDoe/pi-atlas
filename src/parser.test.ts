@@ -20,6 +20,7 @@ import {
   parseAssistantMessage,
   parseCompactionEntry,
   parseFile,
+  fileModelToProvider,
   parseLanguageUsage,
   parseModelChangeEntry,
   parseSessionHeader,
@@ -458,7 +459,6 @@ describe("parseAssistantMessage", () => {
     const day = parseAssistantMessage(msg);
     expect(day.modelCost["gpt-5"]).toBe(0.003);
     expect(day.modelCount["gpt-5"]).toBe(1);
-    expect(day.modelToProvider.has("gpt-5")).toBe(false);
     expect(day.providerCost).toEqual({});
     expect(day.providerCount).toEqual({});
   });
@@ -476,10 +476,11 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
+    fileModelToProvider.clear();
     const day = parseAssistantMessage(msg);
     expect(day.providerCost["deepseek"]).toBe(0.003);
     expect(day.providerCount["deepseek"]).toBe(1);
-    expect(day.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
   });
 });
 
@@ -647,6 +648,7 @@ describe("parseSessionLogEntry", () => {
       }),
     };
 
+    fileModelToProvider.clear();
     const dayAgg = parseSessionLogEntry(msgEntry)!;
 
     expect(dayAgg.cost).toBe(0.00141);
@@ -659,7 +661,7 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.modelCount["deepseek-v4-pro"]).toBe(1);
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
-    expect(dayAgg.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
     const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
     expect(dayAgg.hourCost[localHour]).toBe(0.00141);
   });
@@ -1130,8 +1132,8 @@ describe("mergeDay", () => {
 
     mergeDay(a, b);
     mergeDay(a, c);
-    expect(a.modelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
-    expect(a.modelToProvider.get("gpt-4")).toBe("openai");
+    fileModelToProvider;
+    // modelToProvider no longer lives on DayAgg — mergeDay doesn't handle it
   });
 
   it("merges provider cost and count records", () => {
@@ -1194,13 +1196,6 @@ describe("mergeDay", () => {
     expect(a.thinkingLevelCount).toEqual({ low: 3, high: 1, xhigh: 1 });
   });
 
-  it("preserves base modelToProvider when update has empty map", () => {
-    const a = emptyDay("2026-06-08");
-    a.modelToProvider.set("gpt-5", "openai");
-    const b = emptyDay("2026-06-08");
-    mergeDay(a, b);
-    expect(a.modelToProvider.get("gpt-5")).toBe("openai");
-  });
 });
 
 describe("parseFile", () => {
@@ -1255,7 +1250,7 @@ describe("parseFile", () => {
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const { dayMap: map } = parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1270,12 +1265,12 @@ describe("parseFile", () => {
   it("returns empty map for empty file", async () => {
     const filePath = join(tmpDir, "empty.jsonl");
     await writeFile(filePath, "");
-    const map = parseFile(filePath);
+    const { dayMap: map } = parseFile(filePath);
     expect(map.size).toBe(0);
   });
 
   it("silently returns empty map for non-existent file", async () => {
-    const map = parseFile("/nonexistent/path/never.jsonl");
+    const { dayMap: map } = parseFile("/nonexistent/path/never.jsonl");
     expect(map.size).toBe(0);
   });
 
@@ -1299,7 +1294,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const { dayMap: map } = parseFile(filePath);
 
     expect(map.size).toBe(2);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
@@ -1321,7 +1316,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const { dayMap: map } = parseFile(filePath);
 
     expect(map.size).toBe(1);
     expect(map.get("2026-06-08")?.userMsgs).toBe(1);
@@ -1340,7 +1335,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const { dayMap: map } = parseFile(filePath);
 
     expect(map.size).toBe(1);
     const day = map.get("2026-06-08")!;
@@ -1357,7 +1352,7 @@ describe("parseFile", () => {
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const { dayMap: map } = parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1382,7 +1377,7 @@ describe("parseFile", () => {
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (count) => {
+    const { dayMap: map } = parseFile(filePath, (count) => {
       warnings = count;
     });
 
@@ -1440,8 +1435,8 @@ describe("parseFile", () => {
       ].join("\n"),
     );
 
-    const mapA = parseFile(fileA);
-    const mapB = parseFile(fileB);
+    const { dayMap: mapA } = parseFile(fileA);
+    const { dayMap: mapB } = parseFile(fileB);
 
     const dayA = mapA.get("2026-06-08")!;
     expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
@@ -1482,7 +1477,7 @@ describe("parseFile", () => {
     await writeFile(filePath, lines.join("\n"));
 
     let warnings = 0;
-    const map = parseFile(filePath, (c) => {
+    const { dayMap: map } = parseFile(filePath, (c) => {
       warnings = c;
     });
 
@@ -1572,7 +1567,7 @@ describe("parseFile", () => {
     ];
     await writeFile(filePath, lines.join("\n"));
 
-    const map = parseFile(filePath);
+    const { dayMap: map, modelToProvider } = parseFile(filePath);
 
     expect(map.size).toBe(1);
     const day = map.get("2026-06-10")!;
@@ -1606,7 +1601,7 @@ describe("parseFile", () => {
     expect(day.modelCount["sonnet-v3"]).toBe(1);
     expect(day.providerCost["anthropic"]).toBe(0.0053);
     expect(day.providerCount["anthropic"]).toBe(1);
-    expect(day.modelToProvider.get("sonnet-v3")).toBe("anthropic");
+    expect(modelToProvider.get("sonnet-v3")).toBe("anthropic");
 
     // Tool counts
     expect(day.toolCount["edit"]).toBe(2); // 1 tool call + 1 tool result
