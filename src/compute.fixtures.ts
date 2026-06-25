@@ -40,6 +40,7 @@ export const makeSummary = (): StatsSummary => ({
       name: "bash",
     },
   ],
+  skills: [],
   providers: [],
   compactionCount: 0,
   compactedTokens: 0,

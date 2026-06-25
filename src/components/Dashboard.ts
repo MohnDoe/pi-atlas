@@ -7,6 +7,7 @@ import { Languages } from "../tabs/Languages";
 import { Models } from "../tabs/Models";
 import { Overview } from "../tabs/Overview";
 import { Projects } from "../tabs/Projects";
+import { Skills } from "../tabs/Skills";
 import { Usage } from "../tabs/Usage";
 import type { StatsSummary, TimeRange } from "../types";
 import pkg from "../../package.json" with { type: "json" };
@@ -64,7 +65,7 @@ export class Dashboard extends BorderBox {
     this.onClose = onClose ?? null;
     this.langPalette = langPalette;
     this.modelPalette = modelPalette;
-    this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Usage"], theme, 0);
+    this.tabBar = new TabBar(["Overview", "Languages", "Models", "Projects", "Skills", "Usage"], theme, 0);
     this.contentHeight = this.computeContentHeight();
     this.buildTabs();
   }
@@ -97,6 +98,7 @@ export class Dashboard extends BorderBox {
       new Languages(summary.languages, this.theme, this.langPalette, this.tui, contentHeight),
       new Models(summary.models, this.theme, this.modelPalette, this.tui, contentHeight),
       new Projects(summary.projects, this.theme, this.tui, contentHeight),
+      new Skills(summary.skills, this.theme, this.tui, contentHeight),
       new Usage(
         summary.tools,
         {
