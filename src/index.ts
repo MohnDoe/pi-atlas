@@ -38,9 +38,10 @@ export default function (pi: ExtensionAPI) {
       const updateLabel = lastUpdate ? `Last update : ${formatCacheTimestamp(lastUpdate)}` : null;
 
       // Phase 1: Show loading, parse session logs
-      let days: Awaited<ReturnType<typeof loadAggregate> | undefined>;
+      type LoadResult = Awaited<ReturnType<typeof loadAggregate>>;
+      let loadResult: LoadResult | undefined;
       try {
-        days = await ctx.ui.custom<typeof days>((tui, theme, _kb, done) => {
+        loadResult = await ctx.ui.custom<LoadResult | undefined>((tui, theme, _kb, done) => {
           const loadingView = new LoadingView("Parsing session logs...", theme, () =>
             done(undefined),
           );
@@ -50,7 +51,7 @@ export default function (pi: ExtensionAPI) {
             tui.requestRender();
           })
             .then((result) => done(result))
-            .catch(() => done([]));
+            .catch(() => done({ days: [], modelToProvider: new Map() }));
 
           return loadingView;
         }, overlayOpts);
@@ -60,11 +61,13 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      if (days === undefined) return;
+      if (loadResult === undefined) return;
+
+      const { days, modelToProvider } = loadResult;
 
       // Phase 2: Show dashboard (handles empty state internally)
       const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];
-      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize(days, r)] as const));
+      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize({ days, range: r, modelToProvider })] as const));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const rangeOptions: RangeOption[] = [

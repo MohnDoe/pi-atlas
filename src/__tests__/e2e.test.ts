@@ -23,8 +23,8 @@ describe("JSONL → Dashboard", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  function daysFromMap(map: Map<string, DayAgg>): DayAgg[] {
-    return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+  function toDays(result: { dayMap: Map<string, DayAgg> }): DayAgg[] {
+    return [...result.dayMap.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   it("end-to-end: JSONL with session and messages → Dashboard Overview shows KPIs", async () => {
@@ -81,13 +81,13 @@ describe("JSONL → Dashboard", () => {
     await writeFile(filePath, jsonlLines.join("\n"));
 
     // Parse
-    const map = parseFile(filePath);
-    const days = daysFromMap(map);
+    const parsed = parseFile(filePath);
+    const days = toDays(parsed);
     expect(days.length).toBeGreaterThan(0);
 
     // Summarize for all ranges
     const ranges = allRanges;
-    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
+    const summaries = new Map(ranges.map((r) => [r, summarize({ days, range: r, modelToProvider: parsed.modelToProvider })] as const));
 
     // Render dashboard
     const dash = new Dashboard(
@@ -157,10 +157,10 @@ describe("JSONL → Dashboard", () => {
     ];
     await writeFile(filePath, jsonlLines.join("\n"));
 
-    const map = parseFile(filePath);
-    const days = daysFromMap(map);
+    const parsed = parseFile(filePath);
+    const days = toDays(parsed);
     const ranges = allRanges;
-    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
+    const summaries = new Map(ranges.map((r) => [r, summarize({ days, range: r, modelToProvider: parsed.modelToProvider })] as const));
 
     const dash = new Dashboard(
       summaries,

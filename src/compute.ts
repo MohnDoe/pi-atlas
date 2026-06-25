@@ -8,6 +8,7 @@ import type {
   ProjectStat,
   ProviderStat,
   StatsSummary,
+  SummarizeOptions,
   TimeRange,
   ToolStat,
 } from "./types";
@@ -73,7 +74,8 @@ function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
   return hourly;
 }
 
-export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
+export function summarize(opts: SummarizeOptions): StatsSummary {
+  const { days, range, modelToProvider } = opts;
   const filtered = daysInRange(days, range);
 
   const todayStr = dateFromISOString(new Date().toISOString());
@@ -104,8 +106,6 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
 
-  let modelToProvider: Map<string, string> = new Map();
-
   for (const day of filtered) {
     totalCost += day.cost;
     totalMessages += day.userMsgs + day.asstMsgs + day.toolResults;
@@ -114,10 +114,6 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     totalOutputTokens += day.outTok;
     totalCacheReadTokens += day.crTok;
     totalCacheWriteTokens += day.cwTok;
-
-    for (const [model, provider] of day.modelToProvider) {
-      modelToProvider.set(model, provider);
-    }
 
     if (day.date === todayStr) todayCost += day.cost;
 

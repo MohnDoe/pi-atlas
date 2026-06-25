@@ -5,7 +5,7 @@ import { emptyDay, mergeDay } from "./parser";
 
 describe("summarize", () => {
   it("returns zeros for empty day list", () => {
-    const s = summarize([], "All");
+    const s = summarize({ days: [], range: "All", modelToProvider: new Map() });
     expect(s.totalCost).toBe(0);
     expect(s.sessionCount).toBe(0);
     expect(s.totalMessages).toBe(0);
@@ -45,7 +45,7 @@ describe("summarize", () => {
     });
     const days = [d];
 
-    const s = summarize(days, "1d");
+    const s = summarize({ days, range: "1d", modelToProvider: new Map() });
     expect(s.totalCost).toBe(1.5);
     expect(s.sessionCount).toBe(2);
     expect(s.totalMessages).toBe(12); // 3+5+4
@@ -85,20 +85,20 @@ describe("summarize", () => {
     const days = [d1, d2, d3];
 
     // "1d" - only today
-    expect(summarize(days, "1d").totalCost).toBe(1);
+    expect(summarize({ days, range: "1d", modelToProvider: new Map() }).totalCost).toBe(1);
 
     // "7d" - today + yesterday
-    const s7 = summarize(days, "7d");
+    const s7 = summarize({ days, range: "7d", modelToProvider: new Map() });
     expect(s7.totalCost).toBe(3);
     expect(s7.daysActive).toBe(2);
 
     // "30d" - all three (since 8 days is within 30)
-    const s30 = summarize(days, "30d");
+    const s30 = summarize({ days, range: "30d", modelToProvider: new Map() });
     expect(s30.totalCost).toBe(6);
     expect(s30.daysActive).toBe(3);
 
     // "All"
-    const sAll = summarize(days, "All");
+    const sAll = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(sAll.totalCost).toBe(6);
     expect(sAll.daysActive).toBe(3);
   });
@@ -119,7 +119,7 @@ describe("summarize", () => {
     d2.cost = 2;
     const days = [d1, d2];
 
-    const s = summarize(days, "7d");
+    const s = summarize({ days, range: "7d", modelToProvider: new Map() });
     expect(s.dailySpend.length).toBeGreaterThanOrEqual(4);
     // Should include all dates from earliest to latest, with zeros for gaps
     const dates = s.dailySpend.map((d) => d.date);
@@ -156,7 +156,7 @@ describe("summarize", () => {
     });
     const days = [d];
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(s.models.map((m) => m.model)).toEqual([
       "expensive",
       "mid",
@@ -176,7 +176,7 @@ describe("summarize", () => {
     todayAgg.cost = 5;
     const days = [d1, todayAgg];
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(s.todayCost).toBe(5);
   });
 
@@ -187,7 +187,7 @@ describe("summarize", () => {
     const days = [d1];
 
     // 1d range filters to today only, which has no data
-    const s = summarize(days, "1d");
+    const s = summarize({ days, range: "1d", modelToProvider: new Map() });
     expect(s.todayCost).toBe(0);
     expect(s.totalCost).toBe(0);
   });
@@ -204,7 +204,7 @@ describe("summarize", () => {
     d3.sessionIds = new Set(["c"]);
     const days = [d3, d1, d2]; // unsorted input
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     // All range does NOT zero-fill gaps — returns only days with data
     expect(s.dailySpend).toHaveLength(3);
     expect(s.dailySpend[0]).toEqual({ date: "2026-06-01", cost: 1 });
@@ -260,7 +260,7 @@ describe("summarize", () => {
     });
     const days = [d1, d2];
 
-    const s = summarize(days, "7d");
+    const s = summarize({ days, range: "7d", modelToProvider: new Map() });
     expect(s.totalCost).toBe(4.0);
     expect(s.sessionCount).toBe(2);
     expect(s.totalMessages).toBe(24); // 5+8+3 + 3+4+1
@@ -292,7 +292,7 @@ describe("summarize", () => {
     d.sessionIds = new Set(["s1"]);
     const days = [d];
 
-    const s = summarize(days, "1d");
+    const s = summarize({ days, range: "1d", modelToProvider: new Map() });
     expect(s.hourlySpend).toHaveLength(24);
     for (const h of s.hourlySpend) {
       expect(h.cost).toBe(0);
@@ -301,7 +301,7 @@ describe("summarize", () => {
     const d2 = emptyDay(dateFromISOString(new Date().toISOString()));
     d2.cost = 0;
     d2.sessionIds = new Set(["s2"]);
-    const s2 = summarize([d2], "1d");
+    const s2 = summarize({ days: [d2], range: "1d", modelToProvider: new Map() });
     expect(s2.hourlySpend).toHaveLength(24);
   });
 
@@ -315,7 +315,7 @@ describe("summarize", () => {
     });
     const days = [d];
 
-    const s = summarize(days, "1d");
+    const s = summarize({ days, range: "1d", modelToProvider: new Map() });
     expect(s.hourlySpend).toHaveLength(24);
     expect(s.hourlySpend[10]!.cost).toBe(1.5);
     expect(s.hourlySpend[14]!.cost).toBe(2.0);
@@ -332,7 +332,7 @@ describe("summarize", () => {
     });
     const days = [d];
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(s.providers).toEqual([
       { provider: "anthropic", cost: 5.0, calls: 15 },
       { provider: "openai", cost: 1.0, calls: 5 },
@@ -351,7 +351,7 @@ describe("summarize", () => {
     });
     const days = [d];
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(s.compactionCount).toBe(2);
     expect(s.compactedTokens).toBe(15000);
     expect(s.modelChanges).toBe(3);
@@ -364,14 +364,14 @@ describe("summarize", () => {
       ...emptyDay(""),
       modelCost: { sonnet: 2.0, haiku: 0.5 },
       modelCount: { sonnet: 5, haiku: 2 },
-      modelToProvider: new Map([
-        ["sonnet", "anthropic"],
-        ["haiku", "anthropic"],
-      ]),
     });
     const days = [d];
+    const modelToProvider = new Map([
+      ["sonnet", "anthropic"],
+      ["haiku", "anthropic"],
+    ]);
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider });
     expect(s.models).toHaveLength(2);
     expect(s.models.find((m) => m.model === "sonnet")?.provider).toBe("anthropic");
     expect(s.models.find((m) => m.model === "haiku")?.provider).toBe("anthropic");
@@ -389,7 +389,7 @@ describe("summarize", () => {
     d3.sessionIds = new Set(["unique-session"]);
     const days = [d1, d2, d3];
 
-    const s = summarize(days, "All");
+    const s = summarize({ days, range: "All", modelToProvider: new Map() });
     expect(s.sessionCount).toBe(2);
     expect(s.totalCost).toBe(6);
     expect(s.daysActive).toBe(3);
@@ -408,7 +408,7 @@ describe("summarize", () => {
     d2.projectCost = { pi: 5, other: 5 };
     d2.projectSessions = { pi: new Set(["s2"]), other: new Set(["s2"]) };
 
-    const s = summarize([d1, d2], "All");
+    const s = summarize({ days: [d1, d2], range: "All", modelToProvider: new Map() });
     expect(s.projects).toHaveLength(2);
     // pi: cost=15, sessions=2; other: cost=5, sessions=1
     // sorted by cost desc
@@ -427,7 +427,7 @@ describe("summarize", () => {
     d3.cost = 20;
     d3.sessionIds = new Set(); // no sessions
 
-    const s = summarize([d1, d2, d3], "All");
+    const s = summarize({ days: [d1, d2, d3], range: "All", modelToProvider: new Map() });
     expect(s.daysActive).toBe(2);
     expect(s.totalCost).toBe(35); // d3 still counts toward total
     expect(s.avgCostPerDay).toBeCloseTo(17.5); // 35 / 2
@@ -439,7 +439,7 @@ describe("summarize", () => {
     d.cost = 5;
     d.sessionIds = new Set(["s1"]);
 
-    const s = summarize([d], "1d");
+    const s = summarize({ days: [d], range: "1d", modelToProvider: new Map() });
     expect(s.dailySpend).toHaveLength(1);
     expect(s.dailySpend[0]).toEqual({ date: today, cost: 5 });
   });
@@ -450,9 +450,9 @@ describe("summarize", () => {
     d.sessionIds = new Set(["s1"]);
     const days = [d];
 
-    expect(summarize(days, "7d").hourlySpend).toEqual([]);
-    expect(summarize(days, "30d").hourlySpend).toEqual([]);
-    expect(summarize(days, "All").hourlySpend).toEqual([]);
+    expect(summarize({ days, range: "7d", modelToProvider: new Map() }).hourlySpend).toEqual([]);
+    expect(summarize({ days, range: "30d", modelToProvider: new Map() }).hourlySpend).toEqual([]);
+    expect(summarize({ days, range: "All", modelToProvider: new Map() }).hourlySpend).toEqual([]);
   });
 
   it("hourlySpend is empty when 1d range has no matching days", () => {
@@ -461,7 +461,7 @@ describe("summarize", () => {
     d.cost = 5;
     d.sessionIds = new Set(["s1"]);
 
-    const s = summarize([d], "1d");
+    const s = summarize({ days: [d], range: "1d", modelToProvider: new Map() });
     expect(s.hourlySpend).toEqual([]);
     expect(s.dailySpend).toEqual([]);
   });
