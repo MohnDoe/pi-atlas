@@ -94,7 +94,7 @@ export class Dashboard extends BorderBox {
     }
 
     this.tabs = [
-      new Overview(summary, rangeKey, this.theme, contentHeight),
+      new Overview(summary, rangeKey, this.modelToProvider, this.theme, contentHeight),
       new Languages(summary.languages, this.theme, this.langPalette, this.tui, contentHeight),
       new Models(summary.models, this.modelToProvider, this.theme, this.modelPalette, this.tui, contentHeight),
       new Projects(summary.projects, this.theme, this.tui, contentHeight),

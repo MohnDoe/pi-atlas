@@ -23,7 +23,6 @@ export const makeSummary = (): StatsSummary => ({
     {
       model: "deeepseek-v4",
       cost: 0.5,
-      provider: "deepseek",
       calls: 1000,
     },
   ],

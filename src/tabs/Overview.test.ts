@@ -26,7 +26,7 @@ describe("Overview", () => {
   };
 
   it("renders KpiCards followed by BarChart", () => {
-    const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
+    const overview = new Overview(mockSummary, "7d", new Map(), makeTheme(), 15);
     const lines = overview.render(80);
 
     // Should have KPI + spacer + chart
@@ -54,7 +54,7 @@ describe("Overview", () => {
 
   it("adapts bar chart height to available space after KpiCards", () => {
     // Use a small maxHeight to verify chart still renders
-    const overview = new Overview(mockSummary, "7d", makeTheme(), 10);
+    const overview = new Overview(mockSummary, "7d", new Map(), makeTheme(), 10);
     const lines = overview.render(80);
 
     // Chart should still render (not zero lines)
@@ -67,7 +67,7 @@ describe("Overview", () => {
       ...mockSummary,
       dailySpend: [],
     };
-    const overview = new Overview(summary, "7d", makeTheme(), 15);
+    const overview = new Overview(summary, "7d", new Map(), makeTheme(), 15);
     const lines = overview.render(80);
 
     const text = lines.join("\n");
@@ -77,7 +77,7 @@ describe("Overview", () => {
   });
 
   it("invalidate clears cache and re-renders at new width", () => {
-    const overview = new Overview(mockSummary, "7d", makeTheme(), 15);
+    const overview = new Overview(mockSummary, "7d", new Map(), makeTheme(), 15);
 
     const linesBefore = overview.render(80);
     for (const line of linesBefore) {

@@ -179,6 +179,7 @@ export async function loadAggregate(
       lastCount = count;
     });
     totalCorrupt += lastCount;
+    // Accumulate model→provider pairs across all session files
     for (const [model, provider] of result.modelToProvider) {
       globalModelToProvider.set(model, provider);
     }

@@ -79,7 +79,7 @@ describe("Models", () => {
 
   describe("marquee lifecycle", () => {
     const longModels: ModelStat[] = [
-      { model: "abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz", cost: 1, calls: 1 },
+      { model: "claude-sonnet-4-20250514-very-long-name-that-overflows", cost: 1, calls: 1 },
     ];
 
     it("clears marquee timers on invalidate (Models→SortedTable→cells chain)", () => {

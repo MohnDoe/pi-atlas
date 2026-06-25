@@ -7,7 +7,7 @@ import { KpiCards, type KpiData } from "../components/KpiCards";
 import { GridRow } from "../components/shared/GridRow";
 import { StatCard } from "../components/StatCard";
 import { formatCost, formatModelName, formatNumber } from "../format";
-import { type StatsSummary, type TimeRange } from "../types";
+import { type StatsSummary, type ModelToProvider, type TimeRange } from "../types";
 
 const SPACER_HEIGHT = 1;
 const BAR_CHART_MAX_HEIGHT = 18;
@@ -20,6 +20,7 @@ export class Overview extends Container {
   constructor(
     private summary: StatsSummary,
     rangeKey: TimeRange,
+    private modelToProvider: ModelToProvider,
     private theme: Theme,
     maxHeight: number,
   ) {
@@ -75,7 +76,7 @@ export class Overview extends Container {
         : [],
       padding: { left: 1, right: 1 },
       borderFn: topModel
-        ? modelPalette.getColor(topModel.provider || "")
+        ? modelPalette.getColor(this.modelToProvider.get(topModel.model) ?? "")
         : (s: string) => this.theme.fg("borderMuted", s),
     });
     modelBox.addChild(

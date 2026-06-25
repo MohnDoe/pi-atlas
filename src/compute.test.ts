@@ -358,21 +358,6 @@ describe("summarize", () => {
     expect(s.thinkingLevelCount).toEqual({ low: 1, high: 2 });
   });
 
-  it("models have no provider attached (summarize doesn't know about modelToProvider)", () => {
-    const d = emptyDay("2026-06-08");
-    mergeDay(d, {
-      ...emptyDay(""),
-      modelCost: { sonnet: 2.0, haiku: 0.5 },
-      modelCount: { sonnet: 5, haiku: 2 },
-    });
-    const days = [d];
-
-    const s = summarize({ days, range: "All" });
-    expect(s.models).toHaveLength(2);
-    expect(s.models.find((m) => m.model === "sonnet")?.provider).toBeUndefined();
-    expect(s.models.find((m) => m.model === "haiku")?.provider).toBeUndefined();
-  });
-
   it("deduplicates session IDs across days", () => {
     const d1 = emptyDay("2026-06-01");
     d1.cost = 1;
