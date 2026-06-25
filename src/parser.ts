@@ -125,8 +125,7 @@ export function mergeDay(base: DayAgg, update: DayAgg): void {
   for (const [skill, tools] of Object.entries(update.skillToolBreakdown)) {
     if (!base.skillToolBreakdown[skill]) base.skillToolBreakdown[skill] = {};
     for (const [tool, count] of Object.entries(tools)) {
-      base.skillToolBreakdown[skill][tool] =
-        (base.skillToolBreakdown[skill][tool] ?? 0) + count;
+      base.skillToolBreakdown[skill][tool] = (base.skillToolBreakdown[skill][tool] ?? 0) + count;
     }
   }
 
@@ -177,9 +176,9 @@ export function parseUserMessage(msg: UserMessage): DayAgg {
 
   const content = userMessageContent(msg);
   const match = /<skill\s+name="([^"]+)"/i.exec(content);
-  if (match) {
-    _activeSkill.current = match[1];
-    day.skillCount[match[1]] = 1;
+  if (match && match.length >= 2) {
+    _activeSkill.current = match[1]!;
+    day.skillCount[match[1]!] = 1;
   } else {
     _activeSkill.current = null;
   }
@@ -200,7 +199,7 @@ export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
       if (!day.skillToolBreakdown[_activeSkill.current]) {
         day.skillToolBreakdown[_activeSkill.current] = {};
       }
-      day.skillToolBreakdown[_activeSkill.current][sanitized] = 1;
+      day.skillToolBreakdown[_activeSkill.current]![sanitized] = 1;
     }
   }
   return day;
@@ -264,8 +263,8 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
           if (!day.skillToolBreakdown[_activeSkill.current]) {
             day.skillToolBreakdown[_activeSkill.current] = {};
           }
-          day.skillToolBreakdown[_activeSkill.current][sanitized] =
-            (day.skillToolBreakdown[_activeSkill.current][sanitized] ?? 0) + 1;
+          day.skillToolBreakdown[_activeSkill.current]![sanitized] =
+            (day.skillToolBreakdown[_activeSkill.current]![sanitized] ?? 0) + 1;
         }
 
         if (block.name === "edit" || block.name === "write") {

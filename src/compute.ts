@@ -89,10 +89,7 @@ function buildSkills(
       tokens: skillTokens[name] ?? 0,
       toolCalls: {
         total: skillToolCount[name] ?? 0,
-        avg:
-          skillCount[name] > 0
-            ? (skillToolCount[name] ?? 0) / skillCount[name]
-            : 0,
+        avg: skillCount[name]! > 0 ? (skillToolCount[name] ?? 0) / skillCount[name]! : 0,
         calls: skillToolBreakdown[name] ?? {},
       },
     }))
@@ -216,8 +213,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     for (const [skill, tools] of Object.entries(day.skillToolBreakdown)) {
       if (!skillToolBreakdown[skill]) skillToolBreakdown[skill] = {};
       for (const [tool, count] of Object.entries(tools)) {
-        skillToolBreakdown[skill][tool] =
-          (skillToolBreakdown[skill][tool] ?? 0) + count;
+        skillToolBreakdown[skill][tool] = (skillToolBreakdown[skill][tool] ?? 0) + count;
       }
     }
   }

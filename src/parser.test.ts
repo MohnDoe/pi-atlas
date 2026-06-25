@@ -140,6 +140,7 @@ describe("parseUserMessage", () => {
   it("detects skill tag and increments skillCount", () => {
     activeSkill.current = null;
     const day = parseUserMessage(mkUser('<skill name="tdd">implement the parser</skill>'));
+    // @ts-expect-error
     expect(activeSkill.current).toBe("tdd");
     expect(day.skillCount).toEqual({ tdd: 1 });
     expect(day.userMsgs).toBe(1);
@@ -148,6 +149,7 @@ describe("parseUserMessage", () => {
   it("detects skill tag case-insensitively", () => {
     activeSkill.current = null;
     const day = parseUserMessage(mkUser('<SKILL NAME="TDD">do it</SKILL>'));
+    // @ts-expect-error
     expect(activeSkill.current).toBe("TDD");
     expect(day.skillCount).toEqual({ TDD: 1 });
   });
@@ -168,14 +170,14 @@ describe("parseUserMessage", () => {
 
   it("ignores malformed skill tag", () => {
     activeSkill.current = null;
-    const day = parseUserMessage(mkUser('<skill name=>no value</skill>'));
+    const day = parseUserMessage(mkUser("<skill name=>no value</skill>"));
     expect(activeSkill.current).toBeNull();
     expect(day.skillCount).toEqual({});
   });
 
   it("ignores skill tag with missing name attribute", () => {
     activeSkill.current = "existing";
-    const day = parseUserMessage(mkUser('<skill>no name attr</skill>'));
+    const day = parseUserMessage(mkUser("<skill>no name attr</skill>"));
     expect(activeSkill.current).toBeNull();
     expect(day.skillCount).toEqual({});
   });
@@ -585,10 +587,7 @@ describe("parseAssistantMessage", () => {
   it("attributes tool calls to active skill from content blocks", () => {
     activeSkill.current = "writing";
     const msg = mkAsst({
-      content: [
-        tc("read", { path: "/f" }),
-        { ...tc("bash", { command: "ls" }), id: "c2" },
-      ],
+      content: [tc("read", { path: "/f" }), { ...tc("bash", { command: "ls" }), id: "c2" }],
     });
     const day = parseAssistantMessage(msg);
     expect(day.skillToolCount["writing"]).toBe(2);
