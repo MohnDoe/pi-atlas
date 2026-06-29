@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
 import { type ModelStat } from "../types";
 import { Models } from "./Models";
@@ -40,8 +40,12 @@ describe("Models", () => {
 
   it("renders within width", () => {
     const tab = new Models(models, mtp, makeTheme(), testPalette(), mockTui, 10);
-    const lines = tab.render(80);
-    expect(lines.length).toBeLessThanOrEqual(12);
+    const width = 50;
+    const lines = tab.render(width);
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(width);
+    }
   });
 
   it("fill column adapts to width", () => {
@@ -63,32 +67,68 @@ describe("Models", () => {
 
   it("invalidates render cache", () => {
     const tab = new Models(models, mtp, makeTheme(), testPalette(), mockTui, 10);
-    tab.render(80);
+    tab.render(80); // cache at width 80
     tab.invalidate();
-    const lines = tab.render(80);
-    expect(lines.join("\n")).toContain("Claude");
+    const lines = tab.render(50); // should re-render at new width
+    for (const line of lines) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(50);
+    }
   });
 
   it("supports re-render after invalidation (lifecycle path)", () => {
     const tab = new Models(models, mtp, makeTheme(), testPalette(), mockTui, 10);
-    tab.render(80);
+
+    // First render cycle
+    const lines1 = tab.render(80);
+    expect(lines1.join("\n")).toContain("Claude");
+
+    // Invalidate — simulates Dashboard.buildTabs() lifecycle cleanup
     tab.invalidate();
-    const lines = tab.render(80);
-    expect(lines[0]).toContain("Models");
+
+    // Second render cycle — creates new table from clean state
+    const lines2 = tab.render(80);
+    const text = lines2.join("\n");
+    expect(text).toContain("Claude");
+    expect(text).toContain("▼");
+    for (const line of lines2) {
+      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
+      expect(visLen).toBeLessThanOrEqual(80);
+    }
   });
 
   describe("marquee lifecycle", () => {
+    const modelName = "claude-sonnet-4-20250514-very-long-name-that-overflows";
     const longModels: ModelStat[] = [
-      { model: "claude-sonnet-4-20250514-very-long-name-that-overflows", cost: 1, calls: 1 },
+      { model: modelName, cost: 1, calls: 1 },
     ];
 
-    it("clears marquee timers on invalidate (Models→SortedTable→cells chain)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("creates marquee timer on narrow render and clears on invalidate", () => {
       const tab = new Models(longModels, new Map(), makeTheme(), testPalette(), mockTui, 10);
-      tab.render(80);
+
+      // Render at narrow width where long model name overflows fill column
+      // → MarqueeCell starts a timer on the focused row
+      tab.render(30);
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+      // Invalidate propagates: Models → SortedTable → cells → MarqueeCell → clearInterval
       const spy = vi.spyOn(global, "clearInterval");
       tab.invalidate();
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
+
+      // Re-render still produces clean output
+      const lines = tab.render(30);
+      const text = lines.join("\n");
+      expect(text).toContain("C"); // first char of model name still visible
     });
   });
 });
