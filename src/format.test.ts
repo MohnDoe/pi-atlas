@@ -201,10 +201,31 @@ describe("formatNumber", () => {
 });
 
 describe("formatCost", () => {
-  it("formats small costs with $ and least decimals possible", () => {
+  it("formats small costs with least decimals possible", () => {
     expect(formatCost(0)).toBe("$0");
+
+    expect(formatCost(0.00008)).toBe("$0.0001");
+    expect(formatCost(0.0005)).toBe("$0.0005");
+    expect(formatCost(0.004)).toBe("$0.004");
+    expect(formatCost(0.04)).toBe("$0.04");
+    expect(formatCost(0.049)).toBe("$0.05");
+
+    expect(formatCost(0.324)).toBe("$0.32");
+    expect(formatCost(0.328)).toBe("$0.33");
+    expect(formatCost(0.32557)).toBe("$0.33");
+
+    expect(formatCost(1.004)).toBe("$1.01");
+
     expect(formatCost(1.5)).toBe("$1.5");
+    expect(formatCost(1.23)).toBe("$1.23");
+    expect(formatCost(1.231)).toBe("$1.23");
+    expect(formatCost(1.238)).toBe("$1.24");
+
     expect(formatCost(999.99)).toBe("$999.99");
+    expect(formatCost(999.991)).toBe("$999.99");
+
+    expect(formatCost(999.9949)).toBe("$1,000");
+    expect(formatCost(999.999)).toBe("$1,000");
   });
 
   it("formats thousands with k", () => {
