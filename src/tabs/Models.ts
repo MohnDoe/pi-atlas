@@ -68,11 +68,11 @@ export class Models extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Name"), width: 32 },
-              { header: cell.header("Provider"), width: 16 },
-              { header: cell.header("Cost %"), width: "fill" },
+              { header: cell.header("Name"), width: "fill" },
+              { header: cell.header("Provider"), width: 20 },
+              { header: cell.header("Cost %"), width: 14 },
               { header: cell.header("Calls"), width: 10 },
-              { header: cell.header("Cost"), width: 12 },
+              { header: cell.header("Cost"), width: 10 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,
