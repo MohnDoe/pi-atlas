@@ -20,7 +20,6 @@ import {
   parseAssistantMessage,
   parseCompactionEntry,
   parseFile,
-  _fileModelToProvider,
   parseLanguageUsage,
   parseModelChangeEntry,
   parseSessionHeader,
@@ -456,12 +455,13 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
-    const day = parseAssistantMessage(msg);
+    const mtp = new Map<string, string>();
+    const day = parseAssistantMessage(msg, mtp);
     expect(day.modelCost["gpt-5"]).toBe(0.003);
     expect(day.modelCount["gpt-5"]).toBe(1);
     expect(day.providerCost).toEqual({});
     expect(day.providerCount).toEqual({});
-    expect(_fileModelToProvider.has("gpt-5")).toBe(false);
+    expect(mtp.has("gpt-5")).toBe(false);
   });
 
   it("records provider cost, count, and model mapping", () => {
@@ -477,11 +477,11 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
-    _fileModelToProvider.clear();
-    const day = parseAssistantMessage(msg);
+    const mtp = new Map<string, string>();
+    const day = parseAssistantMessage(msg, mtp);
     expect(day.providerCost["deepseek"]).toBe(0.003);
     expect(day.providerCount["deepseek"]).toBe(1);
-    expect(_fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(mtp.get("deepseek-v4-pro")).toBe("deepseek");
   });
 });
 
@@ -649,8 +649,8 @@ describe("parseSessionLogEntry", () => {
       }),
     };
 
-    _fileModelToProvider.clear();
-    const dayAgg = parseSessionLogEntry(msgEntry)!;
+    const mtp = new Map<string, string>();
+    const dayAgg = parseSessionLogEntry(msgEntry, mtp)!;
 
     expect(dayAgg.cost).toBe(0.00141);
     expect(dayAgg.inTok).toBe(1000);
@@ -662,7 +662,7 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.modelCount["deepseek-v4-pro"]).toBe(1);
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
-    expect(_fileModelToProvider.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(mtp.get("deepseek-v4-pro")).toBe("deepseek");
     const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
     expect(dayAgg.hourCost[localHour]).toBe(0.00141);
   });

@@ -22,10 +22,8 @@ function sanitizeToolName(name: string): string {
 
 // Tracks session ID → project name for cost attribution
 const sessionProjectMap = new Map<string, string>();
-// Collects model→provider pairs during a single parseFile call
-const _fileModelToProvider: ModelToProvider = new Map();
 
-export { sessionProjectMap, _fileModelToProvider };
+export { sessionProjectMap };
 
 export function emptyDay(date: string): DayAgg {
   return {
@@ -144,7 +142,10 @@ export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
   return day;
 }
 
-export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
+export function parseAssistantMessage(
+  msg: AssistantMessage,
+  modelToProvider?: ModelToProvider,
+): DayAgg {
   const day = emptyDay("");
   day.asstMsgs = 1;
 
@@ -168,7 +169,7 @@ export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
     day.modelCost[msg.model] = msg.usage?.cost?.total || 0;
     day.modelCount[msg.model] = 1;
     if (msg.provider) {
-      _fileModelToProvider.set(msg.model, msg.provider);
+      if (modelToProvider) modelToProvider.set(msg.model, msg.provider);
       day.providerCost[msg.provider] = msg.usage?.cost?.total || 0;
       day.providerCount[msg.provider] = 1;
     }
@@ -238,14 +239,14 @@ export function parseLanguageUsage(
   return day;
 }
 
-function parseAgentMessage(msg: AgentMessage): DayAgg {
+function parseAgentMessage(msg: AgentMessage, modelToProvider: ModelToProvider): DayAgg {
   switch (msg.role) {
     case "user":
       return parseUserMessage();
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
     case "assistant":
-      return parseAssistantMessage(msg as AssistantMessage);
+      return parseAssistantMessage(msg as AssistantMessage, modelToProvider);
     // skip non-cost-relevant message types
     case "bashExecution":
     case "custom":
@@ -279,9 +280,11 @@ export function parseCompactionEntry(entry: CompactionEntry): DayAgg {
 
 // ---- Top-level dispatch ----
 
-export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
+export function parseSessionLogEntry(entry: FileEntry, modelToProvider?: ModelToProvider): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
+
+  const mtp = modelToProvider ?? new Map();
 
   switch (entry.type) {
     case "session":
@@ -290,7 +293,7 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
       const msgEntry = entry as SessionMessageEntry;
       const hour = new Date(msgEntry.timestamp).getHours();
       const day = emptyDay(dateFromISOString(msgEntry.timestamp));
-      mergeDay(day, parseAgentMessage(msgEntry.message));
+      mergeDay(day, parseAgentMessage(msgEntry.message, mtp));
       if (day.cost > 0) {
         day.hourCost[hour] = (day.hourCost[hour] ?? 0) + day.cost;
       }
@@ -322,7 +325,7 @@ export function parseFile(
   // Each JSONL file represents one session; reset global session→project
   // tracking so costs from previous files don't leak across projects.
   sessionProjectMap.clear();
-  _fileModelToProvider.clear();
+  const modelToProvider: ModelToProvider = new Map();
 
   const map = new Map<string, DayAgg>();
 
@@ -330,7 +333,7 @@ export function parseFile(
   try {
     content = readFileSync(filePath, "utf-8");
   } catch {
-    return { dayMap: map, modelToProvider: new Map(_fileModelToProvider) };
+    return { dayMap: map, modelToProvider };
   }
 
   const lines = content.split("\n");
@@ -342,7 +345,7 @@ export function parseFile(
 
     try {
       const entry = JSON.parse(trimmed) as FileEntry;
-      const result = parseSessionLogEntry(entry);
+      const result = parseSessionLogEntry(entry, modelToProvider);
       if (result) {
         const existing = map.get(result.date);
         if (existing) {
@@ -357,5 +360,5 @@ export function parseFile(
     }
   }
 
-  return { dayMap: map, modelToProvider: new Map(_fileModelToProvider) };
+  return { dayMap: map, modelToProvider };
 }
