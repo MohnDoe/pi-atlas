@@ -89,7 +89,7 @@ function buildSkills(
       tokens: skillTokens[name] ?? 0,
       toolCalls: {
         total: skillToolCount[name] ?? 0,
-        avg: skillCount[name]! > 0 ? (skillToolCount[name] ?? 0) / skillCount[name]! : 0,
+        avg: (skillCount[name] ?? 0) > 0 ? (skillToolCount[name] ?? 0) / (skillCount[name] ?? 0) : 0,
         calls: skillToolBreakdown[name] ?? {},
       },
     }))

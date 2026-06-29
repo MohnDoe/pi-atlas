@@ -322,7 +322,7 @@ export function parseLanguageUsage(
 function parseAgentMessage(msg: AgentMessage): DayAgg {
   switch (msg.role) {
     case "user":
-      return parseUserMessage(msg as unknown as UserMessage);
+      return parseUserMessage(msg as UserMessage);
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
     case "assistant":
