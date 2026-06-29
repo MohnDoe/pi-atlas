@@ -461,6 +461,7 @@ describe("parseAssistantMessage", () => {
     expect(day.modelCount["gpt-5"]).toBe(1);
     expect(day.providerCost).toEqual({});
     expect(day.providerCount).toEqual({});
+    expect(_fileModelToProvider.has("gpt-5")).toBe(false);
   });
 
   it("records provider cost, count, and model mapping", () => {
