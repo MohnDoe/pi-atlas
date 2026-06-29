@@ -138,13 +138,6 @@ export function summarize(
   let modelToProvider: Record<string, string> = {};
 
   for (const session of projectFiltered) {
-    // Session-level counts (only counted if session has matching models)
-    compactionCount += session.compactionCount;
-    compactedTokens += session.compactedTokens;
-    modelChanges += session.modelChanges;
-    for (const [level, count] of Object.entries(session.thinkingLevelCount)) {
-      thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
-    }
 
     // Project attribution: the session's project gets attributed its total cost
     let sessionCost = 0;
@@ -185,9 +178,18 @@ export function summarize(
       }
     }
 
-    // Count session-level messages for sessions that have matching models
+    // Count session-level data only for sessions that have matching models
     if (sessionHasModels) {
+      // Session-level messages are only counted when the session has at least
+      // one model matching the active filters.
       totalMessages += session.userMsgs + session.toolResults;
+
+      compactionCount += session.compactionCount;
+      compactedTokens += session.compactedTokens;
+      modelChanges += session.modelChanges;
+      for (const [level, count] of Object.entries(session.thinkingLevelCount)) {
+        thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+      }
     }
 
     // Only track project cost if the session has any models matching the filter
@@ -245,7 +247,7 @@ export function summarize(
     .map(([provider, cost]) => ({ provider, cost, calls: providerCount[provider] ?? 0 }))
     .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
-  const hourlySpend = buildHourlySpend(filtered, range);
+  const hourlySpend = buildHourlySpend(projectFiltered, range);
 
   return {
     totalCost,
