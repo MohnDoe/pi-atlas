@@ -58,7 +58,6 @@ describe("Skills", () => {
     expect(text).toContain("85 (~5 avg)");
     expect(text).toContain("30 (~4 avg)");
 
-    console.log(text);
   });
 
   it("shows sort indicator on Cost column", () => {
