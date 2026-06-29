@@ -94,6 +94,46 @@ export interface StatsSummary {
   hourlySpend: HourSpend[];
 }
 
+// ---- New SessionAgg types ----
+
+export interface SessionAgg {
+  date: string;            // "YYYY-MM-DD"
+  sessionId: string;
+  project: string;
+  models: Record<string, SessionModelUsage>; // keyed by model name
+  userMsgs: number;
+  toolResults: number;
+  compactionCount: number;
+  compactedTokens: number;
+  modelChanges: number;
+  thinkingLevelCount: Record<string, number>;
+  hourCost: Record<number, number>;
+}
+
+export interface SessionModelUsage {
+  provider: string;
+  cost: number;
+  calls: number;
+  inTok: number;
+  outTok: number;
+  crTok: number;
+  cwTok: number;
+  asstMsgs: number;
+  tools: Record<string, number>;             // tool name → call count
+  languages: Record<string, LangUsage>;
+}
+
+export interface LangUsage {
+  lines: number;
+  edits: number;
+}
+
+export interface Filters {
+  project?: string;
+  model?: string;
+  provider?: string;
+}
+
 export interface CachePayload {
   signature: string;
   generatedAt: string;
