@@ -11,7 +11,7 @@ import type {
 import { readFileSync } from "node:fs";
 
 import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
-import type { DayAgg, ModelToProvider } from "./types";
+import type { DayAgg, ModelProviderCallback, ModelToProvider } from "./types";
 
 /** Strip control characters (\n, \r, \t, etc.) from a tool name. */
 function sanitizeToolName(name: string): string {
@@ -144,7 +144,7 @@ export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
 
 export function parseAssistantMessage(
   msg: AssistantMessage,
-  modelToProvider?: ModelToProvider,
+  onModelProvider?: ModelProviderCallback,
 ): DayAgg {
   const day = emptyDay("");
   day.asstMsgs = 1;
@@ -169,7 +169,7 @@ export function parseAssistantMessage(
     day.modelCost[msg.model] = msg.usage?.cost?.total || 0;
     day.modelCount[msg.model] = 1;
     if (msg.provider) {
-      if (modelToProvider) modelToProvider.set(msg.model, msg.provider);
+      onModelProvider?.(msg.model, msg.provider);
       day.providerCost[msg.provider] = msg.usage?.cost?.total || 0;
       day.providerCount[msg.provider] = 1;
     }
@@ -239,14 +239,14 @@ export function parseLanguageUsage(
   return day;
 }
 
-function parseAgentMessage(msg: AgentMessage, modelToProvider: ModelToProvider): DayAgg {
+function parseAgentMessage(msg: AgentMessage, onModelProvider?: ModelProviderCallback): DayAgg {
   switch (msg.role) {
     case "user":
       return parseUserMessage();
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
     case "assistant":
-      return parseAssistantMessage(msg as AssistantMessage, modelToProvider);
+      return parseAssistantMessage(msg as AssistantMessage, onModelProvider);
     // skip non-cost-relevant message types
     case "bashExecution":
     case "custom":
@@ -280,11 +280,9 @@ export function parseCompactionEntry(entry: CompactionEntry): DayAgg {
 
 // ---- Top-level dispatch ----
 
-export function parseSessionLogEntry(entry: FileEntry, modelToProvider?: ModelToProvider): DayAgg | null {
+export function parseSessionLogEntry(entry: FileEntry, onModelProvider?: ModelProviderCallback): DayAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
-
-  const mtp = modelToProvider ?? new Map();
 
   switch (entry.type) {
     case "session":
@@ -293,7 +291,7 @@ export function parseSessionLogEntry(entry: FileEntry, modelToProvider?: ModelTo
       const msgEntry = entry as SessionMessageEntry;
       const hour = new Date(msgEntry.timestamp).getHours();
       const day = emptyDay(dateFromISOString(msgEntry.timestamp));
-      mergeDay(day, parseAgentMessage(msgEntry.message, mtp));
+      mergeDay(day, parseAgentMessage(msgEntry.message, onModelProvider));
       if (day.cost > 0) {
         day.hourCost[hour] = (day.hourCost[hour] ?? 0) + day.cost;
       }
@@ -345,7 +343,7 @@ export function parseFile(
 
     try {
       const entry = JSON.parse(trimmed) as FileEntry;
-      const result = parseSessionLogEntry(entry, modelToProvider);
+      const result = parseSessionLogEntry(entry, (m, p) => modelToProvider.set(m, p));
       if (result) {
         const existing = map.get(result.date);
         if (existing) {

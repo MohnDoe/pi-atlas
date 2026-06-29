@@ -30,6 +30,8 @@ export type TimeRange = "1d" | "7d" | "30d" | "All";
 
 export type ModelToProvider = Map<string, string>;
 
+export type ModelProviderCallback = (model: string, provider: string) => void;
+
 export interface SummarizeOptions {
   days: DayAgg[];
   range: TimeRange;

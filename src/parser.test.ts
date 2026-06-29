@@ -391,6 +391,58 @@ describe("parseAssistantMessage", () => {
     expect(day.cost).toBe(0);
   });
 
+  it("invokes callback with model and provider when both present", () => {
+    const msg = mkAsst({
+      model: "gpt-5",
+      provider: "openai",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+    });
+    const calls: Array<[string, string]> = [];
+    parseAssistantMessage(msg, (m, p) => calls.push([m, p]));
+    expect(calls).toEqual([[ "gpt-5", "openai" ]]);
+  });
+
+  it("does not invoke callback when provider is empty", () => {
+    const msg = mkAsst({
+      model: "gpt-5",
+      provider: "",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+    });
+    const calls: Array<[string, string]> = [];
+    parseAssistantMessage(msg, (m, p) => calls.push([m, p]));
+    expect(calls).toEqual([]);
+  });
+
+  it("handles omitted callback gracefully", () => {
+    const msg = mkAsst({
+      model: "gpt-5",
+      provider: "openai",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+    });
+    expect(() => parseAssistantMessage(msg)).not.toThrow();
+  });
+
   it("handles missing content gracefully", () => {
     const msg = mkAsst({
       usage: {
@@ -455,13 +507,13 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
-    const mtp = new Map<string, string>();
-    const day = parseAssistantMessage(msg, mtp);
+    const collected = new Map<string, string>();
+    const day = parseAssistantMessage(msg, (m, p) => collected.set(m, p));
     expect(day.modelCost["gpt-5"]).toBe(0.003);
     expect(day.modelCount["gpt-5"]).toBe(1);
     expect(day.providerCost).toEqual({});
     expect(day.providerCount).toEqual({});
-    expect(mtp.has("gpt-5")).toBe(false);
+    expect(collected.has("gpt-5")).toBe(false);
   });
 
   it("records provider cost, count, and model mapping", () => {
@@ -477,11 +529,11 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
       },
     });
-    const mtp = new Map<string, string>();
-    const day = parseAssistantMessage(msg, mtp);
+    const collected = new Map<string, string>();
+    const day = parseAssistantMessage(msg, (m, p) => collected.set(m, p));
     expect(day.providerCost["deepseek"]).toBe(0.003);
     expect(day.providerCount["deepseek"]).toBe(1);
-    expect(mtp.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(collected.get("deepseek-v4-pro")).toBe("deepseek");
   });
 });
 
@@ -649,8 +701,8 @@ describe("parseSessionLogEntry", () => {
       }),
     };
 
-    const mtp = new Map<string, string>();
-    const dayAgg = parseSessionLogEntry(msgEntry, mtp)!;
+    const collected = new Map<string, string>();
+    const dayAgg = parseSessionLogEntry(msgEntry, (m, p) => collected.set(m, p))!;
 
     expect(dayAgg.cost).toBe(0.00141);
     expect(dayAgg.inTok).toBe(1000);
@@ -662,9 +714,59 @@ describe("parseSessionLogEntry", () => {
     expect(dayAgg.modelCount["deepseek-v4-pro"]).toBe(1);
     expect(dayAgg.providerCost["deepseek"]).toBe(0.00141);
     expect(dayAgg.providerCount["deepseek"]).toBe(1);
-    expect(mtp.get("deepseek-v4-pro")).toBe("deepseek");
+    expect(collected.get("deepseek-v4-pro")).toBe("deepseek");
     const localHour = new Date("2026-06-08T10:05:00.000Z").getHours();
     expect(dayAgg.hourCost[localHour]).toBe(0.00141);
+  });
+
+  it("invokes callback from session log entry with correct model-provider pair", () => {
+    const msgEntry: SessionMessageEntry = {
+      type: "message",
+      id: "msg-1",
+      parentId: "prev",
+      timestamp: "2026-06-08T10:05:00.000Z",
+      message: mkAsst({
+        content: [{ type: "text", text: "hello" }],
+        provider: "anthropic",
+        model: "sonnet-v3",
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+      }),
+    };
+
+    const calls: Array<[string, string]> = [];
+    parseSessionLogEntry(msgEntry, (m, p) => calls.push([m, p]));
+    expect(calls).toEqual([[ "sonnet-v3", "anthropic" ]]);
+  });
+
+  it("handles omitted callback at session log entry level", () => {
+    const msgEntry: SessionMessageEntry = {
+      type: "message",
+      id: "msg-1",
+      parentId: "prev",
+      timestamp: "2026-06-08T10:05:00.000Z",
+      message: mkAsst({
+        content: [{ type: "text", text: "hi" }],
+        provider: "deepseek",
+        model: "deepseek-v4",
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+      }),
+    };
+
+    expect(() => parseSessionLogEntry(msgEntry)).not.toThrow();
   });
 
   it("returns a DayAgg for a user message", () => {
@@ -1554,5 +1656,40 @@ describe("parseFile", () => {
     expect(day.modelChanges).toBe(1);
     expect(day.compactionCount).toBe(1);
     expect(day.compactedTokens).toBe(30000);
+  });
+
+  it("collects model→provider mapping from all assistant messages via parseFile", async () => {
+    const filePath = join(tmpDir, "multi-model.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session", version: 3, id: "s1",
+        timestamp: "2026-06-10T09:00:00.000Z",
+        cwd: "/home/doe/proj",
+      }),
+      JSON.stringify({
+        type: "message", id: "m1", parentId: "s1",
+        timestamp: "2026-06-10T09:01:00.000Z",
+        message: mkAsst({
+          content: [{ type: "text", text: "a" }],
+          model: "gpt-5", provider: "openai",
+          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        }),
+      }),
+      JSON.stringify({
+        type: "message", id: "m2", parentId: "m1",
+        timestamp: "2026-06-10T09:02:00.000Z",
+        message: mkAsst({
+          content: [{ type: "text", text: "b" }],
+          model: "deepseek-v4", provider: "deepseek",
+          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        }),
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const { modelToProvider } = parseFile(filePath);
+    expect(modelToProvider.get("gpt-5")).toBe("openai");
+    expect(modelToProvider.get("deepseek-v4")).toBe("deepseek");
+    expect(modelToProvider.size).toBe(2);
   });
 });
