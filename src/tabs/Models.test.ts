@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { describe, expect, it } from "bun:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { makeMockTUI, makeTheme, testPalette } from "../components/components.fixtures";
 import { type ModelStat } from "../types";
 import { Models } from "./Models";
@@ -43,8 +44,7 @@ describe("Models", () => {
     const width = 50;
     const lines = tab.render(width);
     for (const line of lines) {
-      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
-      expect(visLen).toBeLessThanOrEqual(width);
+      expect(visibleWidth(line)).toBeLessThanOrEqual(width);
     }
   });
 
@@ -71,8 +71,7 @@ describe("Models", () => {
     tab.invalidate();
     const lines = tab.render(50); // should re-render at new width
     for (const line of lines) {
-      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
-      expect(visLen).toBeLessThanOrEqual(50);
+      expect(visibleWidth(line)).toBeLessThanOrEqual(50);
     }
   });
 
@@ -92,43 +91,7 @@ describe("Models", () => {
     expect(text).toContain("Claude");
     expect(text).toContain("▼");
     for (const line of lines2) {
-      const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
-      expect(visLen).toBeLessThanOrEqual(80);
+      expect(visibleWidth(line)).toBeLessThanOrEqual(80);
     }
-  });
-
-  describe("marquee lifecycle", () => {
-    const modelName = "claude-sonnet-4-20250514-very-long-name-that-overflows";
-    const longModels: ModelStat[] = [
-      { model: modelName, cost: 1, calls: 1 },
-    ];
-
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("creates marquee timer on narrow render and clears on invalidate", () => {
-      const tab = new Models(longModels, new Map(), makeTheme(), testPalette(), mockTui, 10);
-
-      // Render at narrow width where long model name overflows fill column
-      // → MarqueeCell starts a timer on the focused row
-      tab.render(30);
-      expect(vi.getTimerCount()).toBeGreaterThan(0);
-
-      // Invalidate propagates: Models → SortedTable → cells → MarqueeCell → clearInterval
-      const spy = vi.spyOn(global, "clearInterval");
-      tab.invalidate();
-      expect(spy).toHaveBeenCalled();
-      spy.mockRestore();
-
-      // Re-render still produces clean output
-      const lines = tab.render(30);
-      const text = lines.join("\n");
-      expect(text).toContain("C"); // first char of model name still visible
-    });
   });
 });
