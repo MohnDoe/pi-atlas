@@ -69,10 +69,10 @@ export class Languages extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Name"), width: 12 },
-              { header: cell.header("Share %"), width: "fill" },
-              { header: cell.header("Edits"), width: 8 },
-              { header: cell.header("Lines"), width: 14 },
+              { header: cell.header("Name"), width: "fill" },
+              { header: cell.header("Share %"), width: 20 },
+              { header: cell.header("Edits"), width: 10 },
+              { header: cell.header("Lines"), width: 12 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,

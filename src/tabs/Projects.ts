@@ -64,9 +64,9 @@ export class Projects extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Name"), width: 20 },
-              { header: cell.header("Share %"), width: "fill" },
-              { header: cell.header("Sessions"), width: 14 },
+              { header: cell.header("Name"), width: "fill" },
+              { header: cell.header("Share %"), width: 14 },
+              { header: cell.header("Sessions"), width: 10 },
               { header: cell.header("Cost"), width: 10 },
             ],
             rows: this.rows,

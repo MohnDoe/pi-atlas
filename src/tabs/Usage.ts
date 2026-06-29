@@ -152,8 +152,8 @@ export class Usage extends Container {
         this.table = new SortedTable(
           {
             columns: [
-              { header: cell.header("Command"), width: 20 },
-              { header: cell.header("Share %"), width: "fill" },
+              { header: cell.header("Command"), width: "fill" },
+              { header: cell.header("Share %"), width: 20 },
               { header: cell.header("Calls"), width: 12 },
             ],
             rows: this.rows,
