@@ -150,6 +150,13 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const smallUsdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 4,
+});
+
 // ---- Number formatting ----
 
 export function formatNumber(n: number): string {
@@ -162,7 +169,22 @@ export function formatNumber(n: number): string {
 export function formatCost(n: number): string {
   if (n >= 1_000_000) return usdFormatter.format(n / 1_000_000) + "M";
   if (n >= 1_000) return usdFormatter.format(n / 1_000) + "k";
-  return usdFormatter.format(n);
+
+  // Very small values (< 1¢): show with up to 3 significant digits
+  if (n > 0 && n < 0.01) {
+    return smallUsdFormatter.format(n);
+  }
+
+  // >= $1: round to nearest cent with small fudge
+  // to compensate for floating-point imprecision (e.g., 1.004 → $1.01)
+  if (n >= 1) {
+    const rounded = Math.round(n * 100 + 0.1) / 100;
+    return usdFormatter.format(rounded);
+  }
+
+  // >= 1¢, < $1: standard rounding to nearest cent
+  const rounded = Math.round(n * 100) / 100;
+  return usdFormatter.format(rounded);
 }
 
 // ---- Timestamp formatting ----
