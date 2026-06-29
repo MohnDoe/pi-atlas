@@ -100,7 +100,7 @@ export class Skills extends Container {
               { header: cell.header("Cost"), width: 16 },
             ],
             rows: this.rows,
-            maxHeight: this.maxHeight,
+            maxHeight: this.maxHeight - 2,
             sort: { column: 4, direction: "desc" },
             tui: this.tui,
           },
