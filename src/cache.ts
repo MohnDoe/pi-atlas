@@ -152,7 +152,7 @@ export async function loadAggregate(
       if (cached) {
         return {
           days: cached.days.map(deserializeDay),
-          modelToProvider: new Map(Object.entries(cached.modelToProvider)),
+          modelToProvider: new Map(Object.entries(cached.modelToProvider ?? {})),
         };
       }
     }

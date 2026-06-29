@@ -320,6 +320,57 @@ describe("cache read/write", () => {
     expect(loadedMtp.get("gpt-4o")).toBe("openai");
     expect(loadedMtp.size).toBe(2);
   });
+
+  it("tolerates old cache missing modelToProvider at payload level", async () => {
+    const sesDir = join(tmpDir, "sessions-old");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    const sig = await computeSignature(sesDir);
+    // Old cache format: no modelToProvider key at payload level
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            date: "2026-06-08",
+            cost: 0,
+            inTok: 0,
+            outTok: 0,
+            crTok: 0,
+            cwTok: 0,
+            userMsgs: 0,
+            asstMsgs: 0,
+            toolResults: 0,
+            sessionIds: [],
+            langLines: {},
+            langEdits: {},
+            modelCost: {},
+            modelCount: {},
+            providerCost: {},
+            providerCount: {},
+            projectCost: {},
+            projectSessions: {},
+            toolCount: {},
+          },
+        ],
+      }),
+    );
+    const { days, modelToProvider } = await loadAggregate(cachePath, sesDir);
+    expect(days).toHaveLength(1);
+    expect(modelToProvider).toBeInstanceOf(Map);
+    expect(modelToProvider.size).toBe(0);
+  });
 });
 
 describe("loadAggregate", () => {
