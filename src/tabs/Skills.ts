@@ -30,7 +30,7 @@ export class Skills extends Container {
     if (this.isEmpty) return;
     this.rows = this.skills.flatMap((s) => {
       const firstLine = [
-        cell.marquee(stripAnsi(s.name), this.tui),
+        cell.text(stripAnsi(s.name)),
         cell.text(this.theme.bold(formatNumber(s.invocations))),
         cell.text(this.theme.bold(formatNumber(s.tokens))),
         cell.text(this.theme.bold(formatNumber(s.toolCalls.total))),
