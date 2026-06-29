@@ -28,25 +28,51 @@ export class Skills extends Container {
 
   private buildRows(): void {
     if (this.isEmpty) return;
-    this.rows = this.skills.map((s) => [
-      cell.marquee(stripAnsi(s.name), this.tui),
-      cell.text(this.theme.bold(formatNumber(s.invocations))),
-      cell.text(this.theme.bold(formatNumber(s.tokens))),
-      cell.text(
-        this.theme.bold(formatNumber(s.toolCalls.total)) +
-          (s.toolCalls.total > 0
-            ? this.theme.italic(
-                this.theme.fg(
-                  "dim",
-                  ` (~${formatNumber(parseInt(s.toolCalls.avg.toFixed(0)))} avg)`,
-                ),
-              )
-            : ""),
-      ),
-      cell.text(
-        s.cost > 0 ? this.theme.bold(formatCost(s.cost)) : this.theme.fg("dim", formatCost(0)),
-      ),
-    ]);
+    this.rows = this.skills.flatMap((s) => {
+      const firstLine = [
+        cell.marquee(stripAnsi(s.name), this.tui),
+        cell.text(this.theme.bold(formatNumber(s.invocations))),
+        cell.text(this.theme.bold(formatNumber(s.tokens))),
+        cell.text(this.theme.bold(formatNumber(s.toolCalls.total))),
+        cell.text(
+          s.cost > 0 ? this.theme.bold(formatCost(s.cost)) : this.theme.fg("dim", formatCost(0)),
+        ),
+      ];
+
+      if (s.invocations > 1) {
+        return [
+          firstLine,
+          [
+            cell.text(""),
+            cell.text(""),
+            cell.text(
+              this.theme.italic(
+                this.theme.fg("dim", `~${formatNumber(s.tokens / s.invocations)} avg`),
+              ),
+            ),
+            cell.text(
+              s.toolCalls.total > 0
+                ? this.theme.italic(
+                    this.theme.fg(
+                      "dim",
+                      `~${formatNumber(parseInt(s.toolCalls.avg.toFixed(0)))} avg`,
+                    ),
+                  )
+                : "",
+            ),
+            cell.text(
+              s.cost > 0
+                ? this.theme.italic(
+                    this.theme.fg("dim", `~${formatCost(s.cost / s.invocations)} avg`),
+                  )
+                : "",
+            ),
+          ],
+        ];
+      }
+
+      return [firstLine];
+    });
   }
 
   override render(width: number): string[] {
@@ -69,9 +95,9 @@ export class Skills extends Container {
             columns: [
               { header: cell.header("Name"), width: "fill" },
               { header: cell.header("Invocations"), width: 12 },
-              { header: cell.header("Tokens"), width: 12 },
-              { header: cell.header("Tool calls"), width: 20 },
-              { header: cell.header("Cost"), width: 12 },
+              { header: cell.header("Tokens"), width: 14 },
+              { header: cell.header("Tool calls"), width: 12 },
+              { header: cell.header("Cost"), width: 16 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,
