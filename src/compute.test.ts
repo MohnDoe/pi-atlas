@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { summarize } from "./compute";
 import type { SessionAgg } from "./types";
+import type { Api } from "@earendil-works/pi-ai";
 
 // Helper to build a SessionAgg with given props
 function mkSession(overrides: Partial<SessionAgg> & { sessionId: string }): SessionAgg {
@@ -25,7 +26,6 @@ function addModel(
   s: SessionAgg,
   modelName: string,
   opts: {
-    provider?: string;
     cost?: number;
     calls?: number;
     inTok?: number;
@@ -36,15 +36,30 @@ function addModel(
     tools?: Record<string, number>;
     languages?: Record<string, { lines: number; edits: number }>;
   } = {},
+  provider?: string,
+  api?: Api,
 ): void {
-  s.models[modelName] = {
-    provider: opts.provider ?? "",
-    cost: opts.cost ?? 0,
+  if (!s.models[provider || "p"]) {
+    s.models[provider || "p"] = {};
+  }
+  s.models[provider || "p"]![modelName] = {
+    provider: provider ?? "p",
+    api: api ?? "openai-completions",
+    usage: {
+      cost: {
+        total: opts.cost ?? 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        input: 0,
+        output: 0,
+      },
+      cacheRead: opts.crTok ?? 0,
+      cacheWrite: opts.cwTok ?? 0,
+      input: opts.inTok ?? 0,
+      output: opts.outTok ?? 0,
+      totalTokens: (opts.inTok ?? 0) + (opts.outTok ?? 0) + (opts.crTok ?? 0) + (opts.cwTok ?? 0),
+    },
     calls: opts.calls ?? 0,
-    inTok: opts.inTok ?? 0,
-    outTok: opts.outTok ?? 0,
-    crTok: opts.crTok ?? 0,
-    cwTok: opts.cwTok ?? 0,
     asstMsgs: opts.asstMsgs ?? 0,
     tools: opts.tools ?? {},
     languages: opts.languages ?? {},
@@ -73,24 +88,34 @@ describe("summarize", () => {
 
   it("computes KPIs from a single session", () => {
     const s = mkSession({ sessionId: "s1", timestamp: new Date().toISOString() });
-    addModel(s, "sonnet", {
-      cost: 1.0,
-      calls: 2,
-      asstMsgs: 5,
-      inTok: 1000,
-      outTok: 500,
-      crTok: 100,
-      cwTok: 50,
-    });
-    addModel(s, "haiku", {
-      cost: 0.5,
-      calls: 3,
-      asstMsgs: 4,
-      inTok: 300,
-      outTok: 150,
-      crTok: 30,
-      cwTok: 15,
-    });
+    addModel(
+      s,
+      "sonnet",
+      {
+        cost: 1.0,
+        calls: 2,
+        asstMsgs: 5,
+        inTok: 1000,
+        outTok: 500,
+        crTok: 100,
+        cwTok: 50,
+      },
+      "anthropic",
+    );
+    addModel(
+      s,
+      "haiku",
+      {
+        cost: 0.5,
+        calls: 3,
+        asstMsgs: 4,
+        inTok: 300,
+        outTok: 150,
+        crTok: 30,
+        cwTok: 15,
+      },
+      "anthropic",
+    );
     s.userMsgs = 3;
     s.toolResults = 4;
 
@@ -105,8 +130,18 @@ describe("summarize", () => {
     expect(result.totalTokens).toBe(2145); // 1300+650+130+65
 
     expect(result.models).toHaveLength(2);
-    expect(result.models[0]).toEqual({ model: "sonnet", cost: 1.0, calls: 2 });
-    expect(result.models[1]).toEqual({ model: "haiku", cost: 0.5, calls: 3 });
+    expect(result.models[0]).toEqual({
+      model: "sonnet",
+      cost: 1.0,
+      calls: 2,
+      provider: "anthropic",
+    });
+    expect(result.models[1]).toEqual({
+      model: "haiku",
+      cost: 0.5,
+      calls: 3,
+      provider: "anthropic",
+    });
   });
 
   it("filters by time range", () => {
@@ -232,43 +267,58 @@ describe("summarize", () => {
     const d2 = day1ago.toISOString();
 
     const s1 = mkSession({ sessionId: "s1", timestamp: d1, userMsgs: 5, toolResults: 3 });
-    addModel(s1, "sonnet", {
-      cost: 2.0,
-      calls: 4,
-      asstMsgs: 8,
-      inTok: 500,
-      outTok: 200,
-      crTok: 10,
-      cwTok: 5,
-    });
-    addModel(s1, "haiku", {
-      cost: 0.5,
-      calls: 2,
-      asstMsgs: 0,
-      inTok: 100,
-      outTok: 50,
-      crTok: 0,
-      cwTok: 0,
-    });
-    s1.models["sonnet"]!.tools = { bash: 3, read: 2 };
-    s1.models["sonnet"]!.languages = {
+    addModel(
+      s1,
+      "sonnet",
+      {
+        cost: 2.0,
+        calls: 4,
+        asstMsgs: 8,
+        inTok: 500,
+        outTok: 200,
+        crTok: 10,
+        cwTok: 5,
+      },
+      "anthropic",
+    );
+    addModel(
+      s1,
+      "haiku",
+      {
+        cost: 0.5,
+        calls: 2,
+        asstMsgs: 0,
+        inTok: 100,
+        outTok: 50,
+        crTok: 0,
+        cwTok: 0,
+      },
+      "anthropic",
+    );
+    s1.models["anthropic"]!["sonnet"]!.tools = { bash: 3, read: 2 };
+    s1.models["anthropic"]!["sonnet"]!.languages = {
       TypeScript: { lines: 100, edits: 3 },
       Python: { lines: 50, edits: 1 },
     };
-    s1.models["haiku"]!.tools = { bash: 1, read: 1 };
+    s1.models["anthropic"]!["haiku"]!.tools = { bash: 1, read: 1 };
 
     const s2 = mkSession({ sessionId: "s2", timestamp: d2, userMsgs: 3, toolResults: 1 });
-    addModel(s2, "sonnet", {
-      cost: 1.5,
-      calls: 3,
-      asstMsgs: 4,
-      inTok: 300,
-      outTok: 100,
-      crTok: 0,
-      cwTok: 0,
-    });
-    s2.models["sonnet"]!.tools = { edit: 1, write: 1 };
-    s2.models["sonnet"]!.languages = { Python: { lines: 200, edits: 2 } };
+    addModel(
+      s2,
+      "sonnet",
+      {
+        cost: 1.5,
+        calls: 3,
+        asstMsgs: 4,
+        inTok: 300,
+        outTok: 100,
+        crTok: 0,
+        cwTok: 0,
+      },
+      "anthropic",
+    );
+    s2.models["anthropic"]!["sonnet"]!.tools = { edit: 1, write: 1 };
+    s2.models["anthropic"]!["sonnet"]!.languages = { Python: { lines: 200, edits: 2 } };
 
     const result = summarize([s1, s2], "7d");
     expect(result.totalCost).toBe(4.0);
@@ -290,8 +340,8 @@ describe("summarize", () => {
 
     // Models sorted by cost
     expect(result.models).toEqual([
-      { model: "sonnet", cost: 3.5, calls: 7 },
-      { model: "haiku", cost: 0.5, calls: 2 },
+      { model: "sonnet", cost: 3.5, calls: 7, provider: "anthropic" },
+      { model: "haiku", cost: 0.5, calls: 2, provider: "anthropic" },
     ]);
 
     // Tools aggregated
@@ -338,15 +388,15 @@ describe("summarize", () => {
 
   it("returns providers sorted by cost descending", () => {
     const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
-    addModel(s, "sonnet", { provider: "anthropic", cost: 5.0, calls: 15 });
-    addModel(s, "gpt-5", { provider: "openai", cost: 1.0, calls: 5 });
-    addModel(s, "free-model", { provider: "free", cost: 0, calls: 100 });
+    addModel(s, "sonnet", { cost: 5.0, calls: 15 }, "anthropic");
+    addModel(s, "gpt-5", { cost: 1.0, calls: 5 }, "openai");
+    addModel(s, "free-model", { cost: 0, calls: 100 }, "free-model");
 
     const result = summarize([s], "All");
     expect(result.providers).toEqual([
       { provider: "anthropic", cost: 5.0, calls: 15 },
       { provider: "openai", cost: 1.0, calls: 5 },
-      { provider: "free", cost: 0, calls: 100 },
+      { provider: "free-model", cost: 0, calls: 100 },
     ]);
   });
 
@@ -370,8 +420,8 @@ describe("summarize", () => {
 
   it("attaches provider to model stats", () => {
     const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
-    addModel(s, "sonnet", { provider: "anthropic", cost: 2.0, calls: 5 });
-    addModel(s, "haiku", { provider: "anthropic", cost: 0.5, calls: 2 });
+    addModel(s, "sonnet", { cost: 2.0, calls: 5 }, "anthropic");
+    addModel(s, "haiku", { cost: 0.5, calls: 2 }, "anthropic");
 
     const result = summarize([s], "All");
     expect(result.models).toHaveLength(2);
@@ -521,8 +571,8 @@ describe("summarize", () => {
 
   it("filters by provider", () => {
     const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
-    addModel(s, "sonnet", { provider: "anthropic", cost: 10, calls: 2 });
-    addModel(s, "gpt-5", { provider: "openai", cost: 5, calls: 1 });
+    addModel(s, "sonnet", { cost: 10, calls: 2 }, "anthropic");
+    addModel(s, "gpt-5", { cost: 5, calls: 1 }, "openai");
 
     const result = summarize([s], "All", { provider: "anthropic" });
     expect(result.totalCost).toBe(10);
@@ -537,46 +587,62 @@ describe("summarize", () => {
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
     });
-    addModel(s1, "sonnet", {
-      provider: "anthropic",
-      cost: 10,
-      calls: 2,
-      inTok: 500,
-      tools: { bash: 3 },
-    });
-    addModel(s1, "haiku", {
-      provider: "anthropic",
-      cost: 3,
-      calls: 1,
-      inTok: 100,
-      tools: { read: 1 },
-    });
+    addModel(
+      s1,
+      "sonnet",
+      {
+        cost: 10,
+        calls: 2,
+        inTok: 500,
+        tools: { bash: 3 },
+      },
+      "anthropic",
+    );
+    addModel(
+      s1,
+      "haiku",
+      {
+        cost: 3,
+        calls: 1,
+        inTok: 100,
+        tools: { read: 1 },
+      },
+      "anthropic",
+    );
 
     const s2 = mkSession({
       sessionId: "s2",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "beta",
     });
-    addModel(s2, "sonnet", {
-      provider: "anthropic",
-      cost: 20,
-      calls: 4,
-      inTok: 1000,
-      tools: { edit: 2 },
-    });
+    addModel(
+      s2,
+      "sonnet",
+      {
+        cost: 20,
+        calls: 4,
+        inTok: 1000,
+        tools: { edit: 2 },
+      },
+      "anthropic",
+    );
 
     const s3 = mkSession({
       sessionId: "s3",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
     });
-    addModel(s3, "gpt-5", {
-      provider: "openai",
-      cost: 5,
-      calls: 1,
-      inTok: 200,
-      tools: { bash: 1 },
-    });
+    addModel(
+      s3,
+      "gpt-5",
+      {
+        cost: 5,
+        calls: 1,
+        inTok: 200,
+        tools: { bash: 1 },
+      },
+      "openai",
+    );
 
     const result = summarize([s1, s2, s3], "All", {
       project: "alpha",

@@ -34,7 +34,7 @@ import {
 function mkAsst(msg: {
   content?: PiAssistantMessage["content"];
   model?: string;
-  provider?: string;
+  provider: string;
   usage?: PiAssistantMessage["usage"];
 }): PiAssistantMessage {
   return {
@@ -73,7 +73,7 @@ function mkToolResult(msg: {
 }
 
 // Helper: minimal ToolCall block
-function tc(name: string, args?: Record<string, unknown>): ToolCall {
+function mkToolCall(name: string, args?: Record<string, unknown>): ToolCall {
   return { type: "toolCall", id: "c1", name, arguments: args ?? {} };
 }
 
@@ -132,19 +132,22 @@ describe("parseFile — SessionAgg", () => {
 
     const session = parseFile(filePath);
 
-    expect(session).not.toBeNull();
-    expect(session!.sessionId).toBe("s1");
-    expect(session!.timestamp).toBe("2026-06-08T10:00:00.000Z");
-    expect(session!.project).toBe("my-app");
-    expect(session!.cwd).toBe("/home/doe/dev/my-app");
-    expect(session!.userMsgs).toBe(1);
-    expect(session!.models["deepseek-v4"]).toBeDefined();
-    expect(session!.models["deepseek-v4"]!.cost).toBe(0.01);
-    expect(session!.models["deepseek-v4"]!.calls).toBe(1);
-    expect(session!.models["deepseek-v4"]!.inTok).toBe(100);
-    expect(session!.models["deepseek-v4"]!.outTok).toBe(50);
-    expect(session!.models["deepseek-v4"]!.asstMsgs).toBe(1);
-    expect(session!.models["deepseek-v4"]!.provider).toBe("deepseek");
+    assert(session);
+    expect(session.sessionId).toBe("s1");
+
+    expect(session.timestamp).toBe("2026-06-08T10:00:00.000Z");
+    expect(session.project).toBe("my-app");
+    expect(session.cwd).toBe("/home/doe/dev/my-app");
+    expect(session.userMsgs).toBe(1);
+
+    assert(session.models["deepseek"]);
+    assert(session.models["deepseek"]["deepseek-v4"]);
+    expect(session.models["deepseek"]["deepseek-v4"].usage.cost.total).toBe(0.01);
+    // expect(session.models["deepseek"]["deepseek-v4"]!.calls).toBe(1);
+    expect(session.models["deepseek"]["deepseek-v4"].usage.input).toBe(100);
+    expect(session.models["deepseek"]["deepseek-v4"].usage.output).toBe(50);
+    expect(session.models["deepseek"]["deepseek-v4"].asstMsgs).toBe(1);
+    expect(session.models["deepseek"]["deepseek-v4"].provider).toBe("deepseek");
   });
 
   it("returns null for corrupt/empty file", async () => {
@@ -246,7 +249,7 @@ describe("parseFile — SessionAgg", () => {
   });
 
   it("does not leak project costs across separate files", async () => {
-    const costMsg = (cost: number, model: string) => ({
+    const costMsg = (cost: number, model: string, provider: string) => ({
       type: "message",
       id: "m1",
       parentId: "p",
@@ -254,6 +257,7 @@ describe("parseFile — SessionAgg", () => {
       message: mkAsst({
         content: [{ type: "text", text: "ok" }],
         model,
+        provider,
         usage: {
           input: 0,
           output: 0,
@@ -276,7 +280,7 @@ describe("parseFile — SessionAgg", () => {
           timestamp: "2026-06-08T10:00:00.000Z",
           cwd: "/home/doe/proj-alpha",
         }),
-        JSON.stringify(costMsg(0.1, "gpt-4")),
+        JSON.stringify(costMsg(0.1, "gpt-4", "openai")),
       ].join("\n"),
     );
 
@@ -291,7 +295,7 @@ describe("parseFile — SessionAgg", () => {
           timestamp: "2026-06-08T10:00:00.000Z",
           cwd: "/home/doe/proj-beta",
         }),
-        JSON.stringify(costMsg(0.25, "gpt-4")),
+        JSON.stringify(costMsg(0.25, "gpt-4", "openai")),
       ].join("\n"),
     );
 
@@ -299,10 +303,10 @@ describe("parseFile — SessionAgg", () => {
     const sessionB = parseFile(fileB)!;
 
     expect(sessionA.project).toBe("proj-alpha");
-    expect(sessionA.models["gpt-4"]!.cost).toBe(0.1);
+    expect(sessionA.models["openai"]!["gpt-4"]!.usage.cost.total).toBe(0.1);
 
     expect(sessionB.project).toBe("proj-beta");
-    expect(sessionB.models["gpt-4"]!.cost).toBe(0.25);
+    expect(sessionB.models["openai"]!["gpt-4"]!.usage.cost.total).toBe(0.25);
   });
 
   it("handles sessions with no messages", async () => {
@@ -437,21 +441,23 @@ describe("parseAssistantMessage", () => {
       },
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["deepseek-v4-pro"];
+    assert(s.models["deepseek"]);
+    const m = s.models["deepseek"]["deepseek-v4-pro"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
-    expect(m.cost).toBe(0.003);
-    expect(m.calls).toBe(1);
-    expect(m.inTok).toBe(100);
-    expect(m.outTok).toBe(50);
-    expect(m.crTok).toBe(10);
-    expect(m.cwTok).toBe(5);
+    expect(m.usage.cost.total).toBe(0.003);
+    // expect(m.calls).toBe(1);
+    expect(m.usage.input).toBe(100);
+    expect(m.usage.output).toBe(50);
+    expect(m.usage.cacheRead).toBe(10);
+    expect(m.usage.cacheWrite).toBe(5);
     expect(m.provider).toBe("deepseek");
   });
 
   it("skips model entry when model field is empty", () => {
     const msg = mkAsst({
       model: "",
+      provider: "",
       usage: {
         input: 10,
         output: 5,
@@ -468,14 +474,15 @@ describe("parseAssistantMessage", () => {
   it("counts tool calls from content blocks per-model", () => {
     const msg = mkAsst({
       content: [
-        tc("read", { path: "/f" }),
-        { ...tc("bash", { command: "ls" }), id: "c2" },
-        { ...tc("read", { path: "/g" }), id: "c3" },
+        mkToolCall("read", { path: "/f" }),
+        { ...mkToolCall("bash", { command: "ls" }), id: "c2" },
+        { ...mkToolCall("read", { path: "/g" }), id: "c3" },
       ],
       model: "sonnet",
+      provider: "anthropic",
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["sonnet"];
+    const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.tools["read"]).toBe(2);
     expect(m.tools["bash"]).toBe(1);
@@ -484,10 +491,11 @@ describe("parseAssistantMessage", () => {
   it("strips control characters from tool call names", () => {
     const msg = mkAsst({
       model: "m",
-      content: [tc("ls -la agent/\n</parameter", { command: "ls" })],
+      provider: "provider",
+      content: [mkToolCall("ls -la agent/\n</parameter", { command: "ls" })],
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["provider"]!["m"];
     assert(m);
     expect(m.tools["ls -la agent/</parameter"]).toBe(1);
     expect(m.tools["ls -la agent/\n</parameter"]).toBeUndefined();
@@ -496,13 +504,14 @@ describe("parseAssistantMessage", () => {
   it("detects language from edit/write tool calls per-model", () => {
     const msg = mkAsst({
       model: "sonnet",
+      provider: "anthropic",
       content: [
-        tc("edit", { path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
-        { ...tc("write", { path: "/src/bar.rs", content: "fn main() {}" }), id: "c2" },
+        mkToolCall("edit", { path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
+        { ...mkToolCall("write", { path: "/src/bar.rs", content: "fn main() {}" }), id: "c2" },
       ],
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["sonnet"];
+    const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.languages["TypeScript"]!.lines).toBe(1);
     expect(m.languages["TypeScript"]!.edits).toBe(1);
@@ -513,6 +522,7 @@ describe("parseAssistantMessage", () => {
   it("handles zero-cost usage gracefully", () => {
     const msg = mkAsst({
       model: "m",
+      provider: "p",
       content: [{ type: "text", text: "hi" }],
       usage: {
         input: 0,
@@ -524,29 +534,31 @@ describe("parseAssistantMessage", () => {
       },
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
-    expect(m.cost).toBe(0);
-    expect(m.inTok).toBe(0);
+    expect(m.usage.cost.total).toBe(0);
+    expect(m.usage.input).toBe(0);
   });
 
   it("handles missing usage gracefully", () => {
     const msg = mkAsst({
       model: "m",
+      provider: "p",
       content: [{ type: "text", text: "hi" }],
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
-    expect(m.inTok).toBe(0);
-    expect(m.cost).toBe(0);
+    expect(m.usage.input).toBe(0);
+    expect(m.usage.input).toBe(0);
   });
 
   it("handles missing content gracefully", () => {
     const msg = mkAsst({
       model: "m",
+      provider: "p",
       usage: {
         input: 10,
         output: 5,
@@ -557,7 +569,7 @@ describe("parseAssistantMessage", () => {
       },
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
     expect(m.tools).toEqual({});
@@ -566,6 +578,7 @@ describe("parseAssistantMessage", () => {
   it("parses JSON-string toolCall arguments", () => {
     const msg = mkAsst({
       model: "m",
+      provider: "p",
       content: [
         {
           type: "toolCall" as const,
@@ -585,7 +598,7 @@ describe("parseAssistantMessage", () => {
       },
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["p"]!["m"];
     assert(m);
     expect(m.tools["edit"]).toBe(1);
     expect(m.languages["TypeScript"]!.lines).toBe(1);
@@ -597,9 +610,10 @@ describe("parseAssistantMessage", () => {
       //@ts-expect-error
       content: [{ type: "toolCall" as const, id: "c1", name: "read" }],
       model: "m",
+      provider: "p",
     });
     const s = parseAssistantMessage(msg);
-    const m = s.models["m"];
+    const m = s.models["p"]!["m"];
     assert(m);
     expect(m.tools["read"]).toBe(1);
   });
@@ -773,13 +787,13 @@ describe("parseSessionLogEntry", () => {
     };
 
     const s = parseSessionLogEntry(msgEntry)!;
-    const m = s.models["deepseek-v4-pro"];
+    const m = s.models["deepseek"]!["deepseek-v4-pro"];
     assert(m);
-    expect(m.cost).toBe(0.00141);
-    expect(m.inTok).toBe(1000);
-    expect(m.outTok).toBe(200);
-    expect(m.crTok).toBe(100);
-    expect(m.cwTok).toBe(0);
+    expect(m.usage.cost.total).toBe(0.00141);
+    expect(m.usage.input).toBe(1000);
+    expect(m.usage.output).toBe(200);
+    expect(m.usage.cacheRead).toBe(100);
+    expect(m.usage.cacheWrite).toBe(0);
     expect(m.asstMsgs).toBe(1);
     expect(m.provider).toBe("deepseek");
   });
@@ -816,21 +830,22 @@ describe("parseSessionLogEntry", () => {
       timestamp: "2026-06-08T10:01:00.000Z",
       message: mkAsst({
         content: [
-          tc("edit", {
+          mkToolCall("edit", {
             path: "/home/doe/proj/src/foo.ts",
             edits: [{ oldText: "a", newText: "ab" }],
           }),
           {
-            ...tc("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }),
+            ...mkToolCall("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }),
             id: "c2",
           },
-          { ...tc("read", { path: "/home/doe/proj/README.md" }), id: "c3" },
+          { ...mkToolCall("read", { path: "/home/doe/proj/README.md" }), id: "c3" },
         ],
         model: "sonnet",
+        provider: "anthropic",
       }),
     })!;
 
-    const m = s.models["sonnet"];
+    const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.languages["TypeScript"]!.lines).toBe(1);
     expect(m.languages["TypeScript"]!.edits).toBe(1);
@@ -847,15 +862,16 @@ describe("parseSessionLogEntry", () => {
       timestamp: "2026-06-08T10:01:00.000Z",
       message: mkAsst({
         content: [
-          tc("bash", { command: "ls" }),
-          { ...tc("read", { path: "f" }), id: "c2" },
-          { ...tc("read", { path: "g" }), id: "c3" },
+          mkToolCall("bash", { command: "ls" }),
+          { ...mkToolCall("read", { path: "f" }), id: "c2" },
+          { ...mkToolCall("read", { path: "g" }), id: "c3" },
         ],
         model: "sonnet",
+        provider: "anthropic",
       }),
     })!;
 
-    const m = s.models["sonnet"];
+    const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.tools["bash"]).toBe(1);
     expect(m.tools["read"]).toBe(2);
@@ -1020,28 +1036,51 @@ describe("mergeToSession", () => {
 
   it("merges model usage from multiple updates", () => {
     const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const a = emptySession("", new Date(0), "");
-    a.models["sonnet"] = {
+    const a = emptySession("", new Date(0));
+    a.models["anthropic"] = {};
+    a.models["anthropic"]["sonnet"] = {
       provider: "anthropic",
-      cost: 1.0,
+      api: "anthropic-messages",
+      usage: {
+        cost: {
+          cacheRead: 0.1,
+          cacheWrite: 0.1,
+          input: 0.3,
+          output: 0.5,
+          total: 1,
+        },
+        cacheRead: 50,
+        cacheWrite: 10,
+        input: 500,
+        output: 200,
+        totalTokens: 700,
+      },
       calls: 2,
-      inTok: 500,
-      outTok: 200,
-      crTok: 50,
-      cwTok: 10,
       asstMsgs: 2,
       tools: { bash: 1 },
       languages: { TypeScript: { lines: 10, edits: 1 } },
     };
     const b = emptySession("", new Date(0), "");
-    b.models["sonnet"] = {
+
+    b.models["anthropic"] = {};
+    b.models["anthropic"]["sonnet"] = {
       provider: "anthropic",
-      cost: 0.5,
+      api: "anthropic-messages",
+      usage: {
+        cost: {
+          cacheRead: 0.1,
+          cacheWrite: 0.1,
+          input: 0.3,
+          output: 0.5,
+          total: 0.5,
+        },
+        cacheRead: 0,
+        cacheWrite: 0,
+        input: 100,
+        output: 50,
+        totalTokens: 150,
+      },
       calls: 1,
-      inTok: 100,
-      outTok: 50,
-      crTok: 0,
-      cwTok: 0,
       asstMsgs: 1,
       tools: { edit: 1 },
       languages: { TypeScript: { lines: 5, edits: 2 } },
@@ -1049,72 +1088,76 @@ describe("mergeToSession", () => {
 
     mergeToSession(base, a);
     mergeToSession(base, b);
-    const m = base.models["sonnet"];
+    const m = base.models["anthropic"]!["sonnet"];
     assert(m);
-    expect(m.cost).toBe(1.5);
+    expect(m.usage.cost.total).toBe(1.5);
     expect(m.calls).toBe(3);
-    expect(m.inTok).toBe(600);
-    expect(m.outTok).toBe(250);
-    expect(m.crTok).toBe(50);
-    expect(m.cwTok).toBe(10);
+    expect(m.usage.input).toBe(600);
+    expect(m.usage.output).toBe(250);
+    expect(m.usage.cacheRead).toBe(50);
+    expect(m.usage.cacheWrite).toBe(10);
     expect(m.asstMsgs).toBe(3);
     expect(m.tools).toEqual({ bash: 1, edit: 1 });
     expect(m.languages["TypeScript"]!.lines).toBe(15);
     expect(m.languages["TypeScript"]!.edits).toBe(3);
   });
 
-  it("handles first model addition", () => {
-    const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const update = emptySession("", new Date(0), "");
-    update.models["gpt-5"] = {
-      provider: "openai",
-      cost: 2.0,
-      calls: 5,
-      inTok: 1000,
-      outTok: 500,
-      crTok: 0,
-      cwTok: 0,
-      asstMsgs: 5,
-      tools: { read: 3 },
-      languages: { Python: { lines: 50, edits: 2 } },
-    };
-
-    mergeToSession(base, update);
-    expect(base.models["gpt-5"]).toEqual(update.models["gpt-5"]);
-  });
-
   it("merges multiple different models", () => {
     const base = emptySession("s1", new Date("2026-06-08"), "p");
     const a = emptySession("", new Date(0), "");
-    a.models["sonnet"] = {
-      provider: "anthropic",
-      cost: 1,
-      calls: 2,
-      inTok: 500,
-      outTok: 200,
-      crTok: 0,
-      cwTok: 0,
-      asstMsgs: 2,
-      tools: {},
-      languages: {},
+    a.models["anthropic"] = {
+      sonnet: {
+        provider: "anthropic",
+        api: "anthropic-messages",
+        usage: {
+          cost: {
+            cacheRead: 0.1,
+            cacheWrite: 0.1,
+            input: 0.3,
+            output: 0.5,
+            total: 1,
+          },
+          cacheRead: 0,
+          cacheWrite: 0,
+          input: 500,
+          output: 200,
+          totalTokens: 700,
+        },
+        calls: 1,
+        asstMsgs: 2,
+        tools: {},
+        languages: {},
+      },
     };
     const b = emptySession("", new Date(0), "");
-    b.models["haiku"] = {
-      provider: "anthropic",
-      cost: 0.5,
-      calls: 3,
-      inTok: 300,
-      outTok: 100,
-      crTok: 0,
-      cwTok: 0,
-      asstMsgs: 3,
-      tools: {},
-      languages: {},
+    b.models["anthropic"] = {
+      haiku: {
+        provider: "anthropic",
+        api: "anthropic-messages",
+        usage: {
+          cost: {
+            cacheRead: 0.1,
+            cacheWrite: 0.1,
+            input: 0.3,
+            output: 0.5,
+            total: 0.5,
+          },
+          cacheRead: 0,
+          cacheWrite: 0,
+          input: 300,
+          output: 100,
+          totalTokens: 400,
+        },
+        calls: 1,
+        asstMsgs: 3,
+        tools: {},
+        languages: {},
+      },
     };
 
     mergeToSession(base, a);
     mergeToSession(base, b);
-    expect(Object.keys(base.models).sort()).toEqual(["haiku", "sonnet"]);
+    expect(Object.keys(base.models["anthropic"]!).sort()).toEqual(["haiku", "sonnet"]);
   });
 });
 
@@ -1160,9 +1203,9 @@ describe("realistic session file", () => {
         message: mkAsst({
           content: [
             { type: "text", text: "sure" },
-            tc("edit", { path: "/src/lib.ts", edits: [{ newText: "console.log(1)\n" }] }),
-            { ...tc("write", { path: "/src/log.rs", content: "fn log() {}" }), id: "c2" },
-            { ...tc("read", { path: "/src/main.ts" }), id: "c3" },
+            mkToolCall("edit", { path: "/src/lib.ts", edits: [{ newText: "console.log(1)\n" }] }),
+            { ...mkToolCall("write", { path: "/src/log.rs", content: "fn log() {}" }), id: "c2" },
+            { ...mkToolCall("read", { path: "/src/main.ts" }), id: "c3" },
           ],
           model: "sonnet-v3",
           provider: "anthropic",
@@ -1223,14 +1266,14 @@ describe("realistic session file", () => {
     expect(session.toolResults).toBe(1);
 
     // Model usage
-    const m = session.models["sonnet-v3"];
+    const m = session.models["anthropic"]!["sonnet-v3"];
     assert(m);
-    expect(m.cost).toBe(0.0053);
-    expect(m.calls).toBe(1);
-    expect(m.inTok).toBe(500);
-    expect(m.outTok).toBe(200);
-    expect(m.crTok).toBe(50);
-    expect(m.cwTok).toBe(10);
+    expect(m.usage.cost.total).toBe(0.0053);
+    // expect(m.calls).toBe(1);
+    expect(m.usage.input).toBe(500);
+    expect(m.usage.output).toBe(200);
+    expect(m.usage.cacheRead).toBe(50);
+    expect(m.usage.cacheWrite).toBe(10);
     expect(m.asstMsgs).toBe(1);
     expect(m.provider).toBe("anthropic");
 

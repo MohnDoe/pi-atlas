@@ -64,7 +64,7 @@ export default function (pi: ExtensionAPI) {
 
       // Phase 2: Show dashboard (handles empty state internally)
       const rangesToSummarize: TimeRange[] = ["1d", "7d", "30d", "All"];
-      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize(days, r)] as const));
+      const summaries = new Map(rangesToSummarize.map((r) => [r, summarize(days, r)]));
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
         const rangeOptions: RangeOption[] = [

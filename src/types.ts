@@ -1,4 +1,4 @@
-import type { Provider } from "@earendil-works/pi-ai";
+import type { Api, Model, Provider, Usage } from "@earendil-works/pi-ai";
 import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
@@ -73,7 +73,7 @@ export interface SessionAgg {
   sessionId: SessionHeader["id"];
   project: string;
   cwd: SessionHeader["cwd"];
-  models: Record<string, SessionModelUsage>; // keyed by model name
+  models: Record<Provider, Record<Model<Api>["name"], SessionModelUsage>>;
   userMsgs: number;
   toolResults: number;
   compactionCount: number;
@@ -84,12 +84,9 @@ export interface SessionAgg {
 
 export interface SessionModelUsage {
   provider: Provider;
-  cost: number;
+  api: Api;
+  usage: Usage;
   calls: number;
-  inTok: number;
-  outTok: number;
-  crTok: number;
-  cwTok: number;
   asstMsgs: number;
   tools: Record<string, number>; // tool name → call count
   languages: Record<string, LangUsage>;

@@ -1,5 +1,10 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
+import type {
+  AssistantMessage,
+  ToolCall,
+  ToolResultMessage,
+  UserMessage,
+} from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
   FileEntry,
@@ -37,22 +42,6 @@ export function emptySession(
   };
 }
 
-/** Create a zeroed per-model usage entry. */
-function emptyModelUsage(provider: string): SessionModelUsage {
-  return {
-    provider,
-    cost: 0,
-    calls: 0,
-    inTok: 0,
-    outTok: 0,
-    crTok: 0,
-    cwTok: 0,
-    asstMsgs: 0,
-    tools: {},
-    languages: {},
-  };
-}
-
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   base.userMsgs += update.userMsgs;
@@ -65,33 +54,47 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
     base.thinkingLevelCount[level] = (base.thinkingLevelCount[level] ?? 0) + count;
   }
 
-  for (const [modelName, usage] of Object.entries(update.models)) {
-    const existing = base.models[modelName];
-    if (!existing) {
-      base.models[modelName] = {
-        ...usage,
-        tools: { ...usage.tools },
-        languages: { ...usage.languages },
-      };
-    } else {
-      existing.cost += usage.cost;
-      existing.calls += usage.calls;
-      existing.inTok += usage.inTok;
-      existing.outTok += usage.outTok;
-      existing.crTok += usage.crTok;
-      existing.cwTok += usage.cwTok;
-      existing.asstMsgs += usage.asstMsgs;
+  for (const [provider, models] of Object.entries(update.models)) {
+    if (!base.models[provider]) {
+      base.models[provider] = {};
+    }
+    for (const [modelName, modelUsage] of Object.entries(models)) {
+      const existing = base.models[provider][modelName];
+      if (!existing) {
+        base.models[provider][modelName] = {
+          ...modelUsage,
+          tools: { ...modelUsage.tools },
+          languages: { ...modelUsage.languages },
+        };
+      } else {
+        existing.usage = {
+          cost: {
+            total: existing.usage.cost.total + modelUsage.usage.cost.total,
+            cacheRead: existing.usage.cost.cacheRead + modelUsage.usage.cost.cacheRead,
+            cacheWrite: existing.usage.cost.cacheWrite + modelUsage.usage.cost.cacheWrite,
+            input: existing.usage.cost.input + modelUsage.usage.cost.input,
+            output: existing.usage.cost.output + modelUsage.usage.cost.output,
+          },
+          output: existing.usage.output + modelUsage.usage.output,
+          input: existing.usage.input + modelUsage.usage.input,
+          cacheWrite: existing.usage.cacheWrite + modelUsage.usage.cacheWrite,
+          cacheRead: existing.usage.cacheRead + modelUsage.usage.cacheRead,
+          totalTokens: existing.usage.totalTokens + modelUsage.usage.totalTokens,
+        };
+        existing.calls += modelUsage.calls;
+        existing.asstMsgs += modelUsage.asstMsgs;
 
-      for (const [tool, count] of Object.entries(usage.tools)) {
-        existing.tools[tool] = (existing.tools[tool] ?? 0) + count;
-      }
-      for (const [lang, lu] of Object.entries(usage.languages)) {
-        const existingLang = existing.languages[lang];
-        if (!existingLang) {
-          existing.languages[lang] = { ...lu };
-        } else {
-          existingLang.lines += lu.lines;
-          existingLang.edits += lu.edits;
+        for (const [tool, count] of Object.entries(modelUsage.tools)) {
+          existing.tools[tool] = (existing.tools[tool] ?? 0) + count;
+        }
+        for (const [lang, lu] of Object.entries(modelUsage.languages)) {
+          const existingLang = existing.languages[lang];
+          if (!existingLang) {
+            existing.languages[lang] = { ...lu };
+          } else {
+            existingLang.lines += lu.lines;
+            existingLang.edits += lu.edits;
+          }
         }
       }
     }
@@ -143,18 +146,12 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
     return session;
   }
 
-  const usage = msg.usage;
-  const costTotal = usage?.cost?.total ?? 0;
-
   // Build this model's usage entry
   const modelUsage: SessionModelUsage = {
     provider,
-    cost: costTotal,
-    calls: usage ? 1 : 0,
-    inTok: usage?.input ?? 0,
-    outTok: usage?.output ?? 0,
-    crTok: usage?.cacheRead ?? 0,
-    cwTok: usage?.cacheWrite ?? 0,
+    api: msg.api,
+    calls: 1,
+    usage: msg.usage,
     asstMsgs: 1,
     tools: {},
     languages: {},
@@ -179,23 +176,18 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
       }
     }
   }
-
-  session.models[modelName] = modelUsage;
-
-  // Cost-aware messages get hourCost tracking
-  if (costTotal > 0) {
-    // hourCost is set at the session level by parseSessionLogEntry which
-    // has access to the timestamp. Here we don't set hourCost since we
-    // lack the timestamp.
+  if (!session.models[provider]) {
+    session.models[provider] = {};
   }
+  session.models[provider][modelName] = modelUsage;
 
   return session;
 }
 
 function mergeLangUsage(
   modelUsage: SessionModelUsage,
-  toolName: string,
-  args: Record<string, unknown> | undefined,
+  toolName: ToolCall["name"],
+  args: ToolCall["arguments"] | undefined,
 ): void {
   const path = args?.path as string | undefined;
   if (!path) return;
@@ -265,26 +257,26 @@ function parseAgentMessage(msg: AgentMessage): SessionAgg {
     case "branchSummary":
     case "compactionSummary":
     default:
-      return emptySession("", new Date(msg.timestamp), "");
+      return emptySession("", new Date(msg.timestamp));
   }
 }
 
 // ---- New entry types ----
 
 export function parseModelChangeEntry(entry: ModelChangeEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp), "");
+  const session = emptySession("", new Date(entry.timestamp));
   session.modelChanges = 1;
   return session;
 }
 
 export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp), "");
+  const session = emptySession("", new Date(entry.timestamp));
   session.thinkingLevelCount[entry.thinkingLevel] = 1;
   return session;
 }
 
 export function parseCompactionEntry(entry: CompactionEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp), "");
+  const session = emptySession("", new Date(entry.timestamp));
   session.compactionCount = 1;
   session.compactedTokens = entry.tokensBefore;
   return session;
@@ -301,27 +293,10 @@ export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
-      const day = emptySession("", new Date(entry.timestamp), "");
+      const day = emptySession("", new Date(entry.timestamp));
       const agentResult = parseAgentMessage(msgEntry.message);
       mergeToSession(day, agentResult);
 
-      // If this message has a cost, record the hour at the session level
-      // Check if any model has cost
-      let hasCost = false;
-      for (const modelUsage of Object.values(day.models)) {
-        if (modelUsage.cost > 0) {
-          hasCost = true;
-          break;
-        }
-      }
-      if (hasCost) {
-        // Find the total cost across all models in this message
-        let msgCost = 0;
-        for (const modelUsage of Object.values(day.models)) {
-          msgCost += modelUsage.cost;
-        }
-        // day.hourCost[hour] = (day.hourCost[hour] ?? 0) + msgCost;
-      }
       return day;
     }
     case "model_change":

@@ -1,3 +1,4 @@
+import type { Provider } from "@earendil-works/pi-ai";
 import { dateFromISOString } from "./format";
 import type {
   DaySpend,
@@ -41,8 +42,10 @@ function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
   const spendByDate = new Map<string, number>();
   for (const s of sessions) {
     let dayCost = 0;
-    for (const modelUsage of Object.values(s.models)) {
-      dayCost += modelUsage.cost;
+    for (const [provider, models] of Object.entries(s.models)) {
+      for (const [modelName, modelUsage] of Object.entries(models)) {
+        dayCost += modelUsage.usage.cost.total;
+      }
     }
 
     const dateStr = dateFromISOString(s.timestamp);
@@ -79,8 +82,10 @@ function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[]
   const totalHourCost: Record<number, number> = {};
   for (const session of filtered) {
     const hour = new Date(session.timestamp).getHours();
-    const cost = Object.values(session.models).reduce((val, s) => val + s.cost, 0);
-    totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
+    for (const models of Object.values(session.models)) {
+      const cost = Object.values(models).reduce((val, s) => val + s.usage.cost.total, 0);
+      totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
+    }
   }
 
   const hourly: HourSpend[] = [];
@@ -97,11 +102,13 @@ function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[]
 function* filteredModels(
   session: SessionAgg,
   filters?: Filters,
-): Generator<{ model: string; usage: SessionAgg["models"][string] }> {
-  for (const [modelName, usage] of Object.entries(session.models)) {
-    if (filters?.model && modelName !== filters.model) continue;
-    if (filters?.provider && usage.provider !== filters.provider) continue;
-    yield { model: modelName, usage };
+): Generator<{ model: string; usage: SessionAgg["models"][Provider][string] }> {
+  for (const models of Object.values(session.models)) {
+    for (const [modelName, usage] of Object.entries(models)) {
+      if (filters?.model && modelName !== filters.model) continue;
+      if (filters?.provider && usage.provider !== filters.provider) continue;
+      yield { model: modelName, usage };
+    }
   }
 }
 
@@ -152,25 +159,25 @@ export function summarize(
     let sessionHasModels = false;
     for (const { model: modelName, usage } of filteredModels(session, filters)) {
       sessionHasModels = true;
-      totalCost += usage.cost;
-      sessionCost += usage.cost;
-      totalTokens += usage.inTok + usage.outTok + usage.crTok + usage.cwTok;
-      totalInputTokens += usage.inTok;
-      totalOutputTokens += usage.outTok;
-      totalCacheReadTokens += usage.crTok;
-      totalCacheWriteTokens += usage.cwTok;
+      totalCost += usage.usage.cost.total;
+      sessionCost += usage.usage.cost.total;
+      totalTokens += usage.usage.totalTokens;
+      totalInputTokens += usage.usage.input;
+      totalOutputTokens += usage.usage.output;
+      totalCacheReadTokens += usage.usage.cacheRead;
+      totalCacheWriteTokens += usage.usage.cacheWrite;
 
       // Count asstMsgs from model usage toward totalMessages
       totalMessages += usage.asstMsgs;
 
       // Model
-      modelCost[modelName] = (modelCost[modelName] ?? 0) + usage.cost;
+      modelCost[modelName] = (modelCost[modelName] ?? 0) + usage.usage.cost.total;
       modelCount[modelName] = (modelCount[modelName] ?? 0) + usage.calls;
       modelToProvider[modelName] = usage.provider;
 
       // Provider
       if (usage.provider) {
-        providerCost[usage.provider] = (providerCost[usage.provider] ?? 0) + usage.cost;
+        providerCost[usage.provider] = (providerCost[usage.provider] ?? 0) + usage.usage.cost.total;
         providerCount[usage.provider] = (providerCount[usage.provider] ?? 0) + usage.calls;
       }
 

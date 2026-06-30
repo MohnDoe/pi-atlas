@@ -1,9 +1,5 @@
 import type { UserMessage } from "@earendil-works/pi-ai";
-import type {
-  SessionEntry,
-  SessionHeader,
-  SessionMessageEntry,
-} from "@earendil-works/pi-coding-agent";
+import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,7 +15,6 @@ import {
 } from "./cache";
 import { emptySession } from "./parser";
 import type { SessionAgg } from "./types";
-import type { Session } from "node:inspector";
 
 describe("computeSignature", () => {
   let tmpDir: string;
@@ -170,17 +165,29 @@ describe("cache read/write", () => {
     const s = emptySession("s1", new Date(), "my-app");
     s.userMsgs = 3;
     s.toolResults = 1;
-    s.models["sonnet"] = {
-      provider: "anthropic",
-      cost: 1.5,
-      calls: 2,
-      inTok: 500,
-      outTok: 200,
-      crTok: 50,
-      cwTok: 10,
-      asstMsgs: 2,
-      tools: { bash: 1, read: 3 },
-      languages: { TypeScript: { lines: 100, edits: 5 } },
+    s.models["anthropic"] = {
+      sonnet: {
+        provider: "anthropic",
+        api: "anthropic-messages",
+        usage: {
+          cost: {
+            cacheRead: 0,
+            cacheWrite: 0,
+            input: 0.5,
+            output: 1,
+            total: 1.5,
+          },
+          input: 500,
+          cacheRead: 50,
+          cacheWrite: 10,
+          output: 200,
+          totalTokens: 760,
+        },
+        calls: 2,
+        asstMsgs: 2,
+        tools: { bash: 1, read: 3 },
+        languages: { TypeScript: { lines: 100, edits: 5 } },
+      },
     };
     const sessions: SessionAgg[] = [s];
     await writeCache(cachePath, "sig-abc", sessions);
@@ -195,8 +202,8 @@ describe("cache read/write", () => {
     expect(s0.project).toBe("my-app");
     expect(s0.userMsgs).toBe(3);
     expect(s0.toolResults).toBe(1);
-    const m0 = s0.models["sonnet"]!;
-    expect(m0.cost).toBe(1.5);
+    const m0 = s0.models["anthropic"]!["sonnet"]!;
+    expect(m0.usage.cost.total).toBe(1.5);
     expect(m0.provider).toBe("anthropic");
     expect(m0.tools).toEqual({ bash: 1, read: 3 });
     expect(m0.languages["TypeScript"]).toEqual({
