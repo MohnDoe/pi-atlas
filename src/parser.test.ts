@@ -11,9 +11,11 @@ import type {
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, rm, unlink, writeFile } from "node:fs/promises";
+import assert from "node:assert";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { dateFromISOString } from "./format";
 import {
   emptySession,
   mergeToSession,
@@ -27,9 +29,6 @@ import {
   parseToolResultMessage,
   parseUserMessage,
 } from "./parser";
-import type { SessionAgg } from "./types";
-import assert from "node:assert";
-import { dateFromISOString } from "./format";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {
@@ -137,6 +136,7 @@ describe("parseFile — SessionAgg", () => {
     expect(session!.sessionId).toBe("s1");
     expect(session!.timestamp).toBe("2026-06-08T10:00:00.000Z");
     expect(session!.project).toBe("my-app");
+    expect(session!.cwd).toBe("/home/doe/dev/my-app");
     expect(session!.userMsgs).toBe(1);
     expect(session!.models["deepseek-v4"]).toBeDefined();
     expect(session!.models["deepseek-v4"]!.cost).toBe(0.01);

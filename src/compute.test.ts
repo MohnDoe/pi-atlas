@@ -3,12 +3,13 @@ import { summarize } from "./compute";
 import type { SessionAgg } from "./types";
 
 // Helper to build a SessionAgg with given props
-function session(overrides: Partial<SessionAgg> & { sessionId: string }): SessionAgg {
+function mkSession(overrides: Partial<SessionAgg> & { sessionId: string }): SessionAgg {
   const ts = overrides.timestamp ?? new Date().toISOString();
   return {
     timestamp: ts,
     sessionId: overrides.sessionId,
     project: overrides.project ?? "",
+    cwd: overrides.cwd ?? "",
     models: overrides.models ?? {},
     userMsgs: overrides.userMsgs ?? 0,
     toolResults: overrides.toolResults ?? 0,
@@ -71,7 +72,7 @@ describe("summarize", () => {
   });
 
   it("computes KPIs from a single session", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date().toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date().toISOString() });
     addModel(s, "sonnet", {
       cost: 1.0,
       calls: 2,
@@ -113,13 +114,13 @@ describe("summarize", () => {
     const yesterday = new Date(Date.now() - 86400000).toISOString();
     const eightDaysAgo = new Date(Date.now() - 8 * 86400000).toISOString();
 
-    const s1 = session({ sessionId: "a", timestamp: today });
+    const s1 = mkSession({ sessionId: "a", timestamp: today });
     addModel(s1, "m", { cost: 1, calls: 1 });
 
-    const s2 = session({ sessionId: "b", timestamp: yesterday });
+    const s2 = mkSession({ sessionId: "b", timestamp: yesterday });
     addModel(s2, "m", { cost: 2, calls: 1 });
 
-    const s3 = session({ sessionId: "c", timestamp: eightDaysAgo });
+    const s3 = mkSession({ sessionId: "c", timestamp: eightDaysAgo });
     addModel(s3, "m", { cost: 3, calls: 1 });
 
     const all = [s1, s2, s3];
@@ -141,10 +142,10 @@ describe("summarize", () => {
     const day3 = d3.toISOString();
     const day3Date = day3.slice(0, 10);
 
-    const s1 = session({ sessionId: "s1", timestamp: day0 });
+    const s1 = mkSession({ sessionId: "s1", timestamp: day0 });
     addModel(s1, "m", { cost: 1, calls: 1 });
 
-    const s2 = session({ sessionId: "s2", timestamp: day3 });
+    const s2 = mkSession({ sessionId: "s2", timestamp: day3 });
     addModel(s2, "m", { cost: 2, calls: 1 });
 
     const result = summarize([s1, s2], "7d");
@@ -162,7 +163,7 @@ describe("summarize", () => {
   });
 
   it("sorts models by cost descending (then calls descending), tools by count descending", () => {
-    const s1 = session({ sessionId: "s1", timestamp: new Date().toISOString() });
+    const s1 = mkSession({ sessionId: "s1", timestamp: new Date().toISOString() });
     addModel(s1, "free", { cost: 0, calls: 12 });
     addModel(s1, "secondFree", { cost: 0, calls: 15 });
     addModel(s1, "cheap", { cost: 0.1, calls: 10 });
@@ -184,10 +185,10 @@ describe("summarize", () => {
 
   it("reports todayCost separately", () => {
     const today = new Date().toISOString();
-    const s1 = session({ sessionId: "s1", timestamp: new Date("2026-01-01").toISOString() });
+    const s1 = mkSession({ sessionId: "s1", timestamp: new Date("2026-01-01").toISOString() });
     addModel(s1, "m", { cost: 100, calls: 1 });
 
-    const s2 = session({ sessionId: "s2", timestamp: today });
+    const s2 = mkSession({ sessionId: "s2", timestamp: today });
     addModel(s2, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s1, s2], "All");
@@ -195,7 +196,7 @@ describe("summarize", () => {
   });
 
   it("returns todayCost 0 when today is not in filtered range", () => {
-    const s1 = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s1, "m", { cost: 10, calls: 1 });
 
     const result = summarize([s1], "1d");
@@ -204,13 +205,13 @@ describe("summarize", () => {
   });
 
   it("dailySpend for All range is sorted dates without zero-fill", () => {
-    const s1 = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s1, "m", { cost: 1, calls: 1 });
 
-    const s2 = session({ sessionId: "s2", timestamp: new Date("2026-06-05").toISOString() });
+    const s2 = mkSession({ sessionId: "s2", timestamp: new Date("2026-06-05").toISOString() });
     addModel(s2, "m", { cost: 5, calls: 1 });
 
-    const s3 = session({ sessionId: "s3", timestamp: new Date("2026-06-10").toISOString() });
+    const s3 = mkSession({ sessionId: "s3", timestamp: new Date("2026-06-10").toISOString() });
     addModel(s3, "m", { cost: 10, calls: 1 });
 
     const result = summarize([s3, s1, s2], "All");
@@ -230,7 +231,7 @@ describe("summarize", () => {
     const d1 = day2ago.toISOString();
     const d2 = day1ago.toISOString();
 
-    const s1 = session({ sessionId: "s1", timestamp: d1, userMsgs: 5, toolResults: 3 });
+    const s1 = mkSession({ sessionId: "s1", timestamp: d1, userMsgs: 5, toolResults: 3 });
     addModel(s1, "sonnet", {
       cost: 2.0,
       calls: 4,
@@ -256,7 +257,7 @@ describe("summarize", () => {
     };
     s1.models["haiku"]!.tools = { bash: 1, read: 1 };
 
-    const s2 = session({ sessionId: "s2", timestamp: d2, userMsgs: 3, toolResults: 1 });
+    const s2 = mkSession({ sessionId: "s2", timestamp: d2, userMsgs: 3, toolResults: 1 });
     addModel(s2, "sonnet", {
       cost: 1.5,
       calls: 3,
@@ -303,7 +304,7 @@ describe("summarize", () => {
   it("hourlySpend for 1d range has 24 zero-filled entries when no hourly cost", () => {
     const today = new Date();
     today.setHours(15);
-    const s = session({ sessionId: "s1", timestamp: today.toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: today.toISOString() });
     addModel(s, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s], "1d");
@@ -318,8 +319,11 @@ describe("summarize", () => {
 
     const todayAfternoon = new Date();
     todayAfternoon.setHours(15);
-    const todayMorningSession = session({ sessionId: "s1", timestamp: todayMorning.toISOString() });
-    const todayAfternoonSession = session({
+    const todayMorningSession = mkSession({
+      sessionId: "s1",
+      timestamp: todayMorning.toISOString(),
+    });
+    const todayAfternoonSession = mkSession({
       sessionId: "s2",
       timestamp: todayAfternoon.toISOString(),
     });
@@ -333,7 +337,7 @@ describe("summarize", () => {
   });
 
   it("returns providers sorted by cost descending", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
     addModel(s, "sonnet", { provider: "anthropic", cost: 5.0, calls: 15 });
     addModel(s, "gpt-5", { provider: "openai", cost: 1.0, calls: 5 });
     addModel(s, "free-model", { provider: "free", cost: 0, calls: 100 });
@@ -347,7 +351,7 @@ describe("summarize", () => {
   });
 
   it("surfaces entry-type fields (compaction, modelChanges, thinkingLevel)", () => {
-    const s = session({
+    const s = mkSession({
       sessionId: "s1",
       timestamp: new Date("2026-06-08").toISOString(),
       compactionCount: 2,
@@ -365,7 +369,7 @@ describe("summarize", () => {
   });
 
   it("attaches provider to model stats", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
     addModel(s, "sonnet", { provider: "anthropic", cost: 2.0, calls: 5 });
     addModel(s, "haiku", { provider: "anthropic", cost: 0.5, calls: 2 });
 
@@ -377,11 +381,11 @@ describe("summarize", () => {
 
   it("deduplicates session IDs across multiple sessions with same ID", () => {
     // With SessionAgg, each session has a unique ID, but test dedup
-    const s1 = session({ sessionId: "shared", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = mkSession({ sessionId: "shared", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s1, "m", { cost: 1, calls: 1 });
-    const s2 = session({ sessionId: "shared", timestamp: new Date("2026-06-02").toISOString() });
+    const s2 = mkSession({ sessionId: "shared", timestamp: new Date("2026-06-02").toISOString() });
     addModel(s2, "m", { cost: 2, calls: 1 });
-    const s3 = session({ sessionId: "unique", timestamp: new Date("2026-06-03").toISOString() });
+    const s3 = mkSession({ sessionId: "unique", timestamp: new Date("2026-06-03").toISOString() });
     addModel(s3, "m", { cost: 3, calls: 1 });
 
     const result = summarize([s1, s2, s3], "All");
@@ -391,21 +395,21 @@ describe("summarize", () => {
   });
 
   it("accumulates project stats across sessions", () => {
-    const s1 = session({
+    const s1 = mkSession({
       sessionId: "s1",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "pi",
     });
     addModel(s1, "m", { cost: 10, calls: 1 });
 
-    const s2 = session({
+    const s2 = mkSession({
       sessionId: "s2",
       timestamp: new Date("2026-06-02").toISOString(),
       project: "pi",
     });
     addModel(s2, "m", { cost: 5, calls: 1 });
 
-    const s3 = session({
+    const s3 = mkSession({
       sessionId: "s3",
       timestamp: new Date("2026-06-02").toISOString(),
       project: "other",
@@ -419,13 +423,13 @@ describe("summarize", () => {
   });
 
   it("excludes sessions with zero models from daysActive", () => {
-    const s1 = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s1, "m", { cost: 10, calls: 1 });
 
-    const s2 = session({ sessionId: "s2", timestamp: new Date("2026-06-02").toISOString() });
+    const s2 = mkSession({ sessionId: "s2", timestamp: new Date("2026-06-02").toISOString() });
     addModel(s2, "m", { cost: 5, calls: 1 });
 
-    const s3 = session({ sessionId: "s3", timestamp: new Date("2026-06-03").toISOString() }); // no models
+    const s3 = mkSession({ sessionId: "s3", timestamp: new Date("2026-06-03").toISOString() }); // no models
 
     const result = summarize([s1, s2, s3], "All");
     expect(result.daysActive).toBe(2);
@@ -436,7 +440,7 @@ describe("summarize", () => {
   it("fillDailySpend returns single entry for single day in bounded range", () => {
     const todayISO = new Date().toISOString();
     const todayDate = todayISO.slice(0, 10);
-    const s = session({ sessionId: "s1", timestamp: todayISO });
+    const s = mkSession({ sessionId: "s1", timestamp: todayISO });
     addModel(s, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s], "1d");
@@ -445,7 +449,7 @@ describe("summarize", () => {
   });
 
   it("hourlySpend is empty for 7d, 30d, All ranges", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s, "m", { cost: 5, calls: 1 });
 
     expect(summarize([s], "7d").hourlySpend).toEqual([]);
@@ -454,7 +458,7 @@ describe("summarize", () => {
   });
 
   it("hourlySpend is empty when 1d range has no matching days", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s], "1d");
@@ -465,14 +469,14 @@ describe("summarize", () => {
   // ================ FILTER TESTS ================
 
   it("filters by project", () => {
-    const s1 = session({
+    const s1 = mkSession({
       sessionId: "s1",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
     });
     addModel(s1, "m", { cost: 10, calls: 1 });
 
-    const s2 = session({
+    const s2 = mkSession({
       sessionId: "s2",
       timestamp: new Date("2026-06-02").toISOString(),
       project: "beta",
@@ -487,7 +491,7 @@ describe("summarize", () => {
   });
 
   it("filters by model", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s, "sonnet", {
       cost: 10,
       calls: 2,
@@ -516,7 +520,7 @@ describe("summarize", () => {
   });
 
   it("filters by provider", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s, "sonnet", { provider: "anthropic", cost: 10, calls: 2 });
     addModel(s, "gpt-5", { provider: "openai", cost: 5, calls: 1 });
 
@@ -528,7 +532,7 @@ describe("summarize", () => {
   });
 
   it("filters combined: project + model + provider", () => {
-    const s1 = session({
+    const s1 = mkSession({
       sessionId: "s1",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
@@ -548,7 +552,7 @@ describe("summarize", () => {
       tools: { read: 1 },
     });
 
-    const s2 = session({
+    const s2 = mkSession({
       sessionId: "s2",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "beta",
@@ -561,7 +565,7 @@ describe("summarize", () => {
       tools: { edit: 2 },
     });
 
-    const s3 = session({
+    const s3 = mkSession({
       sessionId: "s3",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
@@ -589,7 +593,7 @@ describe("summarize", () => {
   });
 
   it("filtering by model scopes tools and languages correctly", () => {
-    const s = session({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = mkSession({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
     addModel(s, "sonnet", {
       tools: { bash: 5, edit: 2 },
       languages: { TS: { lines: 100, edits: 5 } },
@@ -608,13 +612,13 @@ describe("summarize", () => {
   });
 
   it("filter by project with sessions having matching models only", () => {
-    const s1 = session({
+    const s1 = mkSession({
       sessionId: "s1",
       timestamp: new Date("2026-06-01").toISOString(),
       project: "alpha",
     });
     addModel(s1, "m", { cost: 10, calls: 1 });
-    const s2 = session({
+    const s2 = mkSession({
       sessionId: "s2",
       timestamp: new Date("2026-06-02").toISOString(),
       project: "alpha",

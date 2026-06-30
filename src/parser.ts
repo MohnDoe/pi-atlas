@@ -16,11 +16,17 @@ import type { SessionAgg, SessionModelUsage } from "./types";
 // ---- SessionAgg helpers ----
 
 /** Create a zeroed SessionAgg with session identity. */
-export function emptySession(sessionId: string, date: Date, project: string): SessionAgg {
+export function emptySession(
+  sessionId: string,
+  date: Date,
+  project?: string,
+  cwd?: string,
+): SessionAgg {
   return {
     timestamp: date.toISOString(),
     sessionId,
-    project,
+    project: project ?? "",
+    cwd: cwd ?? "",
     models: {},
     userMsgs: 0,
     toolResults: 0,
@@ -103,7 +109,8 @@ function sanitizeToolName(name: string): string {
 
 export function parseSessionHeader(entry: SessionHeader): SessionAgg {
   const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
-  const session = emptySession(entry.id, new Date(entry.timestamp), project);
+  const cwd = entry.cwd ?? "";
+  const session = emptySession(entry.id, new Date(entry.timestamp), project, cwd);
   return session;
 }
 

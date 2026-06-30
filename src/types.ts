@@ -1,3 +1,4 @@
+import type { Provider } from "@earendil-works/pi-ai";
 import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
@@ -37,7 +38,7 @@ export interface ToolStat {
 }
 
 export interface ProviderStat {
-  provider: string;
+  provider: Provider;
   cost: number;
   calls: number;
 }
@@ -67,12 +68,11 @@ export interface StatsSummary {
   hourlySpend: HourSpend[];
 }
 
-// ---- New SessionAgg types ----
-
 export interface SessionAgg {
   timestamp: SessionHeader["timestamp"];
   sessionId: SessionHeader["id"];
   project: string;
+  cwd: SessionHeader["cwd"];
   models: Record<string, SessionModelUsage>; // keyed by model name
   userMsgs: number;
   toolResults: number;
@@ -83,7 +83,7 @@ export interface SessionAgg {
 }
 
 export interface SessionModelUsage {
-  provider: string;
+  provider: Provider;
   cost: number;
   calls: number;
   inTok: number;
