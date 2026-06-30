@@ -1,5 +1,5 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
   FileEntry,
@@ -10,106 +10,15 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 
-import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
-import type { DayAgg, SessionAgg, SessionModelUsage } from "./types";
+import { langFromPath, projectNameFromCwd } from "./format";
+import type { SessionAgg, SessionModelUsage } from "./types";
 
-// ---- Legacy DayAgg helpers (kept for cache.ts compatibility) ----
-
-export function emptyDay(date: string): DayAgg {
-  return {
-    date,
-    cost: 0,
-    hourCost: {},
-    inTok: 0,
-    outTok: 0,
-    crTok: 0,
-    cwTok: 0,
-    userMsgs: 0,
-    asstMsgs: 0,
-    toolResults: 0,
-    sessionIds: new Set(),
-    langLines: {},
-    langEdits: {},
-    modelCost: {},
-    modelCount: {},
-    providerCost: {},
-    providerCount: {},
-    modelToProvider: new Map(),
-    projectCost: {},
-    projectSessions: {},
-    toolCount: {},
-    compactionCount: 0,
-    compactedTokens: 0,
-    modelChanges: 0,
-    thinkingLevelCount: {},
-  };
-}
-
-export function mergeDay(base: DayAgg, update: DayAgg): void {
-  base.cost += update.cost;
-  base.inTok += update.inTok;
-  base.outTok += update.outTok;
-  base.crTok += update.crTok;
-  base.cwTok += update.cwTok;
-  base.userMsgs += update.userMsgs;
-  base.asstMsgs += update.asstMsgs;
-  base.toolResults += update.toolResults;
-
-  for (const id of update.sessionIds) base.sessionIds.add(id);
-
-  for (const [h, c] of Object.entries(update.hourCost)) {
-    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
-  }
-
-  for (const [k, v] of Object.entries(update.langLines)) {
-    base.langLines[k] = (base.langLines[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.langEdits)) {
-    base.langEdits[k] = (base.langEdits[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.modelCost)) {
-    base.modelCost[k] = (base.modelCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.modelCount)) {
-    base.modelCount[k] = (base.modelCount[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.providerCost)) {
-    base.providerCost[k] = (base.providerCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.providerCount)) {
-    base.providerCount[k] = (base.providerCount[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.projectCost)) {
-    base.projectCost[k] = (base.projectCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.projectSessions)) {
-    if (!base.projectSessions[k]) base.projectSessions[k] = new Set();
-    for (const id of v) base.projectSessions[k].add(id);
-  }
-  for (const [k, v] of Object.entries(update.toolCount)) {
-    base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
-  }
-
-  // New fields
-  base.compactionCount += update.compactionCount;
-  base.compactedTokens += update.compactedTokens;
-  base.modelChanges += update.modelChanges;
-  for (const [k, v] of Object.entries(update.thinkingLevelCount)) {
-    base.thinkingLevelCount[k] = (base.thinkingLevelCount[k] ?? 0) + v;
-  }
-
-  base.modelToProvider = new Map([
-    ...(base.modelToProvider.size > 0 ? base.modelToProvider.entries() : []),
-    ...(update.modelToProvider.size > 0 ? update.modelToProvider.entries() : []),
-  ]);
-}
-
-// ---- New SessionAgg helpers ----
+// ---- SessionAgg helpers ----
 
 /** Create a zeroed SessionAgg with session identity. */
-export function emptySession(sessionId: string, date: string, project: string): SessionAgg {
+export function emptySession(sessionId: string, date: Date, project: string): SessionAgg {
   return {
-    date,
+    timestamp: date.toISOString(),
     sessionId,
     project,
     models: {},
@@ -119,7 +28,6 @@ export function emptySession(sessionId: string, date: string, project: string): 
     compactedTokens: 0,
     modelChanges: 0,
     thinkingLevelCount: {},
-    hourCost: {},
   };
 }
 
@@ -151,14 +59,14 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
     base.thinkingLevelCount[level] = (base.thinkingLevelCount[level] ?? 0) + count;
   }
 
-  for (const [h, c] of Object.entries(update.hourCost)) {
-    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
-  }
-
   for (const [modelName, usage] of Object.entries(update.models)) {
     const existing = base.models[modelName];
     if (!existing) {
-      base.models[modelName] = { ...usage, tools: { ...usage.tools }, languages: { ...usage.languages } };
+      base.models[modelName] = {
+        ...usage,
+        tools: { ...usage.tools },
+        languages: { ...usage.languages },
+      };
     } else {
       existing.cost += usage.cost;
       existing.calls += usage.calls;
@@ -194,22 +102,21 @@ function sanitizeToolName(name: string): string {
 // ---- Session header ----
 
 export function parseSessionHeader(entry: SessionHeader): SessionAgg {
-  const date = dateFromISOString(entry.timestamp);
   const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
-  const session = emptySession(entry.id, date, project);
+  const session = emptySession(entry.id, new Date(entry.timestamp), project);
   return session;
 }
 
 // ---- Message parsing ----
 
-export function parseUserMessage(): SessionAgg {
-  const session = emptySession("", "", "");
+export function parseUserMessage(msg: UserMessage): SessionAgg {
+  const session = emptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
   return session;
 }
 
 export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
-  const session = emptySession("", "", "");
+  const session = emptySession("", new Date(msg.timestamp), "");
   session.toolResults = 1;
   // Tool results contribute to the session-level toolResults count.
   // The tool name is tracked via the most recent model's tools — but since
@@ -219,15 +126,13 @@ export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
 }
 
 export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
-  const session = emptySession("", "", "");
-  session.asstMsgs = 0; // handled via model tracking below
+  const session = emptySession("", new Date(msg.timestamp), "");
 
   const modelName = msg.model;
   const provider = msg.provider ?? "";
 
   if (!modelName) {
-    // No model — nothing to track per-model, but count asstMsgs
-    session.userMsgs = 0;
+    // No model — nothing to track per-model
     return session;
   }
 
@@ -339,46 +244,10 @@ function countNewLines(s: string): number {
   return (s.match(/\n/g) ?? []).length;
 }
 
-/** Re-export parseLanguageUsage for backward compatibility / testing — now delegates to mergeLangUsage. */
-export function parseLanguageUsage(
-  toolName: string,
-  args: Record<string, unknown> | undefined,
-): DayAgg {
-  // Legacy wrapper — returns a DayAgg for backward compat
-  const day = emptyDay("");
-  const path = args?.path as string | undefined;
-  if (!path) return day;
-
-  const lang = langFromPath(path);
-
-  if (toolName === "edit") {
-    const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
-    if (Array.isArray(edits)) {
-      let totalNewLines = 0;
-      for (const edit of edits) {
-        totalNewLines += countNewLines(edit.newText ?? "") + countNewLines(edit.oldText ?? "") + 1;
-        day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
-      }
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewLines;
-    } else {
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
-      day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
-    }
-  } else {
-    const contentStr = args?.content as string | undefined;
-    if (contentStr) {
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + countNewLines(contentStr);
-    }
-    day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
-  }
-
-  return day;
-}
-
 function parseAgentMessage(msg: AgentMessage): SessionAgg {
   switch (msg.role) {
     case "user":
-      return parseUserMessage();
+      return parseUserMessage(msg);
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
     case "assistant":
@@ -389,26 +258,26 @@ function parseAgentMessage(msg: AgentMessage): SessionAgg {
     case "branchSummary":
     case "compactionSummary":
     default:
-      return emptySession("", "", "");
+      return emptySession("", new Date(msg.timestamp), "");
   }
 }
 
 // ---- New entry types ----
 
 export function parseModelChangeEntry(entry: ModelChangeEntry): SessionAgg {
-  const session = emptySession("", "", "");
+  const session = emptySession("", new Date(entry.timestamp), "");
   session.modelChanges = 1;
   return session;
 }
 
 export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): SessionAgg {
-  const session = emptySession("", "", "");
+  const session = emptySession("", new Date(entry.timestamp), "");
   session.thinkingLevelCount[entry.thinkingLevel] = 1;
   return session;
 }
 
 export function parseCompactionEntry(entry: CompactionEntry): SessionAgg {
-  const session = emptySession("", "", "");
+  const session = emptySession("", new Date(entry.timestamp), "");
   session.compactionCount = 1;
   session.compactedTokens = entry.tokensBefore;
   return session;
@@ -425,8 +294,7 @@ export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
-      const hour = new Date(msgEntry.timestamp).getHours();
-      const day = emptySession("", "", "");
+      const day = emptySession("", new Date(entry.timestamp), "");
       const agentResult = parseAgentMessage(msgEntry.message);
       mergeToSession(day, agentResult);
 
@@ -445,7 +313,7 @@ export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
         for (const modelUsage of Object.values(day.models)) {
           msgCost += modelUsage.cost;
         }
-        day.hourCost[hour] = (day.hourCost[hour] ?? 0) + msgCost;
+        // day.hourCost[hour] = (day.hourCost[hour] ?? 0) + msgCost;
       }
       return day;
     }
@@ -499,8 +367,9 @@ export function parseFile(
           mergeToSession(session, result);
         }
       }
-    } catch {
+    } catch (e) {
       corruptCount++;
+      console.error(e);
       if (onWarning) onWarning(corruptCount);
     }
   }

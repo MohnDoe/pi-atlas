@@ -15,14 +15,11 @@ import { mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  emptyDay,
   emptySession,
-  mergeDay,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
   parseFile,
-  parseLanguageUsage,
   parseModelChangeEntry,
   parseSessionHeader,
   parseSessionLogEntry,
@@ -30,7 +27,9 @@ import {
   parseToolResultMessage,
   parseUserMessage,
 } from "./parser";
-import type { DayAgg, SessionAgg } from "./types";
+import type { SessionAgg } from "./types";
+import assert from "node:assert";
+import { dateFromISOString } from "./format";
 
 // Helper: minimal AssistantMessage with required fields
 function mkAsst(msg: {
@@ -136,16 +135,16 @@ describe("parseFile — SessionAgg", () => {
 
     expect(session).not.toBeNull();
     expect(session!.sessionId).toBe("s1");
-    expect(session!.date).toBe("2026-06-08");
+    expect(session!.timestamp).toBe("2026-06-08T10:00:00.000Z");
     expect(session!.project).toBe("my-app");
     expect(session!.userMsgs).toBe(1);
     expect(session!.models["deepseek-v4"]).toBeDefined();
-    expect(session!.models["deepseek-v4"].cost).toBe(0.01);
-    expect(session!.models["deepseek-v4"].calls).toBe(1);
-    expect(session!.models["deepseek-v4"].inTok).toBe(100);
-    expect(session!.models["deepseek-v4"].outTok).toBe(50);
-    expect(session!.models["deepseek-v4"].asstMsgs).toBe(1);
-    expect(session!.models["deepseek-v4"].provider).toBe("deepseek");
+    expect(session!.models["deepseek-v4"]!.cost).toBe(0.01);
+    expect(session!.models["deepseek-v4"]!.calls).toBe(1);
+    expect(session!.models["deepseek-v4"]!.inTok).toBe(100);
+    expect(session!.models["deepseek-v4"]!.outTok).toBe(50);
+    expect(session!.models["deepseek-v4"]!.asstMsgs).toBe(1);
+    expect(session!.models["deepseek-v4"]!.provider).toBe("deepseek");
   });
 
   it("returns null for corrupt/empty file", async () => {
@@ -190,13 +189,17 @@ describe("parseFile — SessionAgg", () => {
 
   it("handles missing onWarning callback gracefully", async () => {
     const filePath = join(tmpDir, "corrupt-silent.jsonl");
-    await writeFile(filePath, "not valid json\nstill not\n" + JSON.stringify({
-      type: "session",
-      version: 3,
-      id: "s1",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      cwd: "/home/doe/proj",
-    }));
+    await writeFile(
+      filePath,
+      "not valid json\nstill not\n" +
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s1",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj",
+        }),
+    );
 
     const session = parseFile(filePath);
     expect(session).not.toBeNull();
@@ -296,10 +299,10 @@ describe("parseFile — SessionAgg", () => {
     const sessionB = parseFile(fileB)!;
 
     expect(sessionA.project).toBe("proj-alpha");
-    expect(sessionA.models["gpt-4"].cost).toBe(0.1);
+    expect(sessionA.models["gpt-4"]!.cost).toBe(0.1);
 
     expect(sessionB.project).toBe("proj-beta");
-    expect(sessionB.models["gpt-4"].cost).toBe(0.25);
+    expect(sessionB.models["gpt-4"]!.cost).toBe(0.25);
   });
 
   it("handles sessions with no messages", async () => {
@@ -365,9 +368,9 @@ describe("parseFile — SessionAgg", () => {
 
 describe("emptySession", () => {
   it("creates a zeroed SessionAgg with sessionId, date, project", () => {
-    const s = emptySession("s1", "2026-06-09", "my-app");
+    const s = emptySession("s1", new Date("2026-06-09"), "my-app");
     expect(s.sessionId).toBe("s1");
-    expect(s.date).toBe("2026-06-09");
+    expect(dateFromISOString(s.timestamp)).toBe("2026-06-09");
     expect(s.project).toBe("my-app");
     expect(s.models).toEqual({});
     expect(s.userMsgs).toBe(0);
@@ -376,12 +379,11 @@ describe("emptySession", () => {
     expect(s.compactedTokens).toBe(0);
     expect(s.modelChanges).toBe(0);
     expect(s.thinkingLevelCount).toEqual({});
-    expect(s.hourCost).toEqual({});
   });
 
   it("returns a new empty object each call", () => {
-    const a = emptySession("s1", "2026-06-09", "a");
-    const b = emptySession("s1", "2026-06-09", "a");
+    const a = emptySession("s1", new Date("2026-06-09"), "a");
+    const b = emptySession("s1", new Date("2026-06-09"), "a");
     expect(a).toEqual(b);
     expect(a).not.toBe(b);
   });
@@ -391,7 +393,11 @@ describe("emptySession", () => {
 
 describe("parseUserMessage", () => {
   it("returns a SessionAgg with userMsgs: 1", () => {
-    const s = parseUserMessage();
+    const s = parseUserMessage({
+      timestamp: Date.now(),
+      content: "hey",
+      role: "user",
+    });
     expect(s.userMsgs).toBe(1);
     expect(s.models).toEqual({});
   });
@@ -432,7 +438,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["deepseek-v4-pro"];
-    expect(m).toBeDefined();
+    assert(m);
     expect(m.asstMsgs).toBe(1);
     expect(m.cost).toBe(0.003);
     expect(m.calls).toBe(1);
@@ -470,6 +476,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["sonnet"];
+    assert(m);
     expect(m.tools["read"]).toBe(2);
     expect(m.tools["bash"]).toBe(1);
   });
@@ -481,6 +488,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.tools["ls -la agent/</parameter"]).toBe(1);
     expect(m.tools["ls -la agent/\n</parameter"]).toBeUndefined();
   });
@@ -495,10 +503,11 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["sonnet"];
-    expect(m.languages["TypeScript"].lines).toBe(1);
-    expect(m.languages["TypeScript"].edits).toBe(1);
-    expect(m.languages["Rust"].lines).toBe(1);
-    expect(m.languages["Rust"].edits).toBe(0);
+    assert(m);
+    expect(m.languages["TypeScript"]!.lines).toBe(1);
+    expect(m.languages["TypeScript"]!.edits).toBe(1);
+    expect(m.languages["Rust"]!.lines).toBe(1);
+    expect(m.languages["Rust"]!.edits).toBe(0);
   });
 
   it("handles zero-cost usage gracefully", () => {
@@ -516,6 +525,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.asstMsgs).toBe(1);
     expect(m.cost).toBe(0);
     expect(m.inTok).toBe(0);
@@ -528,6 +538,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.asstMsgs).toBe(1);
     expect(m.inTok).toBe(0);
     expect(m.cost).toBe(0);
@@ -547,6 +558,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.asstMsgs).toBe(1);
     expect(m.tools).toEqual({});
   });
@@ -574,9 +586,10 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.tools["edit"]).toBe(1);
-    expect(m.languages["TypeScript"].lines).toBe(1);
-    expect(m.languages["TypeScript"].edits).toBe(1);
+    expect(m.languages["TypeScript"]!.lines).toBe(1);
+    expect(m.languages["TypeScript"]!.edits).toBe(1);
   });
 
   it("handles toolCall with undefined arguments", () => {
@@ -587,6 +600,7 @@ describe("parseAssistantMessage", () => {
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["m"];
+    assert(m);
     expect(m.tools["read"]).toBe(1);
   });
 });
@@ -604,7 +618,7 @@ describe("parseSessionHeader", () => {
     };
     const s = parseSessionHeader(entry);
     expect(s.sessionId).toBe("abc-123");
-    expect(s.date).toBe("2026-06-09");
+    expect(dateFromISOString(s.timestamp)).toBe("2026-06-09");
     expect(s.project).toBe("doe");
   });
 
@@ -681,7 +695,7 @@ describe("parseThinkingLevelChangeEntry", () => {
       thinkingLevel: "high",
     };
 
-    const base = emptySession("s1", "2026-06-09", "p");
+    const base = emptySession("s1", new Date(), "p");
     mergeToSession(base, parseThinkingLevelChangeEntry(low));
     mergeToSession(base, parseThinkingLevelChangeEntry(high));
     expect(base.thinkingLevelCount).toEqual({ low: 1, high: 1 });
@@ -720,7 +734,7 @@ describe("parseSessionLogEntry", () => {
     };
     const s = parseSessionLogEntry(entry)!;
     expect(s!.sessionId).toBe("abc-123");
-    expect(s!.date).toBe("2026-06-08");
+    expect(dateFromISOString(s!.timestamp)).toBe("2026-06-08");
     expect(s!.project).toBe("pi-atlas");
   });
 
@@ -760,6 +774,7 @@ describe("parseSessionLogEntry", () => {
 
     const s = parseSessionLogEntry(msgEntry)!;
     const m = s.models["deepseek-v4-pro"];
+    assert(m);
     expect(m.cost).toBe(0.00141);
     expect(m.inTok).toBe(1000);
     expect(m.outTok).toBe(200);
@@ -767,10 +782,6 @@ describe("parseSessionLogEntry", () => {
     expect(m.cwTok).toBe(0);
     expect(m.asstMsgs).toBe(1);
     expect(m.provider).toBe("deepseek");
-
-    // hourCost should be set from the timestamp
-    const hour = new Date("2026-06-08T10:05:00.000Z").getHours();
-    expect(s.hourCost[hour]).toBe(0.00141);
   });
 
   it("returns a SessionAgg for a user message", () => {
@@ -783,7 +794,6 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     expect(s.userMsgs).toBe(1);
-    expect(s.hourCost).toEqual({});
   });
 
   it("returns a SessionAgg for a tool result message", () => {
@@ -796,7 +806,6 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     expect(s.toolResults).toBe(1);
-    expect(s.hourCost).toEqual({});
   });
 
   it("detects languages from edit/write tool calls", () => {
@@ -822,10 +831,11 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     const m = s.models["sonnet"];
-    expect(m.languages["TypeScript"].lines).toBe(1);
-    expect(m.languages["TypeScript"].edits).toBe(1);
-    expect(m.languages["Rust"].lines).toBe(1);
-    expect(m.languages["Rust"].edits).toBe(0);
+    assert(m);
+    expect(m.languages["TypeScript"]!.lines).toBe(1);
+    expect(m.languages["TypeScript"]!.edits).toBe(1);
+    expect(m.languages["Rust"]!.lines).toBe(1);
+    expect(m.languages["Rust"]!.edits).toBe(0);
     expect(m.languages["Markdown"]).toBeUndefined();
   });
 
@@ -846,6 +856,7 @@ describe("parseSessionLogEntry", () => {
     })!;
 
     const m = s.models["sonnet"];
+    assert(m);
     expect(m.tools["bash"]).toBe(1);
     expect(m.tools["read"]).toBe(2);
   });
@@ -967,8 +978,8 @@ describe("parseSessionLogEntry", () => {
 
 describe("mergeToSession", () => {
   it("sums scalar fields", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const update = emptySession("", "", "");
+    const base = emptySession("s1", new Date("2026-06-08"), "p");
+    const update = emptySession("", new Date(0), "");
     update.userMsgs = 2;
     update.toolResults = 1;
     update.compactionCount = 1;
@@ -984,10 +995,10 @@ describe("mergeToSession", () => {
   });
 
   it("merges thinkingLevelCount records", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const a = emptySession("", "", "");
+    const base = emptySession("s1", new Date("2026-06-08"), "p");
+    const a = emptySession("", new Date(0), "");
     a.thinkingLevelCount = { low: 1, high: 1 };
-    const b = emptySession("", "", "");
+    const b = emptySession("", new Date(0), "");
     b.thinkingLevelCount = { high: 2, xhigh: 1 };
 
     mergeToSession(base, a);
@@ -995,21 +1006,21 @@ describe("mergeToSession", () => {
     expect(base.thinkingLevelCount).toEqual({ low: 1, high: 3, xhigh: 1 });
   });
 
-  it("merges hourCost records", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const a = emptySession("", "", "");
-    a.hourCost = { 10: 1.5 };
-    const b = emptySession("", "", "");
-    b.hourCost = { 10: 0.5, 14: 2.0 };
-
-    mergeToSession(base, a);
-    mergeToSession(base, b);
-    expect(base.hourCost).toEqual({ 10: 2.0, 14: 2.0 });
-  });
+  // it("merges hourCost records", () => {
+  //   const base = emptySession("s1", new Date("2026-06-08"), "p");
+  //   const a = emptySession("", new Date(0), "");
+  //   a.hourCost = { 10: 1.5 };
+  //   const b = emptySession("", new Date(0), "");
+  //   b.hourCost = { 10: 0.5, 14: 2.0 };
+  //
+  //   mergeToSession(base, a);
+  //   mergeToSession(base, b);
+  //   expect(base.hourCost).toEqual({ 10: 2.0, 14: 2.0 });
+  // });
 
   it("merges model usage from multiple updates", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const a = emptySession("", "", "");
+    const base = emptySession("s1", new Date("2026-06-08"), "p");
+    const a = emptySession("", new Date(0), "");
     a.models["sonnet"] = {
       provider: "anthropic",
       cost: 1.0,
@@ -1022,7 +1033,7 @@ describe("mergeToSession", () => {
       tools: { bash: 1 },
       languages: { TypeScript: { lines: 10, edits: 1 } },
     };
-    const b = emptySession("", "", "");
+    const b = emptySession("", new Date(0), "");
     b.models["sonnet"] = {
       provider: "anthropic",
       cost: 0.5,
@@ -1039,6 +1050,7 @@ describe("mergeToSession", () => {
     mergeToSession(base, a);
     mergeToSession(base, b);
     const m = base.models["sonnet"];
+    assert(m);
     expect(m.cost).toBe(1.5);
     expect(m.calls).toBe(3);
     expect(m.inTok).toBe(600);
@@ -1047,13 +1059,13 @@ describe("mergeToSession", () => {
     expect(m.cwTok).toBe(10);
     expect(m.asstMsgs).toBe(3);
     expect(m.tools).toEqual({ bash: 1, edit: 1 });
-    expect(m.languages["TypeScript"].lines).toBe(15);
-    expect(m.languages["TypeScript"].edits).toBe(3);
+    expect(m.languages["TypeScript"]!.lines).toBe(15);
+    expect(m.languages["TypeScript"]!.edits).toBe(3);
   });
 
   it("handles first model addition", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const update = emptySession("", "", "");
+    const base = emptySession("s1", new Date("2026-06-08"), "p");
+    const update = emptySession("", new Date(0), "");
     update.models["gpt-5"] = {
       provider: "openai",
       cost: 2.0,
@@ -1072,11 +1084,33 @@ describe("mergeToSession", () => {
   });
 
   it("merges multiple different models", () => {
-    const base = emptySession("s1", "2026-06-08", "p");
-    const a = emptySession("", "", "");
-    a.models["sonnet"] = { provider: "anthropic", cost: 1, calls: 2, inTok: 500, outTok: 200, crTok: 0, cwTok: 0, asstMsgs: 2, tools: {}, languages: {} };
-    const b = emptySession("", "", "");
-    b.models["haiku"] = { provider: "anthropic", cost: 0.5, calls: 3, inTok: 300, outTok: 100, crTok: 0, cwTok: 0, asstMsgs: 3, tools: {}, languages: {} };
+    const base = emptySession("s1", new Date("2026-06-08"), "p");
+    const a = emptySession("", new Date(0), "");
+    a.models["sonnet"] = {
+      provider: "anthropic",
+      cost: 1,
+      calls: 2,
+      inTok: 500,
+      outTok: 200,
+      crTok: 0,
+      cwTok: 0,
+      asstMsgs: 2,
+      tools: {},
+      languages: {},
+    };
+    const b = emptySession("", new Date(0), "");
+    b.models["haiku"] = {
+      provider: "anthropic",
+      cost: 0.5,
+      calls: 3,
+      inTok: 300,
+      outTok: 100,
+      crTok: 0,
+      cwTok: 0,
+      asstMsgs: 3,
+      tools: {},
+      languages: {},
+    };
 
     mergeToSession(base, a);
     mergeToSession(base, b);
@@ -1190,7 +1224,7 @@ describe("realistic session file", () => {
 
     // Model usage
     const m = session.models["sonnet-v3"];
-    expect(m).toBeDefined();
+    assert(m);
     expect(m.cost).toBe(0.0053);
     expect(m.calls).toBe(1);
     expect(m.inTok).toBe(500);
@@ -1206,18 +1240,14 @@ describe("realistic session file", () => {
     expect(m.tools["read"]).toBe(1);
 
     // Language attribution per-model
-    expect(m.languages["TypeScript"].lines).toBe(2);
-    expect(m.languages["TypeScript"].edits).toBe(1);
-    expect(m.languages["Rust"].lines).toBe(1);
-    expect(m.languages["Rust"].edits).toBe(0);
+    expect(m.languages["TypeScript"]!.lines).toBe(2);
+    expect(m.languages["TypeScript"]!.edits).toBe(1);
+    expect(m.languages["Rust"]!.lines).toBe(1);
+    expect(m.languages["Rust"]!.edits).toBe(0);
 
     // Non-cost-relevant entry types
     expect(session.modelChanges).toBe(1);
     expect(session.compactionCount).toBe(1);
     expect(session.compactedTokens).toBe(30000);
-
-    // hourCost from the cost-bearing assistant message
-    const hour = new Date("2026-06-10T09:02:00.000Z").getHours();
-    expect(session.hourCost[hour]).toBe(0.0053);
   });
 });

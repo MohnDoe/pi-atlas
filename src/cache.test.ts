@@ -1,5 +1,11 @@
+import type { UserMessage } from "@earendil-works/pi-ai";
+import type {
+  SessionEntry,
+  SessionHeader,
+  SessionMessageEntry,
+} from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -11,8 +17,9 @@ import {
   readCache,
   writeCache,
 } from "./cache";
-import { emptyDay } from "./parser";
-import type { DayAgg } from "./types";
+import { emptySession } from "./parser";
+import type { SessionAgg } from "./types";
+import type { Session } from "node:inspector";
 
 describe("computeSignature", () => {
   let tmpDir: string;
@@ -92,6 +99,8 @@ describe("computeSignature", () => {
   });
 });
 
+// ---- isCacheValid (unchanged semantics) ----
+
 describe("isCacheValid", () => {
   let tmpDir: string;
   let cachePath: string;
@@ -115,11 +124,10 @@ describe("isCacheValid", () => {
   });
 
   it("returns false when cache signature differs from current", async () => {
-    // Write a session file, compute its signature, write cache with that sig
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
-    const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, sig, [d]);
+    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    await writeCache(cachePath, sig, [s]);
 
     const validBefore = await isCacheValid(cachePath, sessionsDir);
     expect(validBefore).toBe(true);
@@ -132,16 +140,17 @@ describe("isCacheValid", () => {
   });
 
   it("returns true when cache signature matches current", async () => {
-    // Write a session file, compute its signature, write cache with that sig
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
-    const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, sig, [d]);
+    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    await writeCache(cachePath, sig, [s]);
 
     const valid = await isCacheValid(cachePath, sessionsDir);
     expect(valid).toBe(true);
   });
 });
+
+// ---- cache read/write with SessionAgg ----
 
 describe("cache read/write", () => {
   let tmpDir: string;
@@ -157,21 +166,43 @@ describe("cache read/write", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it("writes and reads cache", async () => {
-    const d = emptyDay("2026-06-08");
-    d.cost = 1.5;
-    d.sessionIds = new Set(["s1"]);
-    const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-abc", days);
+  it("writes and reads SessionAgg array", async () => {
+    const s = emptySession("s1", new Date(), "my-app");
+    s.userMsgs = 3;
+    s.toolResults = 1;
+    s.models["sonnet"] = {
+      provider: "anthropic",
+      cost: 1.5,
+      calls: 2,
+      inTok: 500,
+      outTok: 200,
+      crTok: 50,
+      cwTok: 10,
+      asstMsgs: 2,
+      tools: { bash: 1, read: 3 },
+      languages: { TypeScript: { lines: 100, edits: 5 } },
+    };
+    const sessions: SessionAgg[] = [s];
+    await writeCache(cachePath, "sig-abc", sessions);
 
     const payload = await readCache(cachePath);
     expect(payload).toBeDefined();
     expect(payload!.signature).toBe("sig-abc");
-    expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0]!.date).toBe("2026-06-08");
-    expect(payload!.days[0]!.cost).toBe(1.5);
-    // Sets are serialized as arrays
-    expect(payload!.days[0]!.sessionIds).toEqual(["s1"]);
+    expect(payload!.sessions).toHaveLength(1);
+    const s0 = payload!.sessions[0]!;
+    expect(s0.sessionId).toBe("s1");
+    expect(s0.timestamp).toBe(s.timestamp);
+    expect(s0.project).toBe("my-app");
+    expect(s0.userMsgs).toBe(3);
+    expect(s0.toolResults).toBe(1);
+    const m0 = s0.models["sonnet"]!;
+    expect(m0.cost).toBe(1.5);
+    expect(m0.provider).toBe("anthropic");
+    expect(m0.tools).toEqual({ bash: 1, read: 3 });
+    expect(m0.languages["TypeScript"]).toEqual({
+      lines: 100,
+      edits: 5,
+    });
   });
 
   it("returns null for missing cache file", async () => {
@@ -186,23 +217,22 @@ describe("cache read/write", () => {
   });
 
   it("returns null when cached JSON lacks a signature", async () => {
-    await writeFile(cachePath, JSON.stringify({ days: [] }));
+    await writeFile(cachePath, JSON.stringify({ sessions: [] }));
     const payload = await readCache(cachePath);
     expect(payload).toBeNull();
   });
 
-  it("returns null when cached JSON has signature but days is not an array", async () => {
-    await writeFile(cachePath, JSON.stringify({ signature: "sig", days: {} }));
+  it("returns null when cached JSON has signature but sessions is not an array", async () => {
+    await writeFile(cachePath, JSON.stringify({ signature: "sig", sessions: {} }));
     const payload = await readCache(cachePath);
     expect(payload).toBeNull();
   });
 
   it("returns generatedAt from valid cache", async () => {
-    const d = emptyDay("2026-06-08");
-    await writeCache(cachePath, "sig-abc", [d]);
+    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    await writeCache(cachePath, "sig-abc", [s]);
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).not.toBeNull();
-    // generatedAt is an ISO string
     expect(new Date(ts!).toISOString()).toBe(ts as string);
   });
 
@@ -210,120 +240,9 @@ describe("cache read/write", () => {
     const ts = await getCacheTimestamp("/nonexistent/cache.json");
     expect(ts).toBeNull();
   });
-
-  it("preserves hourCost values through round-trip (numeric keys become strings in JSON)", async () => {
-    const d = emptyDay("2026-06-08");
-    d.hourCost = { 10: 0.5, 14: 1.25 };
-    const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-hc", days);
-
-    // Read raw JSON — numeric keys are stored as strings
-    const raw = await readFile(cachePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    expect(parsed.days[0].hourCost).toEqual({ "10": 0.5, "14": 1.25 });
-
-    // Round-trip via loadAggregate
-    const sesDir = join(tmpDir, "sessions");
-    await mkdir(sesDir, { recursive: true });
-    await writeFile(
-      join(sesDir, "dummy.jsonl"),
-      JSON.stringify({
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/p",
-      }) + "\n",
-    );
-    const sig = await computeSignature(sesDir);
-    await writeFile(
-      cachePath,
-      JSON.stringify({
-        signature: sig,
-        generatedAt: new Date().toISOString(),
-        days: [
-          {
-            ...parsed.days[0],
-            modelToProvider: {},
-          },
-        ],
-      }),
-    );
-    const loaded = await loadAggregate(cachePath, sesDir);
-    expect(loaded).toHaveLength(1);
-    // Numeric access still works via JS coercion
-    expect(loaded[0]!.hourCost[10]).toBe(0.5);
-    expect(loaded[0]!.hourCost[14]).toBe(1.25);
-  });
-
-  it("serializes and deserializes modelToProvider Map", async () => {
-    const d = emptyDay("2026-06-08");
-    d.modelToProvider.set("claude-sonnet-4", "anthropic");
-    d.modelToProvider.set("gpt-4o", "openai");
-    const days: DayAgg[] = [d];
-    await writeCache(cachePath, "sig-mtp", days);
-
-    // Read raw cache JSON — modelToProvider should not be empty {}
-    const payload = await readCache(cachePath);
-    expect(payload).toBeDefined();
-    expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0]!.modelToProvider).toEqual({
-      "claude-sonnet-4": "anthropic",
-      "gpt-4o": "openai",
-    });
-
-    // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
-    const sesDir = join(tmpDir, "sessions");
-    await mkdir(sesDir, { recursive: true });
-    await writeFile(
-      join(sesDir, "dummy.jsonl"),
-      JSON.stringify({
-        type: "session",
-        version: 3,
-        id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        cwd: "/p",
-      }) + "\n",
-    );
-    const sig = await computeSignature(sesDir);
-    await writeFile(
-      cachePath,
-      JSON.stringify({
-        signature: sig,
-        generatedAt: new Date().toISOString(),
-        days: [
-          {
-            date: "2026-06-08",
-            cost: 0,
-            inTok: 0,
-            outTok: 0,
-            crTok: 0,
-            cwTok: 0,
-            userMsgs: 0,
-            asstMsgs: 0,
-            toolResults: 0,
-            sessionIds: [],
-            langLines: {},
-            langEdits: {},
-            modelCost: {},
-            modelCount: {},
-            providerCost: {},
-            providerCount: {},
-            modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
-            projectCost: {},
-            projectSessions: {},
-            toolCount: {},
-          },
-        ],
-      }),
-    );
-    const loaded = await loadAggregate(cachePath, sesDir);
-    expect(loaded).toHaveLength(1);
-    expect(loaded[0]!.modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
-    expect(loaded[0]!.modelToProvider.get("gpt-4o")).toBe("openai");
-    expect(loaded[0]!.modelToProvider.size).toBe(2);
-  });
 });
+
+// ---- loadAggregate ----
 
 describe("loadAggregate", () => {
   let tmpDir: string;
@@ -343,12 +262,15 @@ describe("loadAggregate", () => {
   });
 
   it("returns empty array for empty sessions dir", async () => {
-    const days = await loadAggregate(cachePath, sessionsDir);
-    expect(days).toEqual([]);
+    const sessions = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions).toEqual([]);
   });
 
-  it("parses session files and returns DayAgg array", async () => {
+  it("parses session files and returns SessionAgg array", async () => {
     const subDir = join(sessionsDir, "proj-a");
+    const sessionTime = "2026-06-08T10:00:00.000Z";
+    const messageTime = "2026-06-08T10:01:00.000Z";
+    const messageTimestamp = Math.floor(new Date(messageTime).getHours() / 1000);
     await mkdir(subDir);
     await writeFile(
       join(subDir, "s1.jsonl"),
@@ -357,31 +279,43 @@ describe("loadAggregate", () => {
           type: "session",
           version: 3,
           id: "s1",
-          timestamp: "2026-06-08T10:00:00.000Z",
+          timestamp: sessionTime,
           cwd: "/home/doe/proj-a",
-        }),
+        } satisfies SessionHeader),
         JSON.stringify({
           type: "message",
           id: "m1",
           parentId: "p",
-          timestamp: "2026-06-08T10:01:00.000Z",
-          message: { role: "user", content: [{ type: "text", text: "hi" }] },
-        }),
+          timestamp: messageTime,
+          message: {
+            role: "user",
+            content: [{ type: "text", text: "hi" }],
+            timestamp: messageTimestamp,
+          } satisfies UserMessage,
+        } satisfies SessionMessageEntry),
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir);
-    expect(days).toHaveLength(1);
-    expect(days[0]!.date).toBe("2026-06-08");
-    expect(days[0]!.userMsgs).toBe(1);
+    const sessions = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.sessionId).toBe("s1");
+    expect(sessions[0]!.timestamp).toBe(sessionTime);
+    expect(sessions[0]!.project).toBe("proj-a");
+    expect(sessions[0]!.userMsgs).toBe(1);
   });
 
-  it("merges data from multiple files sharing the same date", async () => {
+  it("returns one SessionAgg per file", async () => {
     const projA = join(sessionsDir, "proj-a");
     const projB = join(sessionsDir, "proj-b");
     await mkdir(projA, { recursive: true });
     await mkdir(projB, { recursive: true });
 
+    const firstSessionTime = "2026-06-08T10:00:00.000Z";
+    const firstMessageTime = "2026-06-08T10:01:00.000Z";
+    const firstMessageTimestamp = Math.floor(new Date(firstMessageTime).getHours() / 1000);
+    const secondSessionTime = "2026-06-08T14:00:00.000Z";
+    const secondMessageTime = "2026-06-08T14:01:00.000Z";
+    const secondMessageTimestamp = Math.floor(new Date(secondMessageTime).getHours() / 1000);
     // Two files, same date, different sessions
     await writeFile(
       join(projA, "s1.jsonl"),
@@ -390,16 +324,20 @@ describe("loadAggregate", () => {
           type: "session",
           version: 3,
           id: "s1",
-          timestamp: "2026-06-08T10:00:00.000Z",
+          timestamp: firstSessionTime,
           cwd: "/home/doe/proj-a",
-        }),
+        } satisfies SessionHeader),
         JSON.stringify({
           type: "message",
           id: "m1",
           parentId: "p",
-          timestamp: "2026-06-08T10:01:00.000Z",
-          message: { role: "user", content: [{ type: "text", text: "hi from a" }] },
-        }),
+          timestamp: firstMessageTime,
+          message: {
+            role: "user",
+            timestamp: firstMessageTimestamp,
+            content: [{ type: "text", text: "hi from a" }],
+          } satisfies UserMessage,
+        } satisfies SessionMessageEntry),
       ].join("\n"),
     );
 
@@ -410,24 +348,31 @@ describe("loadAggregate", () => {
           type: "session",
           version: 3,
           id: "s2",
-          timestamp: "2026-06-08T14:00:00.000Z",
+          timestamp: secondSessionTime,
           cwd: "/home/doe/proj-b",
-        }),
+        } satisfies SessionHeader),
         JSON.stringify({
           type: "message",
           id: "m1",
           parentId: "p",
-          timestamp: "2026-06-08T14:01:00.000Z",
-          message: { role: "user", content: [{ type: "text", text: "hi from b" }] },
-        }),
+          timestamp: secondMessageTime,
+          message: {
+            role: "user",
+            timestamp: secondMessageTimestamp,
+            content: [{ type: "text", text: "hi from b" }],
+          } satisfies UserMessage,
+        } satisfies SessionMessageEntry),
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir, true);
-    expect(days).toHaveLength(1);
-    expect(days[0]!.date).toBe("2026-06-08");
-    expect(days[0]!.userMsgs).toBe(2); // one from each file
-    expect(days[0]!.sessionIds.size).toBe(2); // s1 and s2 merged
+    const sessions = await loadAggregate(cachePath, sessionsDir, true);
+    expect(sessions).toHaveLength(2); // Two separate sessions now
+    expect(sessions[0]!.sessionId).toBe("s1");
+    expect(sessions[0]!.project).toBe("proj-a");
+    expect(sessions[0]!.userMsgs).toBe(1);
+    expect(sessions[1]!.sessionId).toBe("s2");
+    expect(sessions[1]!.project).toBe("proj-b");
+    expect(sessions[1]!.userMsgs).toBe(1);
   });
 
   it("writes a cache file on disk after parsing", async () => {
@@ -442,7 +387,7 @@ describe("loadAggregate", () => {
           id: "s1",
           timestamp: "2026-06-08T10:00:00.000Z",
           cwd: "/home/doe/proj-a",
-        }),
+        } satisfies SessionHeader),
       ].join("\n"),
     );
 
@@ -451,8 +396,9 @@ describe("loadAggregate", () => {
     // Verify the cache file was written
     const payload = await readCache(cachePath);
     expect(payload).not.toBeNull();
-    expect(payload!.days).toHaveLength(1);
-    expect(payload!.days[0]!.date).toBe("2026-06-08");
+    expect(payload!.sessions).toHaveLength(1);
+    expect(payload!.sessions[0]!.sessionId).toBe("s1");
+    expect(payload!.sessions[0]!.timestamp).toBe("2026-06-08T10:00:00.000Z");
     expect(payload!.generatedAt).toBeTruthy();
 
     // Verify the signature corresponds to the actual session files
@@ -476,12 +422,12 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days1 = await loadAggregate(cachePath, sessionsDir);
-    expect(days1).toHaveLength(1);
+    const sessions1 = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions1).toHaveLength(1);
 
     // Second call should use cache
-    const days2 = await loadAggregate(cachePath, sessionsDir);
-    expect(days2).toHaveLength(1);
+    const sessions2 = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions2).toHaveLength(1);
   });
 
   it("invalidates cache when session files change", async () => {
@@ -516,13 +462,17 @@ describe("loadAggregate", () => {
       ].join("\n"),
     );
 
-    const days = await loadAggregate(cachePath, sessionsDir);
-    expect(days).toHaveLength(2); // two days now
+    const sessions = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions).toHaveLength(2); // two sessions now
   });
 
   it("logs corrupt line count to stderr", async () => {
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
+
+    const sessionTime = "2026-06-08T10:00:00.000Z";
+    const messageTime = "2026-06-08T10:01:00.000Z";
+    const messageTimestamp = Math.floor(new Date(messageTime).getHours() / 1000);
     await writeFile(
       join(subDir, "mixed.jsonl"),
       [
@@ -530,18 +480,22 @@ describe("loadAggregate", () => {
           type: "session",
           version: 3,
           id: "s1",
-          timestamp: "2026-06-08T10:00:00.000Z",
+          timestamp: sessionTime,
           cwd: "/home/doe/proj-a",
-        }),
+        } satisfies SessionHeader),
         "not valid json",
         "also broken {",
         JSON.stringify({
           type: "message",
           id: "m1",
           parentId: "p",
-          timestamp: "2026-06-08T10:01:00.000Z",
-          message: { role: "user", content: [{ type: "text", text: "hi" }] },
-        }),
+          timestamp: messageTime,
+          message: {
+            role: "user",
+            timestamp: messageTimestamp,
+            content: [{ type: "text", text: "hi" }],
+          } satisfies UserMessage,
+        } satisfies SessionMessageEntry),
       ].join("\n"),
     );
 
@@ -566,6 +520,9 @@ describe("loadAggregate", () => {
     // Create a session file
     const subDir = join(sessionsDir, "proj-a");
     await mkdir(subDir);
+    const sessionTime = "2026-06-08T10:00:00.000Z";
+    const messageTime = "2026-06-08T10:01:00.000Z";
+    const messageTimestamp = Math.floor(new Date(messageTime).getHours() / 1000);
     await writeFile(
       join(subDir, "s1.jsonl"),
       [
@@ -573,16 +530,20 @@ describe("loadAggregate", () => {
           type: "session",
           version: 3,
           id: "s1",
-          timestamp: "2026-06-08T10:00:00.000Z",
+          timestamp: sessionTime,
           cwd: "/home/doe/proj-a",
         }),
         JSON.stringify({
           type: "message",
           id: "m1",
           parentId: "p",
-          timestamp: "2026-06-08T10:01:00.000Z",
-          message: { role: "user", content: [{ type: "text", text: "hi" }] },
-        }),
+          timestamp: messageTime,
+          message: {
+            role: "user",
+            timestamp: messageTimestamp,
+            content: [{ type: "text", text: "hi" }],
+          } satisfies UserMessage,
+        } satisfies SessionMessageEntry),
       ].join("\n"),
     );
 
@@ -595,38 +556,28 @@ describe("loadAggregate", () => {
       JSON.stringify({
         signature: realSig,
         generatedAt: new Date().toISOString(),
-        days: [
+        sessions: [
           {
             date: "2026-06-08",
-            cost: 0,
-            inTok: 0,
-            outTok: 0,
-            crTok: 0,
-            cwTok: 0,
+            sessionId: "s1",
+            project: "proj-a",
+            models: {},
             userMsgs: 9999, // stale: real data has 1
-            asstMsgs: 0,
             toolResults: 0,
-            sessionIds: [],
-            langLines: {},
-            langEdits: {},
-            modelCost: {},
-            modelCount: {},
-            providerCost: {},
-            providerCount: {},
-            modelToProvider: {},
-            projectCost: {},
-            projectSessions: {},
-            toolCount: {},
+            compactionCount: 0,
+            compactedTokens: 0,
+            modelChanges: 0,
+            thinkingLevelCount: {},
+            hourCost: {},
           },
         ],
       }),
     );
 
     // force=true should ignore the stale cache and re-parse
-    const days = await loadAggregate(cachePath, sessionsDir, true);
-    expect(days).toHaveLength(1);
-    expect(days[0]!.userMsgs).toBe(1);
-    expect(days[0]!.asstMsgs).toBe(0);
+    const sessions = await loadAggregate(cachePath, sessionsDir, true);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.userMsgs).toBe(1);
   });
 
   it("calls onProgress during parsing", async () => {
@@ -648,7 +599,6 @@ describe("loadAggregate", () => {
     const progress: LoadingProgress[] = [];
     await loadAggregate(cachePath, sessionsDir, false, (p) => progress.push(p));
 
-    // Should have reported some progress and reached 100%
     expect(progress.length).toBeGreaterThan(0);
     expect(progress[progress.length - 1]!.pct).toBe(100);
   });
@@ -683,7 +633,6 @@ describe("loadAggregate", () => {
     const progress: LoadingProgress[] = [];
     await loadAggregate(cachePath, sessionsDir, true, (p) => progress.push(p));
 
-    // Two files: should get 50% and 100%
     expect(progress.map((p) => p.pct)).toEqual([50, 100]);
   });
 });

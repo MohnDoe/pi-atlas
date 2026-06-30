@@ -19,7 +19,7 @@ function daysInRange(sessions: SessionAgg[], range: TimeRange): SessionAgg[] {
   const todayStr = dateFromISOString(new Date().toISOString());
 
   if (range === "1d") {
-    return sessions.filter((s) => s.date === todayStr);
+    return sessions.filter((s) => dateFromISOString(s.timestamp) === todayStr);
   }
 
   // Build cutoff as a Date, then convert back to ISO string for comparison
@@ -30,8 +30,8 @@ function daysInRange(sessions: SessionAgg[], range: TimeRange): SessionAgg[] {
     cutoff.setUTCDate(cutoff.getUTCDate() - 29);
   }
 
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  return sessions.filter((s) => s.date >= cutoffStr);
+  const cutoffStr = dateFromISOString(cutoff.toISOString());
+  return sessions.filter((s) => dateFromISOString(s.timestamp) >= cutoffStr);
 }
 
 function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
@@ -44,7 +44,9 @@ function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
     for (const modelUsage of Object.values(s.models)) {
       dayCost += modelUsage.cost;
     }
-    spendByDate.set(s.date, (spendByDate.get(s.date) ?? 0) + dayCost);
+
+    const dateStr = dateFromISOString(s.timestamp);
+    spendByDate.set(dateStr, (spendByDate.get(dateStr) ?? 0) + dayCost);
   }
 
   const sortedDates = [...spendByDate.keys()].sort();
@@ -72,12 +74,18 @@ function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
 }
 
 function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[] {
-  if (range !== "1d" || filtered.length !== 1) return [];
+  if (range !== "1d" || filtered.length === 0) return [];
 
-  const session = filtered[0]!;
+  const totalHourCost: Record<number, number> = {};
+  for (const session of filtered) {
+    const hour = new Date(session.timestamp).getHours();
+    const cost = Object.values(session.models).reduce((val, s) => val + s.cost, 0);
+    totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
+  }
+
   const hourly: HourSpend[] = [];
   for (let h = 0; h < 24; h++) {
-    hourly.push({ hour: h, cost: session.hourCost[h] ?? 0 });
+    hourly.push({ hour: h, cost: totalHourCost[h] ?? 0 });
   }
   return hourly;
 }
@@ -105,8 +113,9 @@ export function summarize(
   const filtered = daysInRange(sessions, range);
 
   // Filter by project
-  const projectFiltered =
-    filters?.project ? filtered.filter((s) => s.project === filters.project) : filtered;
+  const projectFiltered = filters?.project
+    ? filtered.filter((s) => s.project === filters.project)
+    : filtered;
 
   const todayStr = dateFromISOString(new Date().toISOString());
   let todayCost = 0;
@@ -138,7 +147,6 @@ export function summarize(
   let modelToProvider: Record<string, string> = {};
 
   for (const session of projectFiltered) {
-
     // Project attribution: the session's project gets attributed its total cost
     let sessionCost = 0;
     let sessionHasModels = false;
@@ -199,7 +207,7 @@ export function summarize(
       projectSessions[session.project]!.add(session.sessionId);
     }
 
-    if (session.date === todayStr) todayCost += sessionCost;
+    if (dateFromISOString(session.timestamp) === todayStr) todayCost += sessionCost;
   }
 
   // Sessions that have at least one model matching filters
@@ -211,7 +219,7 @@ export function summarize(
   sessionCount = uniqueSessionIds.size;
 
   // Days active: unique dates that have sessions with matching models
-  const activeDates = new Set(sessionsWithModels.map((s) => s.date));
+  const activeDates = new Set(sessionsWithModels.map((s) => dateFromISOString(s.timestamp)));
   const daysActive = activeDates.size;
   const avgCostPerDay = daysActive > 0 ? totalCost / daysActive : 0;
 

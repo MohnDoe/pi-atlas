@@ -1,31 +1,4 @@
-export interface DayAgg {
-  date: string; // "YYYY-MM-DD"
-  cost: number;
-  hourCost: Record<number, number>; // accumulated cost per UTC hour 0-23
-  inTok: number;
-  outTok: number;
-  crTok: number;
-  cwTok: number;
-  userMsgs: number;
-  asstMsgs: number;
-  toolResults: number;
-  sessionIds: Set<string>;
-  langLines: Record<string, number>;
-  langEdits: Record<string, number>;
-  modelCost: Record<string, number>;
-  modelCount: Record<string, number>;
-  providerCost: Record<string, number>;
-  providerCount: Record<string, number>;
-  modelToProvider: Map<string, string>;
-  projectCost: Record<string, number>;
-  projectSessions: Record<string, Set<string>>;
-  toolCount: Record<string, number>;
-  // New fields tracking pi session entry types beyond session+message
-  compactionCount: number;
-  compactedTokens: number;
-  modelChanges: number;
-  thinkingLevelCount: Record<string, number>;
-}
+import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
 
@@ -97,8 +70,8 @@ export interface StatsSummary {
 // ---- New SessionAgg types ----
 
 export interface SessionAgg {
-  date: string;            // "YYYY-MM-DD"
-  sessionId: string;
+  timestamp: SessionHeader["timestamp"];
+  sessionId: SessionHeader["id"];
   project: string;
   models: Record<string, SessionModelUsage>; // keyed by model name
   userMsgs: number;
@@ -107,7 +80,6 @@ export interface SessionAgg {
   compactedTokens: number;
   modelChanges: number;
   thinkingLevelCount: Record<string, number>;
-  hourCost: Record<number, number>;
 }
 
 export interface SessionModelUsage {
@@ -119,7 +91,7 @@ export interface SessionModelUsage {
   crTok: number;
   cwTok: number;
   asstMsgs: number;
-  tools: Record<string, number>;             // tool name → call count
+  tools: Record<string, number>; // tool name → call count
   languages: Record<string, LangUsage>;
 }
 
@@ -137,14 +109,5 @@ export interface Filters {
 export interface CachePayload {
   signature: string;
   generatedAt: string;
-  days: SerializedDayAgg[];
-}
-
-export interface SerializedDayAgg extends Omit<
-  DayAgg,
-  "sessionIds" | "projectSessions" | "modelToProvider"
-> {
-  sessionIds: string[];
-  projectSessions: Record<string, string[]>;
-  modelToProvider: Record<string, string>;
+  sessions: SessionAgg[];
 }

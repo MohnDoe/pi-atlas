@@ -7,7 +7,12 @@ import { Dashboard } from "../components/Dashboard";
 import { allRanges } from "../components/Dashboard.test";
 import { summarize } from "../compute";
 import { parseFile } from "../parser";
-import type { DayAgg } from "../types";
+import type {
+  SessionEntry,
+  SessionHeader,
+  SessionMessageEntry,
+} from "@earendil-works/pi-coding-agent";
+import type { AssistantMessage, ToolCall, UserMessage } from "@earendil-works/pi-ai";
 
 const mockTui = makeMockTUI();
 
@@ -23,34 +28,41 @@ describe("JSONL → Dashboard", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  function daysFromMap(map: Map<string, DayAgg>): DayAgg[] {
-    return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }
-
   it("end-to-end: JSONL with session and messages → Dashboard Overview shows KPIs", async () => {
     const filePath = join(tmpDir, "session.jsonl");
+    const sessionTime = "2026-06-08T10:00:00.000Z";
+    const messageTime = "2026-06-08T10:01:00.000Z";
+    const messageTimestamp = Math.floor(new Date(messageTime).getTime() / 1000);
+    const assistantMessageTime = "2026-06-08T10:02:00.000Z";
+    const assistantMessageTimestamp = Math.floor(new Date(assistantMessageTime).getTime() / 1000);
+
     const jsonlLines = [
       JSON.stringify({
         type: "session",
         version: 3,
         id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
+        timestamp: sessionTime,
         cwd: "/home/doe/proj",
-      }),
+      } satisfies SessionHeader),
       JSON.stringify({
         type: "message",
         id: "m1",
         parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
-        message: { role: "user", content: [{ type: "text", text: "hello" }] },
-      }),
+        timestamp: messageTime,
+        message: {
+          role: "user",
+          timestamp: messageTimestamp,
+          content: [{ type: "text", text: "hello" }],
+        } satisfies UserMessage,
+      } satisfies SessionMessageEntry),
       JSON.stringify({
         type: "message",
         id: "m2",
         parentId: "m1",
-        timestamp: "2026-06-08T10:02:00.000Z",
+        timestamp: assistantMessageTime,
         message: {
           role: "assistant",
+          timestamp: assistantMessageTimestamp,
           content: [
             { type: "text", text: "hi there" },
             {
@@ -60,6 +72,10 @@ describe("JSONL → Dashboard", () => {
               arguments: { path: "/src/foo.ts" },
             },
           ],
+
+          api: "anthropic-messages",
+          provider: "anthropic",
+          stopReason: "stop",
           model: "claude-sonnet-4-20250514",
           usage: {
             input: 200,
@@ -75,19 +91,19 @@ describe("JSONL → Dashboard", () => {
               total: 0.00151,
             },
           },
-        },
-      }),
+        } satisfies AssistantMessage,
+      } satisfies SessionMessageEntry),
     ];
     await writeFile(filePath, jsonlLines.join("\n"));
 
     // Parse
-    const map = parseFile(filePath);
-    const days = daysFromMap(map);
-    expect(days.length).toBeGreaterThan(0);
+    const session = parseFile(filePath);
+    expect(session).not.toBeNull();
+    const sessions = [session!];
 
     // Summarize for all ranges
     const ranges = allRanges;
-    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
+    const summaries = new Map(ranges.map((r) => [r, summarize(sessions, r)] as const));
 
     // Render dashboard
     const dash = new Dashboard(
@@ -114,34 +130,41 @@ describe("JSONL → Dashboard", () => {
 
   it("end-to-end: Navigate to Languages tab shows ranked table from parsed data", async () => {
     const filePath = join(tmpDir, "lang-session.jsonl");
+    const sessionTime = "2026-06-08T10:00:00.000Z";
+    const assistantMessageTime = "2026-06-08T10:02:00.000Z";
+    const assistantMessageTimestamp = Math.floor(new Date(assistantMessageTime).getTime() / 1000);
     const jsonlLines = [
       JSON.stringify({
         type: "session",
         version: 3,
         id: "s1",
-        timestamp: "2026-06-08T10:00:00.000Z",
+        timestamp: sessionTime,
         cwd: "/home/doe/proj",
-      }),
+      } as SessionHeader),
       JSON.stringify({
         type: "message",
         id: "m1",
         parentId: "p",
-        timestamp: "2026-06-08T10:01:00.000Z",
+        timestamp: assistantMessageTime,
         message: {
           role: "assistant",
+          provider: "anthropic",
+          stopReason: "stop",
+          timestamp: assistantMessageTimestamp,
+          api: "anthropic-messages",
           content: [
             {
               type: "toolCall",
               id: "t1",
               name: "edit",
               arguments: { path: "/src/main.ts", edits: [{ newText: "console.log('hi')" }] },
-            },
+            } satisfies ToolCall,
             {
               type: "toolCall",
               id: "t2",
               name: "write",
               arguments: { path: "/src/lib.rs", content: "fn main() {}" },
-            },
+            } as ToolCall,
           ],
           model: "sonnet",
           usage: {
@@ -152,15 +175,16 @@ describe("JSONL → Dashboard", () => {
             totalTokens: 0,
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
           },
-        },
-      }),
+        } satisfies AssistantMessage,
+      } satisfies SessionMessageEntry),
     ];
     await writeFile(filePath, jsonlLines.join("\n"));
 
-    const map = parseFile(filePath);
-    const days = daysFromMap(map);
+    const session = parseFile(filePath);
+    expect(session).not.toBeNull();
+    const sessions = [session!];
     const ranges = allRanges;
-    const summaries = new Map(ranges.map((r) => [r, summarize(days, r)] as const));
+    const summaries = new Map(ranges.map((r) => [r, summarize(sessions, r)] as const));
 
     const dash = new Dashboard(
       summaries,
