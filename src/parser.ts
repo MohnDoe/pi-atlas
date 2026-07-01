@@ -126,7 +126,7 @@ export function parseUserMessage(msg: UserMessage): SessionAgg {
 }
 
 export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
-  const session = emptySession("", new Date(msg.timestamp), "");
+  const session = emptySession("", new Date(msg.timestamp));
   session.toolResults = 1;
   // Tool results contribute to the session-level toolResults count.
   // The tool name is tracked via the most recent model's tools — but since
@@ -136,7 +136,7 @@ export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
 }
 
 export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
-  const session = emptySession("", new Date(msg.timestamp), "");
+  const session = emptySession("", new Date(msg.timestamp));
 
   const modelName = msg.model;
   const provider = msg.provider ?? "";

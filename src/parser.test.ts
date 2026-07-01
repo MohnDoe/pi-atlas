@@ -1,9 +1,4 @@
 import type {
-  AssistantMessage as PiAssistantMessage,
-  ToolResultMessage as PiToolResultMessage,
-  ToolCall,
-} from "@earendil-works/pi-ai";
-import type {
   CompactionEntry,
   ModelChangeEntry,
   SessionHeader,
@@ -29,53 +24,7 @@ import {
   parseToolResultMessage,
   parseUserMessage,
 } from "./parser";
-
-// Helper: minimal AssistantMessage with required fields
-function mkAsst(msg: {
-  content?: PiAssistantMessage["content"];
-  model?: string;
-  provider: string;
-  usage?: PiAssistantMessage["usage"];
-}): PiAssistantMessage {
-  return {
-    role: "assistant",
-    content: msg.content ?? [],
-    api: "anthropic-messages",
-    provider: msg.provider ?? "deepseek",
-    model: msg.model ?? "deepseek-v4-pro",
-    usage: msg.usage ?? {
-      input: 0,
-      output: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      totalTokens: 0,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    },
-    stopReason: "stop",
-    timestamp: 1700000000000,
-  };
-}
-
-// Helper: minimal ToolResultMessage with required fields
-function mkToolResult(msg: {
-  toolName?: string;
-  toolCallId?: string;
-  content?: PiToolResultMessage["content"];
-}): PiToolResultMessage {
-  return {
-    role: "toolResult",
-    toolName: msg.toolName ?? "bash",
-    toolCallId: msg.toolCallId ?? "c1",
-    content: msg.content ?? [],
-    isError: false,
-    timestamp: 1700000000000,
-  };
-}
-
-// Helper: minimal ToolCall block
-function mkToolCall(name: string, args?: Record<string, unknown>): ToolCall {
-  return { type: "toolCall", id: "c1", name, arguments: args ?? {} };
-}
+import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
 
 // ======== TRACER BULLET: end-to-end JSONL → SessionAgg ========
 
@@ -113,7 +62,7 @@ describe("parseFile — SessionAgg", () => {
         id: "m2",
         parentId: "m1",
         timestamp: "2026-06-08T10:02:00.000Z",
-        message: mkAsst({
+        message: makeAssistantMessage({
           content: [{ type: "text", text: "hey" }],
           model: "deepseek-v4",
           provider: "deepseek",
@@ -254,7 +203,7 @@ describe("parseFile — SessionAgg", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
+      message: makeAssistantMessage({
         content: [{ type: "text", text: "ok" }],
         model,
         provider,
@@ -411,13 +360,13 @@ describe("parseUserMessage", () => {
 
 describe("parseToolResultMessage", () => {
   it("counts one tool result", () => {
-    const msg = mkToolResult({ toolName: "bash" });
+    const msg = makeToolResult({ toolName: "bash" });
     const s = parseToolResultMessage(msg);
     expect(s.toolResults).toBe(1);
   });
 
   it("handles empty toolName gracefully", () => {
-    const msg = mkToolResult({ toolName: "" });
+    const msg = makeToolResult({ toolName: "" });
     const s = parseToolResultMessage(msg);
     expect(s.toolResults).toBe(1);
   });
@@ -427,7 +376,7 @@ describe("parseToolResultMessage", () => {
 
 describe("parseAssistantMessage", () => {
   it("counts usage tokens and attributes to model", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       content: [{ type: "text", text: "hello" }],
       model: "deepseek-v4-pro",
       provider: "deepseek",
@@ -455,7 +404,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("skips model entry when model field is empty", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "",
       provider: "",
       usage: {
@@ -472,11 +421,11 @@ describe("parseAssistantMessage", () => {
   });
 
   it("counts tool calls from content blocks per-model", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       content: [
-        mkToolCall("read", { path: "/f" }),
-        { ...mkToolCall("bash", { command: "ls" }), id: "c2" },
-        { ...mkToolCall("read", { path: "/g" }), id: "c3" },
+        makeToolCall({ name: "read", arguments: { path: "/f" } }),
+        makeToolCall({ name: "bash", arguments: { command: "ls" }, id: "c2" }),
+        makeToolCall({ name: "read", arguments: { path: "/g" }, id: "c3" }),
       ],
       model: "sonnet",
       provider: "anthropic",
@@ -489,10 +438,10 @@ describe("parseAssistantMessage", () => {
   });
 
   it("strips control characters from tool call names", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "m",
       provider: "provider",
-      content: [mkToolCall("ls -la agent/\n</parameter", { command: "ls" })],
+      content: [makeToolCall({ name: "ls -la agent/\n</parameter", arguments: { command: "ls" } })],
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["provider"]!["m"];
@@ -502,12 +451,19 @@ describe("parseAssistantMessage", () => {
   });
 
   it("detects language from edit/write tool calls per-model", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "sonnet",
       provider: "anthropic",
       content: [
-        mkToolCall("edit", { path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
-        { ...mkToolCall("write", { path: "/src/bar.rs", content: "fn main() {}" }), id: "c2" },
+        makeToolCall({
+          name: "edit",
+          arguments: { path: "/src/foo.ts", edits: [{ newText: "abc" }] },
+        }),
+        makeToolCall({
+          name: "write",
+          id: "c2",
+          arguments: { path: "/src/bar.rs", content: "fn main() {}" },
+        }),
       ],
     });
     const s = parseAssistantMessage(msg);
@@ -520,7 +476,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("handles zero-cost usage gracefully", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "m",
       provider: "p",
       content: [{ type: "text", text: "hi" }],
@@ -542,7 +498,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("handles missing usage gracefully", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "m",
       provider: "p",
       content: [{ type: "text", text: "hi" }],
@@ -556,7 +512,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("handles missing content gracefully", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "m",
       provider: "p",
       usage: {
@@ -576,7 +532,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("parses JSON-string toolCall arguments", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       model: "m",
       provider: "p",
       content: [
@@ -606,7 +562,7 @@ describe("parseAssistantMessage", () => {
   });
 
   it("handles toolCall with undefined arguments", () => {
-    const msg = mkAsst({
+    const msg = makeAssistantMessage({
       //@ts-expect-error
       content: [{ type: "toolCall" as const, id: "c1", name: "read" }],
       model: "m",
@@ -771,7 +727,7 @@ describe("parseSessionLogEntry", () => {
       id: "msg-1",
       parentId: "prev",
       timestamp: "2026-06-08T10:05:00.000Z",
-      message: mkAsst({
+      message: makeAssistantMessage({
         content: [{ type: "text", text: "hello" }],
         provider: "deepseek",
         model: "deepseek-v4-pro",
@@ -816,7 +772,7 @@ describe("parseSessionLogEntry", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:02:00.000Z",
-      message: mkToolResult({ toolName: "bash" }),
+      message: makeToolResult({ toolName: "bash" }),
     })!;
 
     expect(s.toolResults).toBe(1);
@@ -828,17 +784,25 @@ describe("parseSessionLogEntry", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
+      message: makeAssistantMessage({
         content: [
-          mkToolCall("edit", {
-            path: "/home/doe/proj/src/foo.ts",
-            edits: [{ oldText: "a", newText: "ab" }],
+          makeToolCall({
+            name: "edit",
+            arguments: {
+              path: "/home/doe/proj/src/foo.ts",
+              edits: [{ oldText: "a", newText: "ab" }],
+            },
           }),
-          {
-            ...mkToolCall("write", { path: "/home/doe/proj/src/bar.rs", content: "fn main() {}" }),
+
+          makeToolCall({
+            name: "write",
+            arguments: {
+              path: "/home/doe/proj/src/bar.rs",
+              content: "fn main() {}",
+            },
             id: "c2",
-          },
-          { ...mkToolCall("read", { path: "/home/doe/proj/README.md" }), id: "c3" },
+          }),
+          makeToolCall({ name: "read", arguments: { path: "/home/doe/proj/README.md" }, id: "c3" }),
         ],
         model: "sonnet",
         provider: "anthropic",
@@ -860,11 +824,11 @@ describe("parseSessionLogEntry", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: mkAsst({
+      message: makeAssistantMessage({
         content: [
-          mkToolCall("bash", { command: "ls" }),
-          { ...mkToolCall("read", { path: "f" }), id: "c2" },
-          { ...mkToolCall("read", { path: "g" }), id: "c3" },
+          makeToolCall({ name: "bash", arguments: { command: "ls" } }),
+          makeToolCall({ name: "read", arguments: { path: "f" }, id: "c2" }),
+          makeToolCall({ name: "read", arguments: { path: "g" }, id: "c3" }),
         ],
         model: "sonnet",
         provider: "anthropic",
@@ -1200,12 +1164,19 @@ describe("realistic session file", () => {
         id: "m2",
         parentId: "m1",
         timestamp: "2026-06-10T09:02:00.000Z",
-        message: mkAsst({
+        message: makeAssistantMessage({
           content: [
             { type: "text", text: "sure" },
-            mkToolCall("edit", { path: "/src/lib.ts", edits: [{ newText: "console.log(1)\n" }] }),
-            { ...mkToolCall("write", { path: "/src/log.rs", content: "fn log() {}" }), id: "c2" },
-            { ...mkToolCall("read", { path: "/src/main.ts" }), id: "c3" },
+            makeToolCall({
+              name: "edit",
+              arguments: { path: "/src/lib.ts", edits: [{ newText: "console.log(1)\n" }] },
+            }),
+            makeToolCall({
+              name: "write",
+              arguments: { path: "/src/log.rs", content: "fn log() {}" },
+              id: "c2",
+            }),
+            makeToolCall({ name: "read", arguments: { path: "/src/main.ts" }, id: "c3" }),
           ],
           model: "sonnet-v3",
           provider: "anthropic",
@@ -1231,7 +1202,7 @@ describe("realistic session file", () => {
         id: "m3",
         parentId: "m2",
         timestamp: "2026-06-10T09:02:30.000Z",
-        message: mkToolResult({ toolName: "edit" }),
+        message: makeToolResult({ toolName: "edit" }),
       }),
       // Model change
       JSON.stringify({
