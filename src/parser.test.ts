@@ -1,3 +1,9 @@
+import type {
+  AssistantMessage as PiAssistantMessage,
+  ToolResultMessage as PiToolResultMessage,
+  ToolCall,
+  UserMessage,
+} from "@earendil-works/pi-ai";
 import type { UserMessage } from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
@@ -14,6 +20,9 @@ import { join } from "node:path";
 import { dateFromISOString } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import {
+  activeSkill,
+  emptyDay,
+  mergeDay,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -25,11 +34,153 @@ import {
   parseToolResultMessage,
   parseUserMessage,
 } from "./parser";
+import type { DayAgg } from "./types";
+
+// Helper: minimal AssistantMessage with required fields
+function mkAsst(msg: {
+  content?: PiAssistantMessage["content"];
+  model?: string;
+  provider?: string;
+  usage?: PiAssistantMessage["usage"];
+}): PiAssistantMessage {
+  return {
+    role: "assistant",
+    content: msg.content ?? [],
+    api: "anthropic-messages",
+    provider: msg.provider ?? "deepseek",
+    model: msg.model ?? "deepseek-v4-pro",
+    usage: msg.usage ?? {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: "stop",
+    timestamp: 1700000000000,
+  };
+}
+
+// Helper: minimal ToolResultMessage with required fields
+function mkToolResult(msg: {
+  toolName?: string;
+  toolCallId?: string;
+  content?: PiToolResultMessage["content"];
+}): PiToolResultMessage {
+  return {
+    role: "toolResult",
+    toolName: msg.toolName ?? "bash",
+    toolCallId: msg.toolCallId ?? "c1",
+    content: msg.content ?? [],
+    isError: false,
+    timestamp: 1700000000000,
+  };
+}
+
+// Helper: minimal ToolCall block
+function tc(name: string, args?: Record<string, unknown>): ToolCall {
+  return { type: "toolCall", id: "c1", name, arguments: args ?? {} };
+}
+
+// Helper: minimal UserMessage
+function mkUser(content: string): UserMessage {
+  return { role: "user", content, timestamp: 1700000000000 };
+}
+
+describe("emptyDay", () => {
+  it("creates a zeroed DayAgg with the given date", () => {
+    const day = emptyDay("2026-06-09");
+    expect(day.date).toBe("2026-06-09");
+    expect(day.cost).toBe(0);
+    expect(day.inTok).toBe(0);
+    expect(day.outTok).toBe(0);
+    expect(day.crTok).toBe(0);
+    expect(day.cwTok).toBe(0);
+    expect(day.userMsgs).toBe(0);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
+    expect(day.sessionIds.size).toBe(0);
+    expect(day.langLines).toEqual({});
+    expect(day.langEdits).toEqual({});
+    expect(day.modelCost).toEqual({});
+    expect(day.modelCount).toEqual({});
+    expect(day.projectCost).toEqual({});
+    expect(day.projectSessions).toEqual({});
+    expect(day.toolCount).toEqual({});
+    expect(day.compactionCount).toBe(0);
+    expect(day.compactedTokens).toBe(0);
+    expect(day.modelChanges).toBe(0);
+    expect(day.thinkingLevelCount).toEqual({});
+    expect(day.skillCost).toEqual({});
+    expect(day.skillCount).toEqual({});
+    expect(day.skillTokens).toEqual({});
+    expect(day.skillToolCount).toEqual({});
+    expect(day.skillToolBreakdown).toEqual({});
+    expect(day.hourCost).toEqual({});
+  });
 import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
 
 describe("parseFile — SessionAgg", () => {
   let tmpDir: string;
 
+describe("parseUserMessage", () => {
+  beforeEach(() => {
+    activeSkill.current = null;
+  });
+
+  it("returns a DayAgg with userMsgs: 1", () => {
+    const day = parseUserMessage(mkUser("hello"));
+    expect(day.userMsgs).toBe(1);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
+  });
+
+  it("detects skill tag and increments skillCount", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser('<skill name="tdd">implement the parser</skill>'));
+    // @ts-expect-error
+    expect(activeSkill.current).toBe("tdd");
+    expect(day.skillCount).toEqual({ tdd: 1 });
+    expect(day.userMsgs).toBe(1);
+  });
+
+  it("detects skill tag case-insensitively", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser('<SKILL NAME="TDD">do it</SKILL>'));
+    // @ts-expect-error
+    expect(activeSkill.current).toBe("TDD");
+    expect(day.skillCount).toEqual({ TDD: 1 });
+  });
+
+  it("clears activeSkill when no skill tag", () => {
+    activeSkill.current = "tdd";
+    const day = parseUserMessage(mkUser("normal message"));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
+  });
+
+  it("replaces activeSkill when new skill tag appears", () => {
+    activeSkill.current = "writing";
+    const day = parseUserMessage(mkUser('<skill name="tdd">implement</skill>'));
+    expect(activeSkill.current).toBe("tdd");
+    expect(day.skillCount).toEqual({ tdd: 1 });
+  });
+
+  it("ignores malformed skill tag", () => {
+    activeSkill.current = null;
+    const day = parseUserMessage(mkUser("<skill name=>no value</skill>"));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
+  });
+
+  it("ignores skill tag with missing name attribute", () => {
+    activeSkill.current = "existing";
+    const day = parseUserMessage(mkUser("<skill>no name attr</skill>"));
+    expect(activeSkill.current).toBeNull();
+    expect(day.skillCount).toEqual({});
+  });
+});
   beforeEach(async () => {
     tmpDir = join(tmpdir(), `pi-atlas-parser-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
@@ -111,6 +262,30 @@ describe("parseFile — SessionAgg", () => {
   it("returns null for non-existent file", async () => {
     expect(parseFile("/nonexistent/path.jsonl")).toBeNull();
   });
+
+  it("attributes tool call to active skill", () => {
+    activeSkill.current = "tdd";
+    const msg = mkToolResult({ toolName: "edit" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolCount["tdd"]).toBe(1);
+    expect(day.skillToolBreakdown["tdd"]).toEqual({ edit: 1 });
+  });
+
+  it("does not attribute tool call when no active skill", () => {
+    activeSkill.current = null;
+    const msg = mkToolResult({ toolName: "bash" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolCount).toEqual({});
+    expect(day.skillToolBreakdown).toEqual({});
+  });
+
+  it("uses sanitized tool name in skill tool breakdown", () => {
+    activeSkill.current = "tdd";
+    const msg = mkToolResult({ toolName: "ls -la\n" });
+    const day = parseToolResultMessage(msg);
+    expect(day.skillToolBreakdown["tdd"]?.["ls -la"]).toBe(1);
+  });
+});
 
   it("handles corrupt lines with onWarning callback", async () => {
     const filePath = join(tmpDir, "mixed.jsonl");
@@ -571,6 +746,53 @@ describe("parseAssistantMessage", () => {
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.tools["read"]).toBe(1);
+  });
+
+  it("attributes cost and tokens to active skill", () => {
+    activeSkill.current = "tdd";
+    const msg = mkAsst({
+      content: [{ type: "text", text: "hello" }],
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 10,
+        cacheWrite: 5,
+        totalTokens: 165,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.02 },
+      },
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillCost["tdd"]).toBe(0.02);
+    expect(day.skillTokens["tdd"]).toBe(165);
+  });
+
+  it("attributes tool calls to active skill from content blocks", () => {
+    activeSkill.current = "writing";
+    const msg = mkAsst({
+      content: [tc("read", { path: "/f" }), { ...tc("bash", { command: "ls" }), id: "c2" }],
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillToolCount["writing"]).toBe(2);
+    expect(day.skillToolBreakdown["writing"]).toEqual({ read: 1, bash: 1 });
+  });
+
+  it("does not attribute cost/tokens when no active skill", () => {
+    activeSkill.current = null;
+    const msg = mkAsst({
+      content: [{ type: "text", text: "hello" }],
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 150,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
+      },
+    });
+    const day = parseAssistantMessage(msg);
+    expect(day.skillCost).toEqual({});
+    expect(day.skillTokens).toEqual({});
+    expect(day.skillToolCount).toEqual({});
   });
 });
 
@@ -1122,6 +1344,55 @@ describe("mergeToSession", () => {
     mergeToSession(base, b);
     expect(Object.keys(base.models["anthropic"]!).sort()).toEqual(["haiku", "sonnet"]);
   });
+
+  it("merges skillCost, skillCount, skillTokens, skillToolCount across updates", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay(""),
+      skillCost: { tdd: 0.5, writing: 0.3 },
+      skillCount: { tdd: 2, writing: 1 },
+      skillTokens: { tdd: 500, writing: 200 },
+      skillToolCount: { tdd: 3, writing: 1 },
+    };
+    const c: DayAgg = {
+      ...emptyDay(""),
+      skillCost: { tdd: 0.2 },
+      skillCount: { tdd: 1 },
+      skillTokens: { tdd: 100 },
+      skillToolCount: { tdd: 2 },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.skillCost).toEqual({ tdd: 0.7, writing: 0.3 });
+    expect(a.skillCount).toEqual({ tdd: 3, writing: 1 });
+    expect(a.skillTokens).toEqual({ tdd: 600, writing: 200 });
+    expect(a.skillToolCount).toEqual({ tdd: 5, writing: 1 });
+  });
+
+  it("deep-merges skillToolBreakdown across updates", () => {
+    const a = emptyDay("2026-06-08");
+    const b: DayAgg = {
+      ...emptyDay(""),
+      skillToolBreakdown: {
+        tdd: { read: 2, edit: 1 },
+        writing: { bash: 1 },
+      },
+    };
+    const c: DayAgg = {
+      ...emptyDay(""),
+      skillToolBreakdown: {
+        tdd: { edit: 2, write: 1 },
+      },
+    };
+
+    mergeDay(a, b);
+    mergeDay(a, c);
+    expect(a.skillToolBreakdown).toEqual({
+      tdd: { read: 2, edit: 3, write: 1 },
+      writing: { bash: 1 },
+    });
+  });
 });
 
 // ======== End-to-end: realistic session file ========
@@ -1138,6 +1409,324 @@ describe("realistic session file", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
+  it("parses a JSONL file into a day map", async () => {
+    const filePath = join(tmpDir, "test.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/home/doe/proj",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
+      }),
+      "invalid json {broken",
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-06-08T10:02:00.000Z",
+        message: mkAsst({
+          content: [{ type: "text", text: "hey" }],
+          model: "m",
+          usage: {
+            input: 100,
+            output: 50,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 150,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
+          },
+        }),
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (count) => {
+      warnings = count;
+    });
+
+    expect(map.size).toBe(1);
+    const day = map.get("2026-06-08")!;
+    expect(day.userMsgs).toBe(1);
+    expect(day.asstMsgs).toBe(1);
+    expect(day.cost).toBe(0.01);
+    expect(warnings).toBe(1);
+  });
+
+  it("returns empty map for empty file", async () => {
+    const filePath = join(tmpDir, "empty.jsonl");
+    await writeFile(filePath, "");
+    const map = parseFile(filePath);
+    expect(map.size).toBe(0);
+  });
+
+  it("silently returns empty map for non-existent file", async () => {
+    const map = parseFile("/nonexistent/path/never.jsonl");
+    expect(map.size).toBe(0);
+  });
+
+  it("splits entries across multiple dates into separate day buckets", async () => {
+    const filePath = join(tmpDir, "multi-date.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-06-09T10:00:00.000Z",
+        message: { role: "user", content: "bye", timestamp: 1700000000001 },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = parseFile(filePath);
+
+    expect(map.size).toBe(2);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
+    expect(map.get("2026-06-09")?.userMsgs).toBe(1);
+  });
+
+  it("handles missing onWarning callback gracefully", async () => {
+    const filePath = join(tmpDir, "corrupt.jsonl");
+    const lines = [
+      "not valid json",
+      "still not json",
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: "ok", timestamp: 1700000000000 },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = parseFile(filePath);
+
+    expect(map.size).toBe(1);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
+  });
+
+  it("handles sessions with no messages", async () => {
+    const filePath = join(tmpDir, "session-only.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/home/doe/proj",
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const map = parseFile(filePath);
+
+    expect(map.size).toBe(1);
+    const day = map.get("2026-06-08")!;
+    expect(day.sessionIds.has("s1")).toBe(true);
+    expect(day.userMsgs).toBe(0);
+    expect(day.asstMsgs).toBe(0);
+    expect(day.toolResults).toBe(0);
+    expect(day.cost).toBe(0);
+  });
+
+  it("returns empty map for file with only corrupt lines", async () => {
+    const filePath = join(tmpDir, "all-corrupt.jsonl");
+    const lines = ["not json at all", "{also broken", "still broken]"];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (count) => {
+      warnings = count;
+    });
+
+    expect(map.size).toBe(0);
+    expect(warnings).toBe(3);
+  });
+
+  it("skips whitespace-only lines without counting them as corrupt", async () => {
+    const filePath = join(tmpDir, "with-blanks.jsonl");
+    const lines = [
+      "",
+      "   ",
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
+      }),
+      "\t",
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (count) => {
+      warnings = count;
+    });
+
+    expect(map.size).toBe(1);
+    expect(warnings).toBe(0);
+  });
+
+  it("does not leak project costs across separate files", async () => {
+    const costMsg = (cost: number) => ({
+      type: "message",
+      id: "m1",
+      parentId: "p",
+      timestamp: "2026-06-08T10:01:00.000Z",
+      message: mkAsst({
+        content: [{ type: "text", text: "ok" }],
+        model: "m",
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+        },
+      }),
+    });
+
+    const fileA = join(tmpDir, "project-a.jsonl");
+    await writeFile(
+      fileA,
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s-a",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-alpha",
+        }),
+        JSON.stringify(costMsg(0.1)),
+      ].join("\n"),
+    );
+
+    const fileB = join(tmpDir, "project-b.jsonl");
+    await writeFile(
+      fileB,
+      [
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: "s-b",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          cwd: "/home/doe/proj-beta",
+        }),
+        JSON.stringify(costMsg(0.25)),
+      ].join("\n"),
+    );
+
+    const mapA = parseFile(fileA);
+    const mapB = parseFile(fileB);
+
+    const dayA = mapA.get("2026-06-08")!;
+    expect(Object.keys(dayA.projectCost)).toEqual(["proj-alpha"]);
+    expect(dayA.projectCost["proj-alpha"]).toBe(0.1);
+
+    const dayB = mapB.get("2026-06-08")!;
+    expect(Object.keys(dayB.projectCost)).toEqual(["proj-beta"]);
+    expect(dayB.projectCost["proj-beta"]).toBe(0.25);
+  });
+
+  it("does not leak activeSkill across separate files", async () => {
+    const fileA = join(tmpDir, "file-a.jsonl");
+    await writeFile(
+      fileA,
+      [
+        JSON.stringify({
+          type: "message",
+          id: "m1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          message: mkUser('<skill name="tdd">test</skill>'),
+        }),
+      ].join("\n"),
+    );
+
+    const fileB = join(tmpDir, "file-b.jsonl");
+    await writeFile(
+      fileB,
+      [
+        JSON.stringify({
+          type: "message",
+          id: "m2",
+          parentId: "p",
+          timestamp: "2026-06-08T11:00:00.000Z",
+          message: mkUser("no skill here"),
+        }),
+      ].join("\n"),
+    );
+
+    // Parse file with skill — sets activeSkill during parsing
+    parseFile(fileA);
+
+    // Parse file without skill — should reset activeSkill at start
+    // so the non-skill message clears it rather than attributing to "tdd"
+    const mapB = parseFile(fileB);
+    const dayB = mapB.get("2026-06-08")!;
+    // The second file's user message has no skill tag, so no skillCount
+    expect(dayB.skillCount).toEqual({});
+  });
+
+  it("silently skips unknown entry types (branch_summary, custom, label, session_info)", async () => {
+    const filePath = join(tmpDir, "unknown-types.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "branch_summary",
+        id: "b1",
+        parentId: null,
+        timestamp: "2026-06-08T10:00:00.000Z",
+        fromId: "m1",
+        summary: "branch",
+      }),
+      JSON.stringify({
+        type: "custom",
+        id: "c1",
+        parentId: "b1",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        customType: "my-ext",
+        data: { x: 1 },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "c1",
+        timestamp: "2026-06-08T10:02:00.000Z",
+        message: { role: "user", content: "hi", timestamp: 1700000000000 },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    let warnings = 0;
+    const map = parseFile(filePath, (c) => {
+      warnings = c;
+    });
+
+    // Only the user message should be counted; unknown types are silently skipped
+    expect(map.size).toBe(1);
+    expect(map.get("2026-06-08")?.userMsgs).toBe(1);
+    expect(warnings).toBe(0);
+  });
+
+  it("end-to-end: parses and aggregates a realistic session file", async () => {
   it("parses and aggregates a realistic session file", async () => {
     const filePath = join(tmpDir, "session.jsonl");
     const lines = [

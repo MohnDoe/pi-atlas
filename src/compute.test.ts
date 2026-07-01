@@ -756,4 +756,81 @@ describe("summarize", () => {
       calls: 3,
     });
   });
+
+  describe("skills", () => {
+    it("returns empty array when no skill data exists", () => {
+      const d = emptyDay("2026-06-01");
+      d.cost = 5;
+      d.sessionIds = new Set(["s1"]);
+      const s = summarize([d], "All");
+      expect(s.skills).toEqual([]);
+    });
+
+    it("accumulates skill fields across days and sorts by cost descending", () => {
+      const d1 = emptyDay("2026-06-01");
+      mergeDay(d1, {
+        ...emptyDay(""),
+        skillCost: { tdd: 0.5, writing: 0.3 },
+        skillCount: { tdd: 2, writing: 1 },
+        skillTokens: { tdd: 500, writing: 200 },
+        skillToolCount: { tdd: 3, writing: 1 },
+        skillToolBreakdown: { tdd: { edit: 2, read: 1 }, writing: { bash: 1 } },
+      });
+
+      const d2 = emptyDay("2026-06-02");
+      mergeDay(d2, {
+        ...emptyDay(""),
+        skillCost: { tdd: 0.2, coding: 0.1 },
+        skillCount: { tdd: 1, coding: 1 },
+        skillTokens: { tdd: 100, coding: 50 },
+        skillToolCount: { tdd: 2, coding: 0 },
+        skillToolBreakdown: { tdd: { write: 1 }, coding: {} },
+      });
+
+      const days = [d1, d2];
+      const s = summarize(days, "All");
+
+      expect(s.skills).toHaveLength(3);
+      // Sorted by cost descending
+      expect(s.skills[0]!.name).toBe("tdd");
+      expect(s.skills[0]!.cost).toBeCloseTo(0.7);
+      expect(s.skills[0]!.invocations).toBe(3);
+      expect(s.skills[0]!.tokens).toBe(600);
+      expect(s.skills[0]!.toolCalls.total).toBe(5);
+      expect(s.skills[0]!.toolCalls.avg).toBeCloseTo(5 / 3);
+      expect(s.skills[0]!.toolCalls.calls).toEqual({ edit: 2, read: 1, write: 1 });
+
+      expect(s.skills[1]!.name).toBe("writing");
+      expect(s.skills[1]!.cost).toBeCloseTo(0.3);
+      expect(s.skills[1]!.invocations).toBe(1);
+      expect(s.skills[1]!.tokens).toBe(200);
+      expect(s.skills[1]!.toolCalls.total).toBe(1);
+      expect(s.skills[1]!.toolCalls.avg).toBe(1);
+      expect(s.skills[1]!.toolCalls.calls).toEqual({ bash: 1 });
+
+      expect(s.skills[2]!.name).toBe("coding");
+      expect(s.skills[2]!.cost).toBeCloseTo(0.1);
+      expect(s.skills[2]!.invocations).toBe(1);
+      expect(s.skills[2]!.tokens).toBe(50);
+      expect(s.skills[2]!.toolCalls.total).toBe(0);
+      expect(s.skills[2]!.toolCalls.avg).toBe(0);
+      expect(s.skills[2]!.toolCalls.calls).toEqual({});
+    });
+
+    it("handles single skill with zero cost gracefully", () => {
+      const d = emptyDay("2026-06-01");
+      mergeDay(d, {
+        ...emptyDay(""),
+        skillCost: { free: 0 },
+        skillCount: { free: 1 },
+        skillTokens: { free: 0 },
+        skillToolCount: { free: 0 },
+        skillToolBreakdown: { free: {} },
+      });
+      const s = summarize([d], "All");
+      expect(s.skills).toHaveLength(1);
+      expect(s.skills[0]!.cost).toBe(0);
+      expect(s.skills[0]!.toolCalls.avg).toBe(0);
+    });
+  });
 });

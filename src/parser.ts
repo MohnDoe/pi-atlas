@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
 import type {
   AssistantMessage,
   ToolCall,
@@ -18,10 +19,127 @@ import { langFromPath, projectNameFromCwd } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
 
+import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
+import type { DayAgg } from "./types";
+
+/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
+function sanitizeToolName(name: string): string {
+  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
+  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
+  return name.replace(/[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+}
+
+// Tracks session ID → project name for cost attribution
+const sessionProjectMap = new Map<string, string>();
+
+export { sessionProjectMap };
+
+// Tracks the active skill name for cost/token/tool attribution
+// across subsequent assistant and tool messages.
+const _activeSkill: { current: string | null } = { current: null };
+export { _activeSkill as activeSkill };
+
+export function emptyDay(date: string): DayAgg {
+  return {
+    date,
+    cost: 0,
+    hourCost: {},
+    inTok: 0,
+    outTok: 0,
+    crTok: 0,
+    cwTok: 0,
+    userMsgs: 0,
+    asstMsgs: 0,
+    toolResults: 0,
+    sessionIds: new Set(),
+    langLines: {},
+    langEdits: {},
+    modelCost: {},
+    modelCount: {},
+    providerCost: {},
+    providerCount: {},
+    modelToProvider: new Map(),
+    projectCost: {},
+    projectSessions: {},
+    toolCount: {},
+    skillCost: {},
+    skillCount: {},
+    skillTokens: {},
+    skillToolCount: {},
+    skillToolBreakdown: {},
+    compactionCount: 0,
+    compactedTokens: 0,
+    modelChanges: 0,
+    thinkingLevelCount: {},
+  };
+}
+
+export function mergeDay(base: DayAgg, update: DayAgg): void {
+  base.cost += update.cost;
+  base.inTok += update.inTok;
+  base.outTok += update.outTok;
+  base.crTok += update.crTok;
+  base.cwTok += update.cwTok;
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   base.userMsgs += update.userMsgs;
   base.toolResults += update.toolResults;
+
+  for (const id of update.sessionIds) base.sessionIds.add(id);
+
+  for (const [h, c] of Object.entries(update.hourCost)) {
+    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
+  }
+
+  for (const [k, v] of Object.entries(update.langLines)) {
+    base.langLines[k] = (base.langLines[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.langEdits)) {
+    base.langEdits[k] = (base.langEdits[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.modelCost)) {
+    base.modelCost[k] = (base.modelCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.modelCount)) {
+    base.modelCount[k] = (base.modelCount[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.providerCost)) {
+    base.providerCost[k] = (base.providerCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.providerCount)) {
+    base.providerCount[k] = (base.providerCount[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.projectCost)) {
+    base.projectCost[k] = (base.projectCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.projectSessions)) {
+    if (!base.projectSessions[k]) base.projectSessions[k] = new Set();
+    for (const id of v) base.projectSessions[k].add(id);
+  }
+  for (const [k, v] of Object.entries(update.toolCount)) {
+    base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
+  }
+
+  for (const [k, v] of Object.entries(update.skillCost)) {
+    base.skillCost[k] = (base.skillCost[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.skillCount)) {
+    base.skillCount[k] = (base.skillCount[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.skillTokens)) {
+    base.skillTokens[k] = (base.skillTokens[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(update.skillToolCount)) {
+    base.skillToolCount[k] = (base.skillToolCount[k] ?? 0) + v;
+  }
+  for (const [skill, tools] of Object.entries(update.skillToolBreakdown)) {
+    if (!base.skillToolBreakdown[skill]) base.skillToolBreakdown[skill] = {};
+    for (const [tool, count] of Object.entries(tools)) {
+      base.skillToolBreakdown[skill][tool] = (base.skillToolBreakdown[skill][tool] ?? 0) + count;
+    }
+  }
+
+  // New fields
   base.compactionCount += update.compactionCount;
   base.compactedTokens += update.compactedTokens;
   base.modelChanges += update.modelChanges;
@@ -95,6 +213,48 @@ export function parseSessionHeader(entry: SessionHeader): SessionAgg {
 
 // ---- Message parsing ----
 
+/** Extract text content from a UserMessage as a single string. */
+function userMessageContent(msg: UserMessage): string {
+  if (typeof msg.content === "string") return msg.content;
+  return msg.content
+    .filter((b): b is { type: "text"; text: string } => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+}
+
+export function parseUserMessage(msg: UserMessage): DayAgg {
+  const day = emptyDay("");
+  day.userMsgs = 1;
+
+  const content = userMessageContent(msg);
+  const match = /<skill\s+name="([^"]+)"/i.exec(content);
+  if (match && match.length >= 2) {
+    _activeSkill.current = match[1]!;
+    day.skillCount[match[1]!] = 1;
+  } else {
+    _activeSkill.current = null;
+  }
+
+  return day;
+}
+
+export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
+  const day = emptyDay("");
+  day.toolResults = 1;
+  if (msg.toolName) {
+    const sanitized = sanitizeToolName(msg.toolName);
+    day.toolCount[sanitized] = 1;
+
+    // Attribute tool call to active skill
+    if (_activeSkill.current) {
+      day.skillToolCount[_activeSkill.current] = 1;
+      if (!day.skillToolBreakdown[_activeSkill.current]) {
+        day.skillToolBreakdown[_activeSkill.current] = {};
+      }
+      day.skillToolBreakdown[_activeSkill.current]![sanitized] = 1;
+    }
+  }
+  return day;
 export function parseUserMessage(msg: UserMessage): SessionAgg {
   const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
@@ -133,12 +293,32 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
     languages: {},
   };
 
+  // Attribute cost and tokens to active skill
+  if (_activeSkill.current) {
+    day.skillCost[_activeSkill.current] = day.cost;
+    const totalTokens = day.inTok + day.outTok + day.crTok + day.cwTok;
+    if (totalTokens > 0) {
+      day.skillTokens[_activeSkill.current] = totalTokens;
+    }
+  }
+
   // Extract tool calls from content blocks and attribute to this model
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall") {
         const sanitized = sanitizeToolName(block.name);
         modelUsage.tools[sanitized] = (modelUsage.tools[sanitized] ?? 0) + 1;
+
+        // Attribute tool call to active skill
+        if (_activeSkill.current) {
+          day.skillToolCount[_activeSkill.current] =
+            (day.skillToolCount[_activeSkill.current] ?? 0) + 1;
+          if (!day.skillToolBreakdown[_activeSkill.current]) {
+            day.skillToolBreakdown[_activeSkill.current] = {};
+          }
+          day.skillToolBreakdown[_activeSkill.current]![sanitized] =
+            (day.skillToolBreakdown[_activeSkill.current]![sanitized] ?? 0) + 1;
+        }
 
         if (block.name === "edit" || block.name === "write") {
           const parsedArgs =
@@ -222,6 +402,7 @@ function countNewLines(s: string): number {
 function parseAgentMessage(msg: AgentMessage): SessionAgg {
   switch (msg.role) {
     case "user":
+      return parseUserMessage(msg as UserMessage);
       return parseUserMessage(msg);
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
@@ -297,6 +478,14 @@ export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
 export function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
+): Map<string, DayAgg> {
+  // Each JSONL file represents one session; reset global session→project
+  // tracking so costs from previous files don't leak across projects.
+  sessionProjectMap.clear();
+  _activeSkill.current = null;
+
+  const map = new Map<string, DayAgg>();
+
 ): SessionAgg | null {
   let content: string;
   try {

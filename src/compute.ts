@@ -8,6 +8,7 @@ import type {
   ModelStat,
   ProjectStat,
   ProviderStat,
+  SkillStat,
   SessionAgg,
   StatsSummary,
   TimeRange,
@@ -95,6 +96,30 @@ function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[]
   return hourly;
 }
 
+function buildSkills(
+  skillCost: DayAgg["skillCost"],
+  skillCount: DayAgg["skillCount"],
+  skillTokens: DayAgg["skillTokens"],
+  skillToolCount: DayAgg["skillToolCount"],
+  skillToolBreakdown: DayAgg["skillToolBreakdown"],
+): SkillStat[] {
+  return Object.entries(skillCost)
+    .map(([name, cost]) => ({
+      name,
+      cost,
+      invocations: skillCount[name] ?? 0,
+      tokens: skillTokens[name] ?? 0,
+      toolCalls: {
+        total: skillToolCount[name] ?? 0,
+        avg: (skillCount[name] ?? 0) > 0 ? (skillToolCount[name] ?? 0) / (skillCount[name] ?? 0) : 0,
+        calls: skillToolBreakdown[name] ?? {},
+      },
+    }))
+    .sort((a, b) => b.cost - a.cost);
+}
+
+export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
+  const filtered = daysInRange(days, range);
 /**
  * Filter a session's models according to the given filters.
  * Returns the filtered model entries that pass all active filters.
@@ -152,6 +177,11 @@ export function summarize(
   let compactedTokens = 0;
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
+  const skillCost: DayAgg["skillCost"] = {};
+  const skillCount: DayAgg["skillCount"] = {};
+  const skillTokens: DayAgg["skillTokens"] = {};
+  const skillToolCount: DayAgg["skillToolCount"] = {};
+  const skillToolBreakdown: DayAgg["skillToolBreakdown"] = {};
 
   for (const session of projectFiltered) {
     // Project attribution: the session's project gets attributed its total cost
@@ -217,6 +247,32 @@ export function summarize(
       projectSessions[session.project]!.add(session.sessionId);
     }
 
+    compactionCount += day.compactionCount;
+    compactedTokens += day.compactedTokens;
+    modelChanges += day.modelChanges;
+    for (const [level, count] of Object.entries(day.thinkingLevelCount)) {
+      thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+    }
+
+    // merge skills
+    for (const [skill, cost] of Object.entries(day.skillCost)) {
+      skillCost[skill] = (skillCost[skill] ?? 0) + cost;
+    }
+    for (const [skill, count] of Object.entries(day.skillCount)) {
+      skillCount[skill] = (skillCount[skill] ?? 0) + count;
+    }
+    for (const [skill, tokens] of Object.entries(day.skillTokens)) {
+      skillTokens[skill] = (skillTokens[skill] ?? 0) + tokens;
+    }
+    for (const [skill, count] of Object.entries(day.skillToolCount)) {
+      skillToolCount[skill] = (skillToolCount[skill] ?? 0) + count;
+    }
+    for (const [skill, tools] of Object.entries(day.skillToolBreakdown)) {
+      if (!skillToolBreakdown[skill]) skillToolBreakdown[skill] = {};
+      for (const [tool, count] of Object.entries(tools)) {
+        skillToolBreakdown[skill][tool] = (skillToolBreakdown[skill][tool] ?? 0) + count;
+      }
+    }
     if (dateFromISOString(session.timestamp) === todayStr) todayCost += sessionCost;
   }
 
@@ -297,6 +353,7 @@ export function summarize(
     compactedTokens,
     modelChanges,
     thinkingLevelCount,
+    skills: buildSkills(skillCost, skillCount, skillTokens, skillToolCount, skillToolBreakdown),
     dailySpend: fillDailySpend(filtered, range),
     hourlySpend,
   };

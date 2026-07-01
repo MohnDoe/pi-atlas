@@ -117,3 +117,11 @@ _Avoid_: Lines written, lines of code
 **Empty State**:
 A message displayed when no session logs exist ("No sessions found in ~/.pi/agent/sessions") or when a tab has no data for the selected Time Range ("No data for this time range").
 _Avoid_: Zero state, blank state
+
+**Skill**:
+A reusable agent instruction set loaded from a `SKILL.md` file and injected into a user message via a `<skill name="…" location="…">` XML tag. Detected in user message text content during session log parsing. Tracked in the Skills tab with cost, invocation count, and tokens.
+_Avoid_: Command, extension, plugin
+
+**Skill Invocation**:
+One occurrence of a user message containing a `<skill>` XML tag. Forms a boundary: all assistant and tool messages from that user message until the next user message are attributed to the Skill Invocation. Cost, tokens, and message counts accumulate under the skill name.
+_Avoid_: Skill run, skill usage, skill call

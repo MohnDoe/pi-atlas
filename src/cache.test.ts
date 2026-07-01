@@ -279,6 +279,207 @@ describe("cache read/write", () => {
     const ts = await getCacheTimestamp("/nonexistent/cache.json");
     expect(ts).toBeNull();
   });
+
+  it("preserves hourCost values through round-trip (numeric keys become strings in JSON)", async () => {
+    const d = emptyDay("2026-06-08");
+    d.hourCost = { 10: 0.5, 14: 1.25 };
+    const days: DayAgg[] = [d];
+    await writeCache(cachePath, "sig-hc", days);
+
+    // Read raw JSON — numeric keys are stored as strings
+    const raw = await readFile(cachePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed.days[0].hourCost).toEqual({ "10": 0.5, "14": 1.25 });
+
+    // Round-trip via loadAggregate
+    const sesDir = join(tmpDir, "sessions");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    const sig = await computeSignature(sesDir);
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            ...parsed.days[0],
+            modelToProvider: {},
+          },
+        ],
+      }),
+    );
+    const loaded = await loadAggregate(cachePath, sesDir);
+    expect(loaded).toHaveLength(1);
+    // Numeric access still works via JS coercion
+    expect(loaded[0]!.hourCost[10]).toBe(0.5);
+    expect(loaded[0]!.hourCost[14]).toBe(1.25);
+  });
+
+  it("serializes and deserializes modelToProvider Map", async () => {
+    const d = emptyDay("2026-06-08");
+    d.modelToProvider.set("claude-sonnet-4", "anthropic");
+    d.modelToProvider.set("gpt-4o", "openai");
+    const days: DayAgg[] = [d];
+    await writeCache(cachePath, "sig-mtp", days);
+
+    // Read raw cache JSON — modelToProvider should not be empty {}
+    const payload = await readCache(cachePath);
+    expect(payload).toBeDefined();
+    expect(payload!.days).toHaveLength(1);
+    expect(payload!.days[0]!.modelToProvider).toEqual({
+      "claude-sonnet-4": "anthropic",
+      "gpt-4o": "openai",
+    });
+
+    // Load via loadAggregate round-trip (needs a session dir with .jsonl for valid sig)
+    const sesDir = join(tmpDir, "sessions");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    const sig = await computeSignature(sesDir);
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [
+          {
+            date: "2026-06-08",
+            cost: 0,
+            inTok: 0,
+            outTok: 0,
+            crTok: 0,
+            cwTok: 0,
+            userMsgs: 0,
+            asstMsgs: 0,
+            toolResults: 0,
+            sessionIds: [],
+            langLines: {},
+            langEdits: {},
+            modelCost: {},
+            modelCount: {},
+            providerCost: {},
+            providerCount: {},
+            modelToProvider: { "claude-sonnet-4": "anthropic", "gpt-4o": "openai" },
+            projectCost: {},
+            projectSessions: {},
+            toolCount: {},
+          },
+        ],
+      }),
+    );
+    const loaded = await loadAggregate(cachePath, sesDir);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]!.modelToProvider.get("claude-sonnet-4")).toBe("anthropic");
+    expect(loaded[0]!.modelToProvider.get("gpt-4o")).toBe("openai");
+    expect(loaded[0]!.modelToProvider.size).toBe(2);
+  });
+
+  it("serializes and deserializes skill fields through cache round-trip", async () => {
+    const d = emptyDay("2026-06-08");
+    d.skillCost = { tdd: 0.5, writing: 0.3 };
+    d.skillCount = { tdd: 2, writing: 1 };
+    d.skillTokens = { tdd: 500, writing: 200 };
+    d.skillToolCount = { tdd: 3, writing: 1 };
+    d.skillToolBreakdown = { tdd: { edit: 2, read: 1 }, writing: { bash: 1 } };
+    const days: DayAgg[] = [d];
+    await writeCache(cachePath, "sig-skill", days);
+
+    // Read raw JSON — verify skill fields are stored
+    const raw = await readFile(cachePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed.days[0].skillCost).toEqual({ tdd: 0.5, writing: 0.3 });
+    expect(parsed.days[0].skillToolBreakdown).toEqual({
+      tdd: { edit: 2, read: 1 },
+      writing: { bash: 1 },
+    });
+
+    // Round-trip via loadAggregate
+    const sesDir = join(tmpDir, "sessions");
+    await mkdir(sesDir, { recursive: true });
+    await writeFile(
+      join(sesDir, "dummy.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/p",
+      }) + "\n",
+    );
+    const sig = await computeSignature(sesDir);
+
+    // Re-calculate the full serialized object including new fields
+    const serialized = {
+      date: "2026-06-08",
+      cost: 0,
+      hourCost: {},
+      inTok: 0,
+      outTok: 0,
+      crTok: 0,
+      cwTok: 0,
+      userMsgs: 0,
+      asstMsgs: 0,
+      toolResults: 0,
+      sessionIds: [],
+      langLines: {},
+      langEdits: {},
+      modelCost: {},
+      modelCount: {},
+      providerCost: {},
+      providerCount: {},
+      modelToProvider: {},
+      projectCost: {},
+      projectSessions: {},
+      toolCount: {},
+      compactionCount: 0,
+      compactedTokens: 0,
+      modelChanges: 0,
+      thinkingLevelCount: {},
+      skillCost: { tdd: 0.5, writing: 0.3 },
+      skillCount: { tdd: 2, writing: 1 },
+      skillTokens: { tdd: 500, writing: 200 },
+      skillToolCount: { tdd: 3, writing: 1 },
+      skillToolBreakdown: { tdd: { edit: 2, read: 1 }, writing: { bash: 1 } },
+    };
+
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: sig,
+        generatedAt: new Date().toISOString(),
+        days: [serialized],
+      }),
+    );
+    const loaded = await loadAggregate(cachePath, sesDir);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]!.skillCost).toEqual({ tdd: 0.5, writing: 0.3 });
+    expect(loaded[0]!.skillCount).toEqual({ tdd: 2, writing: 1 });
+    expect(loaded[0]!.skillTokens).toEqual({ tdd: 500, writing: 200 });
+    expect(loaded[0]!.skillToolCount).toEqual({ tdd: 3, writing: 1 });
+    expect(loaded[0]!.skillToolBreakdown).toEqual({
+      tdd: { edit: 2, read: 1 },
+      writing: { bash: 1 },
+    });
+  });
 });
 
 describe("loadAggregate", () => {
