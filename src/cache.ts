@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import pkg from "../package.json" with { type: "json" };
 import { parseFile } from "./parser";
 import type { CachePayload, SessionAgg } from "./types";
 
@@ -50,6 +51,7 @@ export async function writeCache(
   sessions: SessionAgg[],
 ): Promise<void> {
   const payload: CachePayload = {
+    version: pkg.version,
     signature,
     generatedAt: new Date().toISOString(),
     sessions,
@@ -122,10 +124,11 @@ export async function loadAggregate(
 
   // Try cache first
   if (!effectiveForce) {
-    const valid = await isCacheValid(cachePath, sessionsDir);
-    if (valid) {
-      const cached = await readCache(cachePath);
-      if (cached) return cached.sessions;
+    const cached = await readCache(cachePath);
+    const validCacheVersion = cached && cached.version && cached.version === pkg.version;
+    if (validCacheVersion) {
+      const valid = await isCacheValid(cachePath, sessionsDir);
+      if (valid) return cached.sessions;
     }
   }
 

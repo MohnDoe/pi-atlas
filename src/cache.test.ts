@@ -1,9 +1,11 @@
 import type { UserMessage } from "@earendil-works/pi-ai";
 import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import assert from "node:assert";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import pkg from "../package.json" with { type: "json" };
 import {
   type LoadingProgress,
   computeSignature,
@@ -94,7 +96,7 @@ describe("computeSignature", () => {
   });
 });
 
-// ---- isCacheValid (unchanged semantics) ----
+// ---- isCacheValid  ----
 
 describe("isCacheValid", () => {
   let tmpDir: string;
@@ -145,8 +147,6 @@ describe("isCacheValid", () => {
   });
 });
 
-// ---- cache read/write with SessionAgg ----
-
 describe("cache read/write", () => {
   let tmpDir: string;
   let cachePath: string;
@@ -193,16 +193,20 @@ describe("cache read/write", () => {
     await writeCache(cachePath, "sig-abc", sessions);
 
     const payload = await readCache(cachePath);
-    expect(payload).toBeDefined();
-    expect(payload!.signature).toBe("sig-abc");
-    expect(payload!.sessions).toHaveLength(1);
-    const s0 = payload!.sessions[0]!;
-    expect(s0.sessionId).toBe("s1");
-    expect(s0.timestamp).toBe(s.timestamp);
-    expect(s0.project).toBe("my-app");
-    expect(s0.userMsgs).toBe(3);
-    expect(s0.toolResults).toBe(1);
-    const m0 = s0.models["anthropic"]!["sonnet"]!;
+    assert(payload);
+    expect(payload.signature).toBe("sig-abc");
+    expect(payload.sessions).toHaveLength(1);
+
+    assert(payload.sessions[0]);
+    const s1 = payload.sessions[0];
+
+    expect(s1.sessionId).toBe("s1");
+    expect(s1.timestamp).toBe(s.timestamp);
+    expect(s1.project).toBe("my-app");
+    expect(s1.userMsgs).toBe(3);
+    expect(s1.toolResults).toBe(1);
+
+    const m0 = s1.models["anthropic"]!["sonnet"]!;
     expect(m0.usage.cost.total).toBe(1.5);
     expect(m0.provider).toBe("anthropic");
     expect(m0.tools).toEqual({ bash: 1, read: 3 });
@@ -243,13 +247,39 @@ describe("cache read/write", () => {
     expect(new Date(ts!).toISOString()).toBe(ts as string);
   });
 
+  it("stores and retrieves the package version", async () => {
+    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    await writeCache(cachePath, "sig-abc", [s]);
+    const payload = await readCache(cachePath);
+
+    assert(payload);
+    expect(payload.version).toBe(pkg.version);
+  });
+
+  it("reads old-format cache without version field", async () => {
+    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    // Write a cache payload that's missing the version field (old format)
+    await writeFile(
+      cachePath,
+      JSON.stringify({
+        signature: "sig-old",
+        generatedAt: new Date().toISOString(),
+        sessions: [s],
+      }),
+    );
+    const payload = await readCache(cachePath);
+    assert(payload);
+    expect(payload.signature).toBe("sig-old");
+    expect(payload.sessions).toHaveLength(1);
+    // version should be undefined for old-format cache
+    expect(payload["version"]).toBeUndefined();
+  });
+
   it("returns null for missing cache", async () => {
     const ts = await getCacheTimestamp("/nonexistent/cache.json");
     expect(ts).toBeNull();
   });
 });
-
-// ---- loadAggregate ----
 
 describe("loadAggregate", () => {
   let tmpDir: string;
@@ -411,6 +441,38 @@ describe("loadAggregate", () => {
     // Verify the signature corresponds to the actual session files
     const realSig = await computeSignature(sessionsDir);
     expect(payload!.signature).toBe(realSig);
+  });
+
+  it("re-parses when cached version differs from current", async () => {
+    const subDir = join(sessionsDir, "proj-a");
+    await mkdir(subDir);
+    await writeFile(
+      join(subDir, "s1.jsonl"),
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "/home/doe/proj-a",
+      }) + "\n",
+    );
+
+    // First load creates a cache with current version
+    await loadAggregate(cachePath, sessionsDir);
+
+    // Manually change the stored version to simulate upgrade
+    const payload = await readCache(cachePath);
+    expect(payload).toBeDefined();
+    payload!.version = "0.0.0-outdated";
+    await writeCache(cachePath, payload!.signature, payload!.sessions);
+
+    // Second load should re-parse because version doesn't match
+    const sessions = await loadAggregate(cachePath, sessionsDir);
+    expect(sessions).toHaveLength(1);
+
+    // Verify the cache was rewritten with current version
+    const updated = await readCache(cachePath);
+    expect(updated!.version).toBe(pkg.version);
   });
 
   it("caches results and reuses them", async () => {

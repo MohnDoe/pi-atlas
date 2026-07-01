@@ -1,5 +1,5 @@
 import type { Api, Model, Provider, Usage } from "@earendil-works/pi-ai";
-import type { SessionHeader, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
+import type { SessionHeader } from "@earendil-works/pi-coding-agent";
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
 
@@ -104,6 +104,7 @@ export interface Filters {
 }
 
 export interface CachePayload {
+  version: string;
   signature: string;
   generatedAt: string;
   sessions: SessionAgg[];
