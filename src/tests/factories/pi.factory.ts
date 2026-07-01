@@ -1,4 +1,5 @@
 import type { AssistantMessage, ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
+import type { SessionAgg } from "../../types";
 
 export const DEFAULT_ASSISTANT_MESSAGE_API: AssistantMessage["api"] = "openai-completions";
 export const DEFAULT_ASSISTANT_MESSAGE_PROVIDER: AssistantMessage["provider"] = "deepseek";
