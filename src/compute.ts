@@ -139,10 +139,12 @@ export function summarize(
   // accumulators
   const langLines: Record<string, number> = {};
   const langEdits: Record<string, number> = {};
-  const modelCost: Record<string, number> = {};
-  const modelCount: Record<string, number> = {};
-  const providerCost: Record<string, number> = {};
-  const providerCount: Record<string, number> = {};
+  const modelUsage: Record<
+    Provider,
+    {
+      models: Record<string, { cost: number; calls: number }>;
+    }
+  > = {};
   const projectCost: Record<string, number> = {};
   const projectSessions: Record<string, Set<string>> = {};
   const toolCount: Record<string, number> = {};
@@ -151,13 +153,12 @@ export function summarize(
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
 
-  let modelToProvider: Record<string, string> = {};
-
   for (const session of projectFiltered) {
     // Project attribution: the session's project gets attributed its total cost
     let sessionCost = 0;
     let sessionHasModels = false;
     for (const { model: modelName, usage } of filteredModels(session, filters)) {
+      const provider = usage.provider;
       sessionHasModels = true;
       totalCost += usage.usage.cost.total;
       sessionCost += usage.usage.cost.total;
@@ -170,16 +171,18 @@ export function summarize(
       // Count asstMsgs from model usage toward totalMessages
       totalMessages += usage.asstMsgs;
 
-      // Model
-      modelCost[modelName] = (modelCost[modelName] ?? 0) + usage.usage.cost.total;
-      modelCount[modelName] = (modelCount[modelName] ?? 0) + usage.calls;
-      modelToProvider[modelName] = usage.provider;
-
-      // Provider
-      if (usage.provider) {
-        providerCost[usage.provider] = (providerCost[usage.provider] ?? 0) + usage.usage.cost.total;
-        providerCount[usage.provider] = (providerCount[usage.provider] ?? 0) + usage.calls;
+      if (!modelUsage[provider]) {
+        modelUsage[provider] = { models: {} };
       }
+
+      if (!modelUsage[provider].models[modelName]) {
+        modelUsage[provider].models[modelName] = { cost: 0, calls: 0 };
+      }
+      // Model
+      modelUsage[provider].models[modelName] = {
+        cost: modelUsage[provider].models[modelName].cost + usage.usage.cost.total,
+        calls: modelUsage[provider].models[modelName].calls + usage.calls,
+      };
 
       // Tools
       for (const [tool, count] of Object.entries(usage.tools)) {
@@ -235,15 +238,18 @@ export function summarize(
     .map(([language, lines]) => ({ language, lines, edits: langEdits[language] ?? 0 }))
     .sort((a, b) => b.lines - a.lines);
 
-  const models: ModelStat[] = Object.entries(modelCost)
-    .map(([model, cost]) => ({
-      provider: modelToProvider[model] || undefined,
-      model,
-      cost,
-      calls: modelCount[model] ?? 0,
-    }))
-    .sort((a, b) => b.calls - a.calls)
-    .sort((a, b) => b.cost - a.cost);
+  const models: ModelStat[] = [];
+  for (const [providerName, provider] of Object.entries(modelUsage)) {
+    for (const [modelName, model] of Object.entries(provider.models)) {
+      models.push({
+        provider: providerName,
+        model: modelName,
+        cost: model.cost,
+        calls: model.calls,
+      });
+    }
+  }
+  models.sort((a, b) => b.calls - a.calls).sort((a, b) => b.cost - a.cost);
 
   const projects: ProjectStat[] = Object.entries(projectCost)
     .map(([project, cost]) => ({
@@ -258,8 +264,14 @@ export function summarize(
     .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
 
-  const providers: ProviderStat[] = Object.entries(providerCost)
-    .map(([provider, cost]) => ({ provider, cost, calls: providerCount[provider] ?? 0 }))
+  const providers: ProviderStat[] = Object.entries(modelUsage)
+    .map(([providerName, provider]) => ({
+      provider: providerName,
+      ...Object.values(provider.models).reduce(
+        (val, m) => ({ cost: val.cost + m.cost, calls: val.calls + m.calls }),
+        { cost: 0, calls: 0 },
+      ),
+    }))
     .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
   const hourlySpend = buildHourlySpend(projectFiltered, range);

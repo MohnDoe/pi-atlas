@@ -695,4 +695,69 @@ describe("summarize", () => {
     expect(result.totalCost).toBe(15);
     expect(result.sessionCount).toBe(2);
   });
+
+  it("models with same name but different providers are not merged", () => {
+    const s = mkSession({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
+    addModel(s, "sonnet", { cost: 5.0, calls: 10 }, "anthropic");
+    addModel(s, "sonnet", { cost: 2.0, calls: 5 }, "openai");
+
+    const result = summarize([s], "All");
+    expect(result.models).toHaveLength(2);
+
+    const anthropicSonnet = result.models.find(
+      (m) => m.provider === "anthropic" && m.model === "sonnet",
+    );
+    const openaiSonnet = result.models.find(
+      (m) => m.provider === "openai" && m.model === "sonnet",
+    );
+
+    expect(anthropicSonnet).toEqual({
+      model: "sonnet",
+      provider: "anthropic",
+      cost: 5.0,
+      calls: 10,
+    });
+    expect(openaiSonnet).toEqual({
+      model: "sonnet",
+      provider: "openai",
+      cost: 2.0,
+      calls: 5,
+    });
+  });
+
+  it("same-named models from different providers aggregate across sessions without merging across providers", () => {
+    const s1 = mkSession({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
+    addModel(s1, "sonnet", { cost: 3.0, calls: 5 }, "anthropic");
+
+    const s2 = mkSession({
+      sessionId: "s2",
+      timestamp: new Date("2026-06-02").toISOString(),
+    });
+    addModel(s2, "sonnet", { cost: 4.0, calls: 7 }, "anthropic");
+    addModel(s2, "sonnet", { cost: 1.0, calls: 3 }, "openai");
+
+    const result = summarize([s1, s2], "All");
+    expect(result.models).toHaveLength(2);
+
+    // anthropic sonnet is aggregated across sessions
+    expect(result.models).toContainEqual({
+      model: "sonnet",
+      provider: "anthropic",
+      cost: 7.0,
+      calls: 12,
+    });
+    // openai sonnet is separate
+    expect(result.models).toContainEqual({
+      model: "sonnet",
+      provider: "openai",
+      cost: 1.0,
+      calls: 3,
+    });
+  });
 });

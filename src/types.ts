@@ -20,7 +20,7 @@ export interface LangStat {
 }
 
 export interface ModelStat {
-  provider?: string;
+  provider: string;
   model: string;
   cost: number;
   calls: number;
