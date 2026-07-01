@@ -1,4 +1,4 @@
-import { type ModelStat, type StatsSummary } from "./types";
+import { type StatsSummary } from "./types";
 
 export const makeSummary = (): StatsSummary => ({
   totalCost: 5.0,
