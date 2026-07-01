@@ -1,41 +1,5 @@
-export interface DayAgg {
-  date: string; // "YYYY-MM-DD"
-  cost: number;
-  hourCost: Record<number, number>; // accumulated cost per UTC hour 0-23
-  inTok: number;
-  outTok: number;
-  crTok: number;
-  cwTok: number;
-  userMsgs: number;
-  asstMsgs: number;
-  toolResults: number;
-  sessionIds: Set<string>;
-  langLines: Record<string, number>;
-  langEdits: Record<string, number>;
-  modelCost: Record<string, number>;
-  modelCount: Record<string, number>;
-  providerCost: Record<string, number>;
-  providerCount: Record<string, number>;
-  modelToProvider: Map<string, string>;
-  projectCost: Record<string, number>;
-  projectSessions: Record<string, Set<string>>;
-  toolCount: Record<string, number>;
-  /** Accumulated cost per skill name from assistant messages. */
-  skillCost: Record<string, number>;
-  /** Invocation count per skill name (detected from user message skill tags). */
-  skillCount: Record<string, number>;
-  /** Total tokens attributed to each skill. */
-  skillTokens: Record<string, number>;
-  /** Total tool calls attributed to each skill. */
-  skillToolCount: Record<string, number>;
-  /** Per-tool breakdown of tool calls per skill. */
-  skillToolBreakdown: Record<string, Record<string, number>>;
-  // New fields tracking pi session entry types beyond session+message
-  compactionCount: number;
-  compactedTokens: number;
-  modelChanges: number;
-  thinkingLevelCount: Record<string, number>;
-}
+import type { Api, Model, Provider, Usage } from "@earendil-works/pi-ai";
+import type { SessionHeader } from "@earendil-works/pi-coding-agent";
 
 export type TimeRange = "1d" | "7d" | "30d" | "All";
 
@@ -56,7 +20,7 @@ export interface LangStat {
 }
 
 export interface ModelStat {
-  provider?: string;
+  provider: string;
   model: string;
   cost: number;
   calls: number;
@@ -95,7 +59,7 @@ export interface SkillStat {
 }
 
 export interface ProviderStat {
-  provider: string;
+  provider: Provider;
   cost: number;
   calls: number;
 }
@@ -127,17 +91,44 @@ export interface StatsSummary {
   hourlySpend: HourSpend[];
 }
 
-export interface CachePayload {
-  signature: string;
-  generatedAt: string;
-  days: SerializedDayAgg[];
+export interface SessionAgg {
+  timestamp: SessionHeader["timestamp"];
+  sessionId: SessionHeader["id"];
+  project: string;
+  cwd: SessionHeader["cwd"];
+  models: Record<Provider, Record<Model<Api>["name"], SessionModelUsage>>;
+  userMsgs: number;
+  toolResults: number;
+  compactionCount: number;
+  compactedTokens: number;
+  modelChanges: number;
+  thinkingLevelCount: Record<string, number>;
 }
 
-export interface SerializedDayAgg extends Omit<
-  DayAgg,
-  "sessionIds" | "projectSessions" | "modelToProvider"
-> {
-  sessionIds: string[];
-  projectSessions: Record<string, string[]>;
-  modelToProvider: Record<string, string>;
+export interface SessionModelUsage {
+  provider: Provider;
+  api: Api;
+  usage: Usage;
+  calls: number;
+  asstMsgs: number;
+  tools: Record<string, number>; // tool name → call count
+  languages: Record<string, LangUsage>;
+}
+
+export interface LangUsage {
+  lines: number;
+  edits: number;
+}
+
+export interface Filters {
+  project?: string;
+  model?: string;
+  provider?: string;
+}
+
+export interface CachePayload {
+  version: string;
+  signature: string;
+  generatedAt: string;
+  sessions: SessionAgg[];
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/MohnDoe/pi-atlas/compare/v0.1.4...v0.1.5) (2026-06-29)
+
+
+### Bug Fixes
+
+* very small currency display more decimal numbers ([2ef2a44](https://github.com/MohnDoe/pi-atlas/commit/2ef2a44daf8e7ae236acd3f0fb4ba4b10a7d2dd1))
+* very small currency display more decimal numbers ([63da93b](https://github.com/MohnDoe/pi-atlas/commit/63da93b0699b3f94b25a24055072bca2bce78dc3))
+
 ## [0.1.4](https://github.com/MohnDoe/pi-atlas/compare/v0.1.3...v0.1.4) (2026-06-29)
 
 
