@@ -1,5 +1,10 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
+import type {
+  AssistantMessage,
+  ToolCall,
+  ToolResultMessage,
+  UserMessage,
+} from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
   FileEntry,
@@ -9,210 +14,159 @@ import type {
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
+import { langFromPath, projectNameFromCwd } from "./format";
+import { makeEmptySession } from "./helpers/session.helper";
+import type { SessionAgg, SessionModelUsage } from "./types";
 
-import { dateFromISOString, langFromPath, projectNameFromCwd } from "./format";
-import type { DayAgg } from "./types";
-
-/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
-function sanitizeToolName(name: string): string {
-  // Remove any character below 0x20 (control chars) except 0x09 (\t) which
-  // we also strip, plus 0x7F (DEL) and Unicode general category Cc/Cf.
-  return name.replace(/[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
-}
-
-// Tracks session ID → project name for cost attribution
-const sessionProjectMap = new Map<string, string>();
-
-export { sessionProjectMap };
-
-export function emptyDay(date: string): DayAgg {
-  return {
-    date,
-    cost: 0,
-    hourCost: {},
-    inTok: 0,
-    outTok: 0,
-    crTok: 0,
-    cwTok: 0,
-    userMsgs: 0,
-    asstMsgs: 0,
-    toolResults: 0,
-    sessionIds: new Set(),
-    langLines: {},
-    langEdits: {},
-    modelCost: {},
-    modelCount: {},
-    providerCost: {},
-    providerCount: {},
-    modelToProvider: new Map(),
-    projectCost: {},
-    projectSessions: {},
-    toolCount: {},
-    compactionCount: 0,
-    compactedTokens: 0,
-    modelChanges: 0,
-    thinkingLevelCount: {},
-  };
-}
-
-export function mergeDay(base: DayAgg, update: DayAgg): void {
-  base.cost += update.cost;
-  base.inTok += update.inTok;
-  base.outTok += update.outTok;
-  base.crTok += update.crTok;
-  base.cwTok += update.cwTok;
+/** Merge a partial SessionAgg into the base session. */
+export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   base.userMsgs += update.userMsgs;
-  base.asstMsgs += update.asstMsgs;
   base.toolResults += update.toolResults;
-
-  for (const id of update.sessionIds) base.sessionIds.add(id);
-
-  for (const [h, c] of Object.entries(update.hourCost)) {
-    base.hourCost[Number(h)] = (base.hourCost[Number(h)] ?? 0) + c;
-  }
-
-  for (const [k, v] of Object.entries(update.langLines)) {
-    base.langLines[k] = (base.langLines[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.langEdits)) {
-    base.langEdits[k] = (base.langEdits[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.modelCost)) {
-    base.modelCost[k] = (base.modelCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.modelCount)) {
-    base.modelCount[k] = (base.modelCount[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.providerCost)) {
-    base.providerCost[k] = (base.providerCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.providerCount)) {
-    base.providerCount[k] = (base.providerCount[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.projectCost)) {
-    base.projectCost[k] = (base.projectCost[k] ?? 0) + v;
-  }
-  for (const [k, v] of Object.entries(update.projectSessions)) {
-    if (!base.projectSessions[k]) base.projectSessions[k] = new Set();
-    for (const id of v) base.projectSessions[k].add(id);
-  }
-  for (const [k, v] of Object.entries(update.toolCount)) {
-    base.toolCount[k] = (base.toolCount[k] ?? 0) + v;
-  }
-
-  // New fields
   base.compactionCount += update.compactionCount;
   base.compactedTokens += update.compactedTokens;
   base.modelChanges += update.modelChanges;
-  for (const [k, v] of Object.entries(update.thinkingLevelCount)) {
-    base.thinkingLevelCount[k] = (base.thinkingLevelCount[k] ?? 0) + v;
+
+  for (const [level, count] of Object.entries(update.thinkingLevelCount)) {
+    base.thinkingLevelCount[level] = (base.thinkingLevelCount[level] ?? 0) + count;
   }
 
-  base.modelToProvider = new Map([
-    ...(base.modelToProvider.size > 0 ? base.modelToProvider.entries() : []),
-    ...(update.modelToProvider.size > 0 ? update.modelToProvider.entries() : []),
-  ]);
-}
-
-// ---- Session header ----
-
-export function parseSessionHeader(entry: SessionHeader): DayAgg {
-  const day = emptyDay(dateFromISOString(entry.timestamp));
-  day.sessionIds.add(entry.id);
-
-  if (entry.cwd) {
-    const proj = projectNameFromCwd(entry.cwd);
-    sessionProjectMap.set(entry.id, proj);
-    day.projectCost[proj] = 0;
-    day.projectSessions[proj] = new Set([entry.id]);
-  }
-
-  return day;
-}
-
-// ---- Message parsing ----
-
-export function parseUserMessage(): DayAgg {
-  const day = emptyDay("");
-  day.userMsgs = 1;
-  return day;
-}
-
-export function parseToolResultMessage(msg: ToolResultMessage): DayAgg {
-  const day = emptyDay("");
-  day.toolResults = 1;
-  if (msg.toolName) {
-    day.toolCount[sanitizeToolName(msg.toolName)] = 1;
-  }
-  return day;
-}
-
-export function parseAssistantMessage(msg: AssistantMessage): DayAgg {
-  const day = emptyDay("");
-  day.asstMsgs = 1;
-
-  if (msg.usage) {
-    day.inTok = msg.usage.input;
-    day.outTok = msg.usage.output;
-    day.crTok = msg.usage.cacheRead;
-    day.cwTok = msg.usage.cacheWrite;
-
-    if (msg.usage.cost) {
-      day.cost = msg.usage.cost.total;
-
-      const activeProjects = new Set(sessionProjectMap.values());
-      for (const proj of activeProjects) {
-        day.projectCost[proj] = (day.projectCost[proj] ?? 0) + msg.usage.cost.total;
-      }
+  for (const [provider, models] of Object.entries(update.models)) {
+    if (!base.models[provider]) {
+      base.models[provider] = {};
     }
-  }
+    for (const [modelName, modelUsage] of Object.entries(models)) {
+      const existing = base.models[provider][modelName];
+      if (!existing) {
+        base.models[provider][modelName] = {
+          ...modelUsage,
+          tools: { ...modelUsage.tools },
+          languages: { ...modelUsage.languages },
+        };
+      } else {
+        existing.usage = {
+          cost: {
+            total: existing.usage.cost.total + modelUsage.usage.cost.total,
+            cacheRead: existing.usage.cost.cacheRead + modelUsage.usage.cost.cacheRead,
+            cacheWrite: existing.usage.cost.cacheWrite + modelUsage.usage.cost.cacheWrite,
+            input: existing.usage.cost.input + modelUsage.usage.cost.input,
+            output: existing.usage.cost.output + modelUsage.usage.cost.output,
+          },
+          output: existing.usage.output + modelUsage.usage.output,
+          input: existing.usage.input + modelUsage.usage.input,
+          cacheWrite: existing.usage.cacheWrite + modelUsage.usage.cacheWrite,
+          cacheRead: existing.usage.cacheRead + modelUsage.usage.cacheRead,
+          totalTokens: existing.usage.totalTokens + modelUsage.usage.totalTokens,
+        };
+        existing.calls += modelUsage.calls;
+        existing.asstMsgs += modelUsage.asstMsgs;
 
-  if (msg.model) {
-    day.modelCost[msg.model] = msg.usage?.cost?.total || 0;
-    day.modelCount[msg.model] = 1;
-    if (msg.provider) {
-      day.modelToProvider.set(msg.model, msg.provider);
-      day.providerCost[msg.provider] = msg.usage?.cost?.total || 0;
-      day.providerCount[msg.provider] = 1;
-    }
-  }
-
-  if (msg.content) {
-    for (const block of msg.content) {
-      if (block.type === "toolCall") {
-        const parsedArgs =
-          block.arguments !== undefined
-            ? typeof block.arguments === "string"
-              ? JSON.parse(block.arguments)
-              : block.arguments
-            : undefined;
-        const sanitized = sanitizeToolName(block.name);
-        day.toolCount[sanitized] = (day.toolCount[sanitized] ?? 0) + 1;
-
-        if (block.name === "edit" || block.name === "write") {
-          mergeDay(
-            day,
-            parseLanguageUsage(block.name, parsedArgs as Record<string, unknown> | undefined),
-          );
+        for (const [tool, count] of Object.entries(modelUsage.tools)) {
+          existing.tools[tool] = (existing.tools[tool] ?? 0) + count;
+        }
+        for (const [lang, lu] of Object.entries(modelUsage.languages)) {
+          const existingLang = existing.languages[lang];
+          if (!existingLang) {
+            existing.languages[lang] = { ...lu };
+          } else {
+            existingLang.lines += lu.lines;
+            existingLang.edits += lu.edits;
+          }
         }
       }
     }
   }
-
-  return day;
 }
 
-function countNewLines(s: string): number {
-  return (s.match(/\n/g) ?? []).length;
+// ---- Strip control chars from tool names ----
+
+/** Strip control characters (\n, \r, \t, etc.) from a tool name. */
+function sanitizeToolName(name: string): string {
+  return name.replace(/[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
 }
 
-export function parseLanguageUsage(
-  toolName: string,
-  args: Record<string, unknown> | undefined,
-): DayAgg {
-  const day = emptyDay("");
+// ---- Session header ----
+
+export function parseSessionHeader(entry: SessionHeader): SessionAgg {
+  const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
+  const cwd = entry.cwd ?? "";
+  const session = makeEmptySession(entry.id, new Date(entry.timestamp), project, cwd);
+  return session;
+}
+
+// ---- Message parsing ----
+
+export function parseUserMessage(msg: UserMessage): SessionAgg {
+  const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
+  session.userMsgs = 1;
+  return session;
+}
+
+export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
+  const session = makeEmptySession("", new Date(msg.timestamp));
+  session.toolResults = 1;
+  // Tool results contribute to the session-level toolResults count.
+  // The tool name is tracked via the most recent model's tools — but since
+  // tool results don't carry a model, we simply count the result here.
+  // The tool name is not attributed to any specific model in SessionAgg.
+  return session;
+}
+
+export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
+  const session = makeEmptySession("", new Date(msg.timestamp));
+
+  const modelName = msg.model;
+  const provider = msg.provider ?? "";
+
+  if (!modelName) {
+    // No model — nothing to track per-model
+    return session;
+  }
+
+  // Build this model's usage entry
+  const modelUsage: SessionModelUsage = {
+    provider,
+    api: msg.api,
+    calls: 1,
+    usage: msg.usage,
+    asstMsgs: 1,
+    tools: {},
+    languages: {},
+  };
+
+  // Extract tool calls from content blocks and attribute to this model
+  if (msg.content) {
+    for (const block of msg.content) {
+      if (block.type === "toolCall") {
+        const sanitized = sanitizeToolName(block.name);
+        modelUsage.tools[sanitized] = (modelUsage.tools[sanitized] ?? 0) + 1;
+
+        if (block.name === "edit" || block.name === "write") {
+          const parsedArgs =
+            block.arguments !== undefined
+              ? typeof block.arguments === "string"
+                ? JSON.parse(block.arguments)
+                : block.arguments
+              : undefined;
+          mergeLangUsage(modelUsage, block.name, parsedArgs as Record<string, unknown> | undefined);
+        }
+      }
+    }
+  }
+  if (!session.models[provider]) {
+    session.models[provider] = {};
+  }
+  session.models[provider][modelName] = modelUsage;
+
+  return session;
+}
+
+function mergeLangUsage(
+  modelUsage: SessionModelUsage,
+  toolName: ToolCall["name"],
+  args: ToolCall["arguments"] | undefined,
+): void {
   const path = args?.path as string | undefined;
-  if (!path) return day;
+  if (!path) return;
 
   const lang = langFromPath(path);
 
@@ -222,29 +176,53 @@ export function parseLanguageUsage(
       let totalNewLines = 0;
       for (const edit of edits) {
         totalNewLines += countNewLines(edit.newText ?? "") + countNewLines(edit.oldText ?? "") + 1;
-        day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
+        const existing = modelUsage.languages[lang];
+        if (existing) {
+          existing.edits += 1;
+        } else {
+          modelUsage.languages[lang] = { lines: 0, edits: 1 };
+        }
       }
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + totalNewLines;
+      const existing = modelUsage.languages[lang];
+      if (existing) {
+        existing.lines += totalNewLines;
+      } else {
+        modelUsage.languages[lang] = { lines: totalNewLines, edits: 0 };
+      }
     } else {
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
-      day.langEdits[lang] = (day.langEdits[lang] ?? 0) + 1;
+      // Single-line edit or non-array edits
+      const existing = modelUsage.languages[lang];
+      if (existing) {
+        existing.lines += 1;
+        existing.edits += 1;
+      } else {
+        modelUsage.languages[lang] = { lines: 1, edits: 1 };
+      }
     }
   } else {
+    // write tool
     const contentStr = args?.content as string | undefined;
+    let lines = 1;
     if (contentStr) {
-      // +1 because no new line is still a line
-      day.langLines[lang] = (day.langLines[lang] ?? 0) + countNewLines(contentStr);
+      lines += countNewLines(contentStr);
     }
-    day.langLines[lang] = (day.langLines[lang] ?? 0) + 1;
+    const existing = modelUsage.languages[lang];
+    if (existing) {
+      existing.lines += lines;
+    } else {
+      modelUsage.languages[lang] = { lines, edits: 0 };
+    }
   }
-
-  return day;
 }
 
-function parseAgentMessage(msg: AgentMessage): DayAgg {
+function countNewLines(s: string): number {
+  return (s.match(/\n/g) ?? []).length;
+}
+
+function parseAgentMessage(msg: AgentMessage): SessionAgg {
   switch (msg.role) {
     case "user":
-      return parseUserMessage();
+      return parseUserMessage(msg);
     case "toolResult":
       return parseToolResultMessage(msg as ToolResultMessage);
     case "assistant":
@@ -255,34 +233,34 @@ function parseAgentMessage(msg: AgentMessage): DayAgg {
     case "branchSummary":
     case "compactionSummary":
     default:
-      return emptyDay("");
+      return makeEmptySession("", new Date(msg.timestamp));
   }
 }
 
 // ---- New entry types ----
 
-export function parseModelChangeEntry(entry: ModelChangeEntry): DayAgg {
-  const day = emptyDay(dateFromISOString(entry.timestamp));
-  day.modelChanges = 1;
-  return day;
+export function parseModelChangeEntry(entry: ModelChangeEntry): SessionAgg {
+  const session = makeEmptySession("", new Date(entry.timestamp));
+  session.modelChanges = 1;
+  return session;
 }
 
-export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): DayAgg {
-  const day = emptyDay(dateFromISOString(entry.timestamp));
-  day.thinkingLevelCount[entry.thinkingLevel] = 1;
-  return day;
+export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): SessionAgg {
+  const session = makeEmptySession("", new Date(entry.timestamp));
+  session.thinkingLevelCount[entry.thinkingLevel] = 1;
+  return session;
 }
 
-export function parseCompactionEntry(entry: CompactionEntry): DayAgg {
-  const day = emptyDay(dateFromISOString(entry.timestamp));
-  day.compactionCount = 1;
-  day.compactedTokens = entry.tokensBefore;
-  return day;
+export function parseCompactionEntry(entry: CompactionEntry): SessionAgg {
+  const session = makeEmptySession("", new Date(entry.timestamp));
+  session.compactionCount = 1;
+  session.compactedTokens = entry.tokensBefore;
+  return session;
 }
 
 // ---- Top-level dispatch ----
 
-export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
+export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
@@ -291,12 +269,10 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
-      const hour = new Date(msgEntry.timestamp).getHours();
-      const day = emptyDay(dateFromISOString(msgEntry.timestamp));
-      mergeDay(day, parseAgentMessage(msgEntry.message));
-      if (day.cost > 0) {
-        day.hourCost[hour] = (day.hourCost[hour] ?? 0) + day.cost;
-      }
+      const day = makeEmptySession("", new Date(entry.timestamp));
+      const agentResult = parseAgentMessage(msgEntry.message);
+      mergeToSession(day, agentResult);
+
       return day;
     }
     case "model_change":
@@ -321,22 +297,18 @@ export function parseSessionLogEntry(entry: FileEntry): DayAgg | null {
 export function parseFile(
   filePath: string,
   onWarning?: (count: number) => void,
-): Map<string, DayAgg> {
-  // Each JSONL file represents one session; reset global session→project
-  // tracking so costs from previous files don't leak across projects.
-  sessionProjectMap.clear();
-
-  const map = new Map<string, DayAgg>();
-
+): SessionAgg | null {
   let content: string;
   try {
     content = readFileSync(filePath, "utf-8");
   } catch {
-    return map;
+    return null;
   }
 
   const lines = content.split("\n");
   let corruptCount = 0;
+  let session: SessionAgg | null = null;
+  let entriesFound = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -346,18 +318,20 @@ export function parseFile(
       const entry = JSON.parse(trimmed) as FileEntry;
       const result = parseSessionLogEntry(entry);
       if (result) {
-        const existing = map.get(result.date);
-        if (existing) {
-          mergeDay(existing, result);
+        entriesFound = true;
+        if (!session) {
+          session = result;
         } else {
-          map.set(result.date, result);
+          mergeToSession(session, result);
         }
       }
-    } catch {
+    } catch (e) {
       corruptCount++;
+      console.error(e);
       if (onWarning) onWarning(corruptCount);
     }
   }
 
-  return map;
+  // Return null if no valid entries or only corrupt entries
+  return entriesFound ? session : null;
 }

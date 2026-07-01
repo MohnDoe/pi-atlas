@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { mergeDay, parseFile } from "./parser";
-import type { CachePayload, DayAgg, SerializedDayAgg } from "./types";
+import pkg from "../package.json" with { type: "json" };
+import { parseFile } from "./parser";
+import type { CachePayload, SessionAgg } from "./types";
 
 // ---- Signature ----
 
@@ -42,41 +43,18 @@ export async function computeSignature(sessionsDir: string): Promise<string> {
   return hash.digest("hex");
 }
 
-// ---- Serialization ----
-
-function serializeDay(d: DayAgg): SerializedDayAgg {
-  return {
-    ...d,
-    sessionIds: [...d.sessionIds],
-    projectSessions: Object.fromEntries(
-      Object.entries(d.projectSessions).map(([k, v]) => [k, [...v]]),
-    ),
-    modelToProvider: Object.fromEntries(d.modelToProvider),
-  };
-}
-
-function deserializeDay(s: SerializedDayAgg): DayAgg {
-  return {
-    ...s,
-    sessionIds: new Set(s.sessionIds),
-    projectSessions: Object.fromEntries(
-      Object.entries(s.projectSessions).map(([k, v]) => [k, new Set(v)]),
-    ),
-    modelToProvider: new Map(Object.entries(s.modelToProvider)),
-  };
-}
-
 // ---- Cache I/O ----
 
 export async function writeCache(
   cachePath: string,
   signature: string,
-  days: DayAgg[],
+  sessions: SessionAgg[],
 ): Promise<void> {
   const payload: CachePayload = {
+    version: pkg.version,
     signature,
     generatedAt: new Date().toISOString(),
-    days: days.map(serializeDay),
+    sessions,
   };
   await writeFile(cachePath, JSON.stringify(payload), "utf-8");
 }
@@ -85,7 +63,7 @@ export async function readCache(cachePath: string): Promise<CachePayload | null>
   try {
     const raw = await readFile(cachePath, "utf-8");
     const payload = JSON.parse(raw) as CachePayload;
-    if (!payload.signature || !Array.isArray(payload.days)) return null;
+    if (!payload.signature || !Array.isArray(payload.sessions)) return null;
     return payload;
   } catch {
     return null;
@@ -140,22 +118,23 @@ export async function loadAggregate(
   sessionsDir: string,
   force = false,
   onProgress?: (p: LoadingProgress) => void,
-): Promise<DayAgg[]> {
+): Promise<SessionAgg[]> {
   // Debug flags: PI_ATLAS_FORCE_CACHE=1 skips cache, PI_ATLAS_SLOW_DELAY_MS=<ms> adds per-file delay
   const effectiveForce = force || Boolean(Number(process.env["PI_ATLAS_FORCE_CACHE"] ?? 0));
 
   // Try cache first
   if (!effectiveForce) {
-    const valid = await isCacheValid(cachePath, sessionsDir);
-    if (valid) {
-      const cached = await readCache(cachePath);
-      if (cached) return cached.days.map(deserializeDay);
+    const cached = await readCache(cachePath);
+    const validCacheVersion = cached && cached.version && cached.version === pkg.version;
+    if (validCacheVersion) {
+      const valid = await isCacheValid(cachePath, sessionsDir);
+      if (valid) return cached.sessions;
     }
   }
 
   // Parse all JSONL files
   const files = await findAllJsonlFiles(sessionsDir);
-  const map = new Map<string, DayAgg>();
+  const sessions: SessionAgg[] = [];
   let totalCorrupt = 0;
 
   const slowDelayMs = Number(process.env["PI_ATLAS_SLOW_DELAY_MS"] ?? 0);
@@ -169,19 +148,14 @@ export async function loadAggregate(
     }
 
     let lastCount = 0;
-    const fileMap = parseFile(files[i]!, (count) => {
+    const session = parseFile(files[i]!, (count) => {
       lastCount = count;
     });
     totalCorrupt += lastCount;
-    for (const [date, day] of fileMap) {
-      const existing = map.get(date);
-      if (existing) {
-        // mergeDay is used inline in engine's loadAggregate; import it
-        mergeDay(existing, day);
-      } else {
-        map.set(date, day);
-      }
+    if (session) {
+      sessions.push(session);
     }
+
     if (onProgress) {
       const done = i + 1;
       const elapsedMs = performance.now() - parseStart;
@@ -201,11 +175,14 @@ export async function loadAggregate(
     console.error(`pi-atlas: skipped ${totalCorrupt} corrupt JSONL line(s)`);
   }
 
-  const days = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+  // Sort sessions chronologically
+  sessions.sort(
+    (a, b) => a.timestamp.localeCompare(b.timestamp) || a.sessionId.localeCompare(b.sessionId),
+  );
 
   // Write cache
   const sig = await computeSignature(sessionsDir);
-  await writeCache(cachePath, sig, days);
+  await writeCache(cachePath, sig, sessions);
 
-  return days;
+  return sessions;
 }
