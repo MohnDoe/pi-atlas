@@ -1,7 +1,7 @@
 import type { Api } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "bun:test";
 import { summarize } from "./compute";
-import { makeSessionAgg } from "./tests/factories/atlas.factory";
+import { makeSessionAgg } from "./helpers/session.helper";
 import type { SessionAgg } from "./types";
 
 // Helper: add a model to a session

@@ -1,3 +1,4 @@
+import type { UserMessage } from "@earendil-works/pi-ai";
 import type {
   CompactionEntry,
   ModelChangeEntry,
@@ -11,8 +12,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dateFromISOString } from "./format";
+import { makeEmptySession } from "./helpers/session.helper";
 import {
-  makeEmptySession,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -25,8 +26,6 @@ import {
   parseUserMessage,
 } from "./parser";
 import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
-import type { MessageEntry } from "@earendil-works/pi-agent-core";
-import type { UserMessage } from "@earendil-works/pi-ai";
 
 describe("parseFile — SessionAgg", () => {
   let tmpDir: string;

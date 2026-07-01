@@ -15,7 +15,7 @@ import {
   readCache,
   writeCache,
 } from "./cache";
-import { makeEmptySession } from "./parser";
+import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg } from "./types";
 
 describe("computeSignature", () => {

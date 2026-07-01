@@ -14,33 +14,9 @@ import type {
   ThinkingLevelChangeEntry,
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
-
 import { langFromPath, projectNameFromCwd } from "./format";
+import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
-
-// ---- SessionAgg helpers ----
-
-/** Create a zeroed SessionAgg with session identity. */
-export function makeEmptySession(
-  sessionId: string,
-  date: Date,
-  project?: string,
-  cwd?: string,
-): SessionAgg {
-  return {
-    timestamp: date.toISOString(),
-    sessionId,
-    project: project ?? "",
-    cwd: cwd ?? "",
-    models: {},
-    userMsgs: 0,
-    toolResults: 0,
-    compactionCount: 0,
-    compactedTokens: 0,
-    modelChanges: 0,
-    thinkingLevelCount: {},
-  };
-}
 
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
