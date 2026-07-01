@@ -13,6 +13,7 @@ import type {
   SessionMessageEntry,
 } from "@earendil-works/pi-coding-agent";
 import type { AssistantMessage, ToolCall, UserMessage } from "@earendil-works/pi-ai";
+import { makeAssistantMessage, makeToolCall } from "./factories/pi.factory";
 
 const mockTui = makeMockTUI();
 
@@ -60,19 +61,16 @@ describe("JSONL → Dashboard", () => {
         id: "m2",
         parentId: "m1",
         timestamp: assistantMessageTime,
-        message: {
-          role: "assistant",
+        message: makeAssistantMessage({
           timestamp: assistantMessageTimestamp,
           content: [
             { type: "text", text: "hi there" },
-            {
-              type: "toolCall",
+            makeToolCall({
               id: "t1",
-              name: "read",
-              arguments: { path: "/src/foo.ts" },
-            },
+              name: "edit",
+              arguments: { path: "/src/foo.ts", edits: [{ newText: "abc" }] },
+            }),
           ],
-
           api: "anthropic-messages",
           provider: "anthropic",
           stopReason: "stop",
@@ -91,7 +89,7 @@ describe("JSONL → Dashboard", () => {
               total: 0.00151,
             },
           },
-        } satisfies AssistantMessage,
+        }),
       } satisfies SessionMessageEntry),
     ];
     await writeFile(filePath, jsonlLines.join("\n"));
@@ -123,6 +121,13 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Projects");
     expect(text).toContain("Usage");
 
+    expect(text).toContain("$0.0015");
+    expect(text).toContain("310");
+
+    expect(text).toContain("proj");
+    expect(text).toContain("TypeScript");
+    expect(text).toContain("Claude Sonnet 4");
+
     // Range selector
     expect(rendered[0]).toContain("Pi Atlas");
     expect(rendered[0]).toContain("All time [r]");
@@ -146,25 +151,23 @@ describe("JSONL → Dashboard", () => {
         id: "m1",
         parentId: "p",
         timestamp: assistantMessageTime,
-        message: {
-          role: "assistant",
+        message: makeAssistantMessage({
           provider: "anthropic",
           stopReason: "stop",
           timestamp: assistantMessageTimestamp,
           api: "anthropic-messages",
           content: [
-            {
-              type: "toolCall",
+            makeToolCall({
               id: "t1",
               name: "edit",
               arguments: { path: "/src/main.ts", edits: [{ newText: "console.log('hi')" }] },
-            } satisfies ToolCall,
-            {
+            }),
+            makeToolCall({
               type: "toolCall",
               id: "t2",
               name: "write",
               arguments: { path: "/src/lib.rs", content: "fn main() {}" },
-            } as ToolCall,
+            }),
           ],
           model: "sonnet",
           usage: {
@@ -175,7 +178,7 @@ describe("JSONL → Dashboard", () => {
             totalTokens: 0,
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
           },
-        } satisfies AssistantMessage,
+        }),
       } satisfies SessionMessageEntry),
     ];
     await writeFile(filePath, jsonlLines.join("\n"));

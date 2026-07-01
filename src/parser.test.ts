@@ -25,8 +25,8 @@ import {
   parseUserMessage,
 } from "./parser";
 import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
-
-// ======== TRACER BULLET: end-to-end JSONL → SessionAgg ========
+import type { MessageEntry } from "@earendil-works/pi-agent-core";
+import type { UserMessage } from "@earendil-works/pi-ai";
 
 describe("parseFile — SessionAgg", () => {
   let tmpDir: string;
@@ -92,7 +92,7 @@ describe("parseFile — SessionAgg", () => {
     assert(session.models["deepseek"]);
     assert(session.models["deepseek"]["deepseek-v4"]);
     expect(session.models["deepseek"]["deepseek-v4"].usage.cost.total).toBe(0.01);
-    // expect(session.models["deepseek"]["deepseek-v4"]!.calls).toBe(1);
+    expect(session.models["deepseek"]["deepseek-v4"].calls).toBe(1);
     expect(session.models["deepseek"]["deepseek-v4"].usage.input).toBe(100);
     expect(session.models["deepseek"]["deepseek-v4"].usage.output).toBe(50);
     expect(session.models["deepseek"]["deepseek-v4"].asstMsgs).toBe(1);
@@ -1149,14 +1149,18 @@ describe("realistic session file", () => {
         id: "s-main",
         timestamp: "2026-06-10T09:00:00.000Z",
         cwd: "/home/doe/dev/pi-tui-extras",
-      }),
+      } satisfies SessionHeader),
       // User message
       JSON.stringify({
         type: "message",
         id: "m1",
         parentId: "s-main",
         timestamp: "2026-06-10T09:01:00.000Z",
-        message: { role: "user", content: "add logging", timestamp: 1700000000000 },
+        message: {
+          role: "user",
+          content: "add logging",
+          timestamp: 1700000000000,
+        } satisfies UserMessage,
       }),
       // Assistant message with cost + edit tool call
       JSON.stringify({
@@ -1195,7 +1199,7 @@ describe("realistic session file", () => {
             },
           },
         }),
-      }),
+      } as SessionMessageEntry),
       // Tool result
       JSON.stringify({
         type: "message",
@@ -1203,7 +1207,7 @@ describe("realistic session file", () => {
         parentId: "m2",
         timestamp: "2026-06-10T09:02:30.000Z",
         message: makeToolResult({ toolName: "edit" }),
-      }),
+      } as SessionMessageEntry),
       // Model change
       JSON.stringify({
         type: "model_change",
@@ -1212,7 +1216,7 @@ describe("realistic session file", () => {
         timestamp: "2026-06-10T09:05:00.000Z",
         provider: "deepseek",
         modelId: "deepseek-v4",
-      }),
+      } satisfies ModelChangeEntry),
       // Compaction
       JSON.stringify({
         type: "compaction",
@@ -1222,7 +1226,7 @@ describe("realistic session file", () => {
         summary: "mid-session compact",
         firstKeptEntryId: "m1",
         tokensBefore: 30000,
-      }),
+      } satisfies CompactionEntry),
     ];
     await writeFile(filePath, lines.join("\n"));
 
