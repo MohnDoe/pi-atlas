@@ -360,7 +360,7 @@ describe("summarize", () => {
     const result = summarize([s], "1d");
     expect(result.hourlySpend).toHaveLength(24);
 
-    expect(result.hourlySpend[15]?.cost).toBe(5);
+    expect(result.hourlySpend[14]?.cost).toBe(5);
   });
 
   it("hourlySpend for 1d maps cost to correct hours", () => {
@@ -382,8 +382,8 @@ describe("summarize", () => {
 
     const result = summarize([todayMorningSession, todayAfternoonSession], "1d");
     expect(result.hourlySpend).toHaveLength(24);
-    expect(result.hourlySpend[10]!.cost).toBe(1.5);
-    expect(result.hourlySpend[15]!.cost).toBe(2.0);
+    expect(result.hourlySpend[9]!.cost).toBe(1.5);
+    expect(result.hourlySpend[14]!.cost).toBe(2.0);
   });
 
   it("returns providers sorted by cost descending", () => {
@@ -710,9 +710,7 @@ describe("summarize", () => {
     const anthropicSonnet = result.models.find(
       (m) => m.provider === "anthropic" && m.model === "sonnet",
     );
-    const openaiSonnet = result.models.find(
-      (m) => m.provider === "openai" && m.model === "sonnet",
-    );
+    const openaiSonnet = result.models.find((m) => m.provider === "openai" && m.model === "sonnet");
 
     expect(anthropicSonnet).toEqual({
       model: "sonnet",

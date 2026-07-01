@@ -81,7 +81,7 @@ function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[]
 
   const totalHourCost: Record<number, number> = {};
   for (const session of filtered) {
-    const hour = new Date(session.timestamp).getHours();
+    const hour = new Date(session.timestamp).getHours() - 1;
     for (const models of Object.values(session.models)) {
       const cost = Object.values(models).reduce((val, s) => val + s.usage.cost.total, 0);
       totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
