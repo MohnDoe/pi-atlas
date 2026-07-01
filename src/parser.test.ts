@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dateFromISOString } from "./format";
 import {
-  emptySession,
+  makeEmptySession,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -321,7 +321,7 @@ describe("parseFile — SessionAgg", () => {
 
 describe("emptySession", () => {
   it("creates a zeroed SessionAgg with sessionId, date, project", () => {
-    const s = emptySession("s1", new Date("2026-06-09"), "my-app");
+    const s = makeEmptySession("s1", new Date("2026-06-09"), "my-app");
     expect(s.sessionId).toBe("s1");
     expect(dateFromISOString(s.timestamp)).toBe("2026-06-09");
     expect(s.project).toBe("my-app");
@@ -335,8 +335,8 @@ describe("emptySession", () => {
   });
 
   it("returns a new empty object each call", () => {
-    const a = emptySession("s1", new Date("2026-06-09"), "a");
-    const b = emptySession("s1", new Date("2026-06-09"), "a");
+    const a = makeEmptySession("s1", new Date("2026-06-09"), "a");
+    const b = makeEmptySession("s1", new Date("2026-06-09"), "a");
     expect(a).toEqual(b);
     expect(a).not.toBe(b);
   });
@@ -665,7 +665,7 @@ describe("parseThinkingLevelChangeEntry", () => {
       thinkingLevel: "high",
     };
 
-    const base = emptySession("s1", new Date(), "p");
+    const base = makeEmptySession("s1", new Date(), "p");
     mergeToSession(base, parseThinkingLevelChangeEntry(low));
     mergeToSession(base, parseThinkingLevelChangeEntry(high));
     expect(base.thinkingLevelCount).toEqual({ low: 1, high: 1 });
@@ -958,8 +958,8 @@ describe("parseSessionLogEntry", () => {
 
 describe("mergeToSession", () => {
   it("sums scalar fields", () => {
-    const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const update = emptySession("", new Date(0), "");
+    const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
+    const update = makeEmptySession("", new Date(0), "");
     update.userMsgs = 2;
     update.toolResults = 1;
     update.compactionCount = 1;
@@ -975,10 +975,10 @@ describe("mergeToSession", () => {
   });
 
   it("merges thinkingLevelCount records", () => {
-    const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const a = emptySession("", new Date(0), "");
+    const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
+    const a = makeEmptySession("", new Date(0), "");
     a.thinkingLevelCount = { low: 1, high: 1 };
-    const b = emptySession("", new Date(0), "");
+    const b = makeEmptySession("", new Date(0), "");
     b.thinkingLevelCount = { high: 2, xhigh: 1 };
 
     mergeToSession(base, a);
@@ -999,8 +999,8 @@ describe("mergeToSession", () => {
   // });
 
   it("merges model usage from multiple updates", () => {
-    const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const a = emptySession("", new Date(0));
+    const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
+    const a = makeEmptySession("", new Date(0));
     a.models["anthropic"] = {};
     a.models["anthropic"]["sonnet"] = {
       provider: "anthropic",
@@ -1024,7 +1024,7 @@ describe("mergeToSession", () => {
       tools: { bash: 1 },
       languages: { TypeScript: { lines: 10, edits: 1 } },
     };
-    const b = emptySession("", new Date(0), "");
+    const b = makeEmptySession("", new Date(0), "");
 
     b.models["anthropic"] = {};
     b.models["anthropic"]["sonnet"] = {
@@ -1067,8 +1067,8 @@ describe("mergeToSession", () => {
   });
 
   it("merges multiple different models", () => {
-    const base = emptySession("s1", new Date("2026-06-08"), "p");
-    const a = emptySession("", new Date(0), "");
+    const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
+    const a = makeEmptySession("", new Date(0), "");
     a.models["anthropic"] = {
       sonnet: {
         provider: "anthropic",
@@ -1093,7 +1093,7 @@ describe("mergeToSession", () => {
         languages: {},
       },
     };
-    const b = emptySession("", new Date(0), "");
+    const b = makeEmptySession("", new Date(0), "");
     b.models["anthropic"] = {
       haiku: {
         provider: "anthropic",

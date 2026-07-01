@@ -21,7 +21,7 @@ import type { SessionAgg, SessionModelUsage } from "./types";
 // ---- SessionAgg helpers ----
 
 /** Create a zeroed SessionAgg with session identity. */
-export function emptySession(
+export function makeEmptySession(
   sessionId: string,
   date: Date,
   project?: string,
@@ -113,20 +113,20 @@ function sanitizeToolName(name: string): string {
 export function parseSessionHeader(entry: SessionHeader): SessionAgg {
   const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
   const cwd = entry.cwd ?? "";
-  const session = emptySession(entry.id, new Date(entry.timestamp), project, cwd);
+  const session = makeEmptySession(entry.id, new Date(entry.timestamp), project, cwd);
   return session;
 }
 
 // ---- Message parsing ----
 
 export function parseUserMessage(msg: UserMessage): SessionAgg {
-  const session = emptySession("", new Date(msg.timestamp * 1000), "");
+  const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
   return session;
 }
 
 export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
-  const session = emptySession("", new Date(msg.timestamp));
+  const session = makeEmptySession("", new Date(msg.timestamp));
   session.toolResults = 1;
   // Tool results contribute to the session-level toolResults count.
   // The tool name is tracked via the most recent model's tools — but since
@@ -136,7 +136,7 @@ export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
 }
 
 export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
-  const session = emptySession("", new Date(msg.timestamp));
+  const session = makeEmptySession("", new Date(msg.timestamp));
 
   const modelName = msg.model;
   const provider = msg.provider ?? "";
@@ -257,26 +257,26 @@ function parseAgentMessage(msg: AgentMessage): SessionAgg {
     case "branchSummary":
     case "compactionSummary":
     default:
-      return emptySession("", new Date(msg.timestamp));
+      return makeEmptySession("", new Date(msg.timestamp));
   }
 }
 
 // ---- New entry types ----
 
 export function parseModelChangeEntry(entry: ModelChangeEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp));
+  const session = makeEmptySession("", new Date(entry.timestamp));
   session.modelChanges = 1;
   return session;
 }
 
 export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp));
+  const session = makeEmptySession("", new Date(entry.timestamp));
   session.thinkingLevelCount[entry.thinkingLevel] = 1;
   return session;
 }
 
 export function parseCompactionEntry(entry: CompactionEntry): SessionAgg {
-  const session = emptySession("", new Date(entry.timestamp));
+  const session = makeEmptySession("", new Date(entry.timestamp));
   session.compactionCount = 1;
   session.compactedTokens = entry.tokensBefore;
   return session;
@@ -293,7 +293,7 @@ export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
       return parseSessionHeader(entry as SessionHeader);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
-      const day = emptySession("", new Date(entry.timestamp));
+      const day = makeEmptySession("", new Date(entry.timestamp));
       const agentResult = parseAgentMessage(msgEntry.message);
       mergeToSession(day, agentResult);
 

@@ -15,7 +15,7 @@ import {
   readCache,
   writeCache,
 } from "./cache";
-import { emptySession } from "./parser";
+import { makeEmptySession } from "./parser";
 import type { SessionAgg } from "./types";
 
 describe("computeSignature", () => {
@@ -123,7 +123,7 @@ describe("isCacheValid", () => {
   it("returns false when cache signature differs from current", async () => {
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
-    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    const s = makeEmptySession("s1", new Date("2026-06-08"), "p");
     await writeCache(cachePath, sig, [s]);
 
     const validBefore = await isCacheValid(cachePath, sessionsDir);
@@ -139,7 +139,7 @@ describe("isCacheValid", () => {
   it("returns true when cache signature matches current", async () => {
     await writeFile(join(sessionsDir, "s1.jsonl"), "data\n");
     const sig = await computeSignature(sessionsDir);
-    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    const s = makeEmptySession("s1", new Date("2026-06-08"), "p");
     await writeCache(cachePath, sig, [s]);
 
     const valid = await isCacheValid(cachePath, sessionsDir);
@@ -162,7 +162,7 @@ describe("cache read/write", () => {
   });
 
   it("writes and reads SessionAgg array", async () => {
-    const s = emptySession("s1", new Date(), "my-app");
+    const s = makeEmptySession("s1", new Date(), "my-app");
     s.userMsgs = 3;
     s.toolResults = 1;
     s.models["anthropic"] = {
@@ -240,7 +240,7 @@ describe("cache read/write", () => {
   });
 
   it("returns generatedAt from valid cache", async () => {
-    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    const s = makeEmptySession("s1", new Date("2026-06-08"), "p");
     await writeCache(cachePath, "sig-abc", [s]);
     const ts = await getCacheTimestamp(cachePath);
     expect(ts).not.toBeNull();
@@ -248,7 +248,7 @@ describe("cache read/write", () => {
   });
 
   it("stores and retrieves the package version", async () => {
-    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    const s = makeEmptySession("s1", new Date("2026-06-08"), "p");
     await writeCache(cachePath, "sig-abc", [s]);
     const payload = await readCache(cachePath);
 
@@ -257,7 +257,7 @@ describe("cache read/write", () => {
   });
 
   it("reads old-format cache without version field", async () => {
-    const s = emptySession("s1", new Date("2026-06-08"), "p");
+    const s = makeEmptySession("s1", new Date("2026-06-08"), "p");
     // Write a cache payload that's missing the version field (old format)
     await writeFile(
       cachePath,
