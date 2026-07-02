@@ -119,6 +119,7 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Languages");
     expect(text).toContain("Models");
     expect(text).toContain("Projects");
+    expect(text).toContain("Skills");
     expect(text).toContain("Usage");
 
     expect(text).toContain("$0.0015");
