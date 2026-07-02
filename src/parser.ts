@@ -19,9 +19,10 @@ import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage, SkillUsage } from "./types";
 
 // ---- Active skill stack ----
+// Each entry tracks invokedBy and whether calls has been counted this turn.
+// Consolidates two pieces of module-level state into one to avoid stale-cross-call bugs.
 
-const activeSkillStack = new Map<string, SkillUsage["invokedBy"]>();
-let skillsCalledThisTurn = new Set<string>();
+const activeSkillStack = new Map<string, { invokedBy: SkillUsage["invokedBy"]; counted: boolean }>();
 
 export function getActiveSkills(): string[] {
   return [...activeSkillStack.keys()];
@@ -29,7 +30,6 @@ export function getActiveSkills(): string[] {
 
 export function resetActiveSkills(): void {
   activeSkillStack.clear();
-  skillsCalledThisTurn = new Set();
 }
 
 /** Merge a partial SessionAgg into the base session. */
@@ -160,7 +160,7 @@ export function parseUserMessage(msg: UserMessage): SessionAgg {
   while ((match = skillTagRegex.exec(content)) !== null) {
     const skillName = match[1]!;
     if (!activeSkillStack.has(skillName)) {
-      activeSkillStack.set(skillName, "user");
+      activeSkillStack.set(skillName, { invokedBy: "user", counted: false });
     }
   }
 
@@ -194,10 +194,10 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
           const parentDir = path.split("/").slice(-2, -1)[0];
           if (parentDir) {
             const existing = activeSkillStack.get(parentDir);
-            if (existing === "user") {
-              activeSkillStack.set(parentDir, "both");
+            if (existing?.invokedBy === "user") {
+              activeSkillStack.set(parentDir, { invokedBy: "both", counted: existing.counted });
             } else if (!existing) {
-              activeSkillStack.set(parentDir, "agent");
+              activeSkillStack.set(parentDir, { invokedBy: "agent", counted: false });
             }
             // If already "agent" or "both", no change
           }
@@ -208,35 +208,18 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
 
   // Attribute cost to all skills on the active stack
   if (activeSkillStack.size > 0 && msg.usage) {
-    for (const [skillName, invokedBy] of activeSkillStack) {
-      const existing = session.skills[skillName];
-      const isFirstCall = !skillsCalledThisTurn.has(skillName);
-      if (existing) {
-        existing.cost += msg.usage.cost.total;
-        existing.tokens.input += msg.usage.input;
-        existing.tokens.output += msg.usage.output;
-        existing.tokens.total += msg.usage.totalTokens;
-        // Upgrade invokedBy if needed
-        if (invokedBy === "both" || existing.invokedBy === "both") {
-          existing.invokedBy = "both";
-        } else if (invokedBy !== existing.invokedBy) {
-          existing.invokedBy = "both";
-        }
-      } else {
-        session.skills[skillName] = {
-          invokedBy,
-          cost: msg.usage.cost.total,
-          tokens: {
-            input: msg.usage.input,
-            output: msg.usage.output,
-            total: msg.usage.totalTokens,
-          },
-          calls: isFirstCall ? 1 : 0,
-        };
-      }
-      if (isFirstCall) {
-        skillsCalledThisTurn.add(skillName);
-      }
+    for (const [skillName, entry] of activeSkillStack) {
+      session.skills[skillName] = {
+        invokedBy: entry.invokedBy,
+        cost: msg.usage.cost.total,
+        tokens: {
+          input: msg.usage.input,
+          output: msg.usage.output,
+          total: msg.usage.totalTokens,
+        },
+        calls: entry.counted ? 0 : 1,
+      };
+      entry.counted = true;
     }
   }
 
@@ -431,27 +414,27 @@ export function parseFile(
   resetActiveSkills();
 
   try {
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
 
-    try {
-      const entry = JSON.parse(trimmed) as FileEntry;
-      const result = parseSessionLogEntry(entry);
-      if (result) {
-        entriesFound = true;
-        if (!session) {
-          session = result;
-        } else {
-          mergeToSession(session, result);
+      try {
+        const entry = JSON.parse(trimmed) as FileEntry;
+        const result = parseSessionLogEntry(entry);
+        if (result) {
+          entriesFound = true;
+          if (!session) {
+            session = result;
+          } else {
+            mergeToSession(session, result);
+          }
         }
+      } catch (e) {
+        corruptCount++;
+        console.error(e);
+        if (onWarning) onWarning(corruptCount);
       }
-    } catch (e) {
-      corruptCount++;
-      console.error(e);
-      if (onWarning) onWarning(corruptCount);
     }
-  }
   } finally {
     resetActiveSkills();
   }
