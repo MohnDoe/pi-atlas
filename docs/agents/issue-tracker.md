@@ -102,6 +102,52 @@ npx @schpet/linear-cli issue delete --bulk PI-5 PI-6   # bulk delete
 npx @schpet/linear-cli issue delete --bulk-file ids.txt
 ```
 
+### Issue references and relations
+
+#### Referencing an issue in description text
+
+Write the issue identifier as plain text — Linear auto-links `PI-XX` in markdown fields:
+
+```markdown
+Blocked by PI-6 — Types + Parser skill detection
+```
+
+This renders as a clickable link. No explicit markdown link syntax needed.
+
+#### Parent relationship
+
+Use `--parent` when creating or updating an issue:
+
+```bash
+npx @schpet/linear-cli issue create -t "Child" --parent PI-5 --no-interactive
+npx @schpet/linear-cli issue update PI-6 --parent PI-5
+```
+
+A parent-child relationship appears in the issue's "Parent" section. One parent only.
+
+#### Blocks / blocked-by relationships
+
+The CLI does **not** have a `--blocked-by` flag. Use `issue relation add` to create dependency relationships:
+
+```bash
+# PI-6 blocks PI-7 (PI-7 is blocked by PI-6)
+npx @schpet/linear-cli issue relation add PI-6 blocks PI-7
+
+# List relations for an issue
+npx @schpet/linear-cli issue relation list PI-7
+
+# Delete a relation
+npx @schpet/linear-cli issue relation delete PI-6 blocks PI-7
+```
+
+Relation types: `blocks`, `duplicate`, `related`, `causes`.
+
+The direction matters:
+- `PI-6 blocks PI-7` → PI-7 appears as "blocked-by" PI-6
+- `PI-7 blocks PI-6` → the reverse
+
+**Convention for agent-created issues:** After creating issues in dependency order (blockers first), set the relations with `issue relation add`. Also mention the blocker in the description body as plain `PI-XX` text for human readability.
+
 ### Other
 
 ```bash
