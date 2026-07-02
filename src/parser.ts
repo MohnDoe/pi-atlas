@@ -16,7 +16,19 @@ import type {
 import { readFileSync } from "node:fs";
 import { langFromPath, projectNameFromCwd } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
-import type { SessionAgg, SessionModelUsage } from "./types";
+import type { SessionAgg, SessionModelUsage, SkillUsage } from "./types";
+
+// ---- Active skill stack ----
+
+const activeSkillStack = new Map<string, SkillUsage["invokedBy"]>();
+
+export function getActiveSkills(): string[] {
+  return [...activeSkillStack.keys()];
+}
+
+export function resetActiveSkills(): void {
+  activeSkillStack.clear();
+}
 
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
@@ -98,6 +110,21 @@ export function parseSessionHeader(entry: SessionHeader): SessionAgg {
 export function parseUserMessage(msg: UserMessage): SessionAgg {
   const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
+
+  // Reset active skill stack at the start of each user message
+  activeSkillStack.clear();
+
+  // Detect explicit skill invocations via <skill name="...">
+  const content = typeof msg.content === "string" ? msg.content : "";
+  const skillTagRegex = /<skill\s+name="([^"]+)"/g;
+  let match: RegExpExecArray | null;
+  while ((match = skillTagRegex.exec(content)) !== null) {
+    const skillName = match[1]!;
+    if (!activeSkillStack.has(skillName)) {
+      activeSkillStack.set(skillName, "user");
+    }
+  }
+
   return session;
 }
 

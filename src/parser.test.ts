@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { dateFromISOString } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import {
+  getActiveSkills,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -24,6 +25,7 @@ import {
   parseThinkingLevelChangeEntry,
   parseToolResultMessage,
   parseUserMessage,
+  resetActiveSkills,
 } from "./parser";
 import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
 
@@ -1266,5 +1268,69 @@ describe("realistic session file", () => {
     expect(session.modelChanges).toBe(1);
     expect(session.compactionCount).toBe(1);
     expect(session.compactedTokens).toBe(30000);
+  });
+});
+
+// ======== Skill detection ========
+
+describe("skill detection — parseUserMessage", () => {
+  beforeEach(() => {
+    resetActiveSkills();
+  });
+
+  it("detects <skill name=\"tdd\"> and pushes to active stack", () => {
+    parseUserMessage({
+      role: "user",
+      content: '<skill name="tdd">',
+      timestamp: Date.now(),
+    });
+
+    expect(getActiveSkills()).toEqual(["tdd"]);
+  });
+
+  it("resets the active stack at the start of each parseUserMessage", () => {
+    parseUserMessage({
+      role: "user",
+      content: '<skill name="tdd">',
+      timestamp: Date.now(),
+    });
+    expect(getActiveSkills()).toEqual(["tdd"]);
+
+    parseUserMessage({
+      role: "user",
+      content: "just a normal message",
+      timestamp: Date.now(),
+    });
+    expect(getActiveSkills()).toEqual([]);
+  });
+
+  it("user message without skill tags leaves empty stack", () => {
+    parseUserMessage({
+      role: "user",
+      content: "hello world",
+      timestamp: Date.now(),
+    });
+
+    expect(getActiveSkills()).toEqual([]);
+  });
+
+  it("detects multiple skill tags in one message", () => {
+    parseUserMessage({
+      role: "user",
+      content: '<skill name="tdd"><skill name="grill-me">',
+      timestamp: Date.now(),
+    });
+
+    expect(getActiveSkills()).toEqual(["tdd", "grill-me"]);
+  });
+
+  it("collapses duplicate skill pushes (Set semantics)", () => {
+    parseUserMessage({
+      role: "user",
+      content: '<skill name="tdd"><skill name="tdd">',
+      timestamp: Date.now(),
+    });
+
+    expect(getActiveSkills()).toEqual(["tdd"]);
   });
 });
