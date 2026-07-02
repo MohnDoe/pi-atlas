@@ -16,20 +16,20 @@ import type {
 import { readFileSync } from "node:fs";
 import { langFromPath, projectNameFromCwd } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
-import type { SessionAgg, SessionModelUsage, SkillUsage } from "./types";
+import type { SessionAgg, SessionModelUsage } from "./types";
 
-// ---- Active skill stack ----
-// Each entry tracks invokedBy and whether calls has been counted this turn.
-// Consolidates two pieces of module-level state into one to avoid stale-cross-call bugs.
+// ---- Active skill tracking ----
+// Skills are invoked by the user via <skill name="..."> tags. Only one skill
+// can be active at a time — if multiple tags appear the last one wins.
 
-const activeSkillStack = new Map<string, { invokedBy: SkillUsage["invokedBy"]; counted: boolean }>();
+let activeSkill: { name: string; counted: boolean } | null = null;
 
 export function getActiveSkills(): string[] {
-  return [...activeSkillStack.keys()];
+  return activeSkill ? [activeSkill.name] : [];
 }
 
 export function resetActiveSkills(): void {
-  activeSkillStack.clear();
+  activeSkill = null;
 }
 
 /** Merge a partial SessionAgg into the base session. */
@@ -47,23 +47,13 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   for (const [skill, skillUsage] of Object.entries(update.skills)) {
     const existing = base.skills[skill];
     if (!existing) {
-      base.skills[skill] = {
-        ...skillUsage,
-        tokens: { ...skillUsage.tokens },
-      };
+      base.skills[skill] = skillUsage;
     } else {
       existing.cost += skillUsage.cost;
       existing.tokens.input += skillUsage.tokens.input;
       existing.tokens.output += skillUsage.tokens.output;
       existing.tokens.total += skillUsage.tokens.total;
       existing.calls += skillUsage.calls;
-      // Resolve invokedBy: user < agent < both
-      existing.invokedBy =
-        existing.invokedBy !== skillUsage.invokedBy ||
-        skillUsage.invokedBy === "both" ||
-        existing.invokedBy === "both"
-          ? "both"
-          : existing.invokedBy;
     }
   }
 
@@ -154,14 +144,12 @@ export function parseUserMessage(msg: UserMessage): SessionAgg {
   resetActiveSkills();
 
   // Detect explicit skill invocations via <skill name="...">
+  // Only one skill can be active at a time — last tag wins.
   const content = typeof msg.content === "string" ? msg.content : "";
   const skillTagRegex = /<skill\s+name="([^"]+)"/g;
   let match: RegExpExecArray | null;
   while ((match = skillTagRegex.exec(content)) !== null) {
-    const skillName = match[1]!;
-    if (!activeSkillStack.has(skillName)) {
-      activeSkillStack.set(skillName, { invokedBy: "user", counted: false });
-    }
+    activeSkill = { name: match[1]!, counted: false };
   }
 
   return session;
@@ -183,44 +171,18 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
   const modelName = msg.model;
   const provider = msg.provider ?? "";
 
-  // Scan for agent-read SKILL.md heuristic and push to active stack
-  if (msg.content) {
-    for (const block of msg.content) {
-      if (block.type === "toolCall" && block.name === "read") {
-        const parsedArgs = safeJsonParse(block.arguments);
-        const path = parsedArgs?.path as string | undefined;
-        if (path && path.endsWith("/SKILL.md")) {
-          // Extract skill name from parent directory (the dir containing SKILL.md)
-          const parentDir = path.split("/").slice(-2, -1)[0];
-          if (parentDir) {
-            const existing = activeSkillStack.get(parentDir);
-            if (existing?.invokedBy === "user") {
-              activeSkillStack.set(parentDir, { invokedBy: "both", counted: existing.counted });
-            } else if (!existing) {
-              activeSkillStack.set(parentDir, { invokedBy: "agent", counted: false });
-            }
-            // If already "agent" or "both", no change
-          }
-        }
-      }
-    }
-  }
-
-  // Attribute cost to all skills on the active stack
-  if (activeSkillStack.size > 0 && msg.usage) {
-    for (const [skillName, entry] of activeSkillStack) {
-      session.skills[skillName] = {
-        invokedBy: entry.invokedBy,
-        cost: msg.usage.cost.total,
-        tokens: {
-          input: msg.usage.input,
-          output: msg.usage.output,
-          total: msg.usage.totalTokens,
-        },
-        calls: entry.counted ? 0 : 1,
-      };
-      entry.counted = true;
-    }
+  // Attribute cost to the active skill (if any)
+  if (activeSkill && msg.usage) {
+    session.skills[activeSkill.name] = {
+      cost: msg.usage.cost.total,
+      tokens: {
+        input: msg.usage.input,
+        output: msg.usage.output,
+        total: msg.usage.totalTokens,
+      },
+      calls: activeSkill.counted ? 0 : 1,
+    };
+    activeSkill.counted = true;
   }
 
   if (!modelName) {

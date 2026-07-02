@@ -69,7 +69,6 @@ export interface StatsSummary {
 }
 
 export interface SkillUsage {
-  invokedBy: "user" | "agent" | "both";
   cost: number;
   tokens: { input: number; output: number; total: number };
   calls: number;
@@ -77,7 +76,6 @@ export interface SkillUsage {
 
 export interface SkillStat {
   name: string;
-  invokedBy: "user" | "agent" | "both";
   calls: number;
   sessions: number;
   cost: number;

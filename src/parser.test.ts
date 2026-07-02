@@ -1067,35 +1067,33 @@ describe("mergeToSession", () => {
     expect(m.languages["TypeScript"]!.edits).toBe(3);
   });
 
-  it("merges skills records — sums cost/tokens/calls, resolves invokedBy", () => {
+  it("merges skills records — sums cost/tokens/calls", () => {
     const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
     base.skills = {
-      tdd: { invokedBy: "user", cost: 0.01, tokens: { input: 100, output: 50, total: 150 }, calls: 1 },
-      "grill-me": { invokedBy: "agent", cost: 0.02, tokens: { input: 200, output: 100, total: 300 }, calls: 1 },
+      tdd: { cost: 0.01, tokens: { input: 100, output: 50, total: 150 }, calls: 1 },
+      "grill-me": { cost: 0.02, tokens: { input: 200, output: 100, total: 300 }, calls: 1 },
     };
 
     const update = makeEmptySession("", new Date(0), "");
     update.skills = {
-      tdd: { invokedBy: "agent", cost: 0.005, tokens: { input: 50, output: 25, total: 75 }, calls: 1 },
-      "to-prd": { invokedBy: "user", cost: 0.01, tokens: { input: 80, output: 40, total: 120 }, calls: 1 },
+      tdd: { cost: 0.005, tokens: { input: 50, output: 25, total: 75 }, calls: 1 },
+      "to-prd": { cost: 0.01, tokens: { input: 80, output: 40, total: 120 }, calls: 1 },
     };
 
     mergeToSession(base, update);
 
-    // tdd: sums cost/tokens, calls=2 (two separate invocations), invokedBy → both
+    // tdd: sums cost/tokens, calls=2 (two separate invocations)
     expect(base.skills["tdd"]!.cost).toBe(0.015);
     expect(base.skills["tdd"]!.tokens.input).toBe(150);
     expect(base.skills["tdd"]!.tokens.output).toBe(75);
     expect(base.skills["tdd"]!.tokens.total).toBe(225);
     expect(base.skills["tdd"]!.calls).toBe(2);
-    expect(base.skills["tdd"]!.invokedBy).toBe("both");
 
     // grill-me: unchanged (not in update)
     expect(base.skills["grill-me"]!.cost).toBe(0.02);
 
     // to-prd: new from update
     expect(base.skills["to-prd"]!.cost).toBe(0.01);
-    expect(base.skills["to-prd"]!.invokedBy).toBe("user");
   });
 
   it("merges multiple different models", () => {
@@ -1323,39 +1321,17 @@ describe("realistic session file", () => {
           timestamp: 1700000000000,
         } satisfies UserMessage,
       }),
-      // Assistant: reads the skill's SKILL.md (agent heuristic)
+      // Assistant: does the work (cost attributed to tdd)
       JSON.stringify({
         type: "message",
         id: "m2",
         parentId: "m1",
-        timestamp: "2026-06-12T10:02:00.000Z",
-        message: makeAssistantMessage({
-          content: [
-            makeToolCall({ name: "read", arguments: { path: "/home/doe/.pi/agent/skills/tdd/SKILL.md" }, id: "c1" }),
-          ],
-          model: "sonnet",
-          provider: "anthropic",
-          usage: {
-            input: 200,
-            output: 100,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 300,
-            cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
-          },
-        }),
-      } as SessionMessageEntry),
-      // Assistant: does the actual work (cost attributed to tdd)
-      JSON.stringify({
-        type: "message",
-        id: "m3",
-        parentId: "m2",
         timestamp: "2026-06-12T10:03:00.000Z",
         message: makeAssistantMessage({
           content: [
             makeToolCall({
               name: "edit",
-              id: "c2",
+              id: "c1",
               arguments: { path: "/src/test.ts", edits: [{ newText: "it('works', () => {})" }] },
             }),
           ],
@@ -1379,12 +1355,10 @@ describe("realistic session file", () => {
     expect(session.sessionId).toBe("s-skill");
     expect(session.project).toBe("my-app");
 
-    // Skill detection: user tag + agent read → both
+    // Skill detection: user tag sets active skill
     expect(session.skills["tdd"]).toBeDefined();
-    expect(session.skills["tdd"]!.invokedBy).toBe("both");
-    // Cost: 0.003 (read SKILL.md) + 0.011 (edit) = 0.014
-    expect(session.skills["tdd"]!.cost).toBeCloseTo(0.014, 5);
-    expect(session.skills["tdd"]!.tokens).toEqual({ input: 700, output: 400, total: 1100 });
+    expect(session.skills["tdd"]!.cost).toBe(0.011);
+    expect(session.skills["tdd"]!.tokens).toEqual({ input: 500, output: 300, total: 800 });
     // calls: 1 (one invocation, despite two assistant messages)
     expect(session.skills["tdd"]!.calls).toBe(1);
   });
@@ -1433,17 +1407,17 @@ describe("skill detection — parseUserMessage", () => {
     expect(getActiveSkills()).toEqual([]);
   });
 
-  it("detects multiple skill tags in one message", () => {
+  it("last skill tag wins when multiple are present", () => {
     parseUserMessage({
       role: "user",
       content: '<skill name="tdd"><skill name="grill-me">',
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toEqual(["tdd", "grill-me"]);
+    expect(getActiveSkills()).toEqual(["grill-me"]);
   });
 
-  it("collapses duplicate skill pushes (Set semantics)", () => {
+  it("same tag repeated still resolves to that skill", () => {
     parseUserMessage({
       role: "user",
       content: '<skill name="tdd"><skill name="tdd">',
@@ -1486,7 +1460,6 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     expect(s.skills["tdd"]!.cost).toBe(0.003);
     expect(s.skills["tdd"]!.tokens).toEqual({ input: 100, output: 50, total: 150 });
     expect(s.skills["tdd"]!.calls).toBe(1);
-    expect(s.skills["tdd"]!.invokedBy).toBe("user");
   });
 
   it("returns empty skills when stack is empty", () => {
@@ -1515,86 +1488,7 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     expect(merged.skills["tdd"]!.calls).toBe(1);
   });
 
-  it("detects agent-read SKILL.md and pushes skill onto stack", () => {
-    // No user skill tag — just an assistant message reading a SKILL.md
-    const msg = makeAssistantMessage({
-      model: "gpt-5",
-      provider: "openai",
-      content: [
-        makeToolCall({ name: "read", arguments: { path: "/home/doe/.pi/agent/skills/tdd/SKILL.md" } }),
-        { type: "text", text: "I'll use TDD" },
-      ],
-      usage: {
-        input: 50,
-        output: 25,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 75,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
-      },
-    });
-
-    const s = parseAssistantMessage(msg);
-
-    // The skill should be detected and cost should be attributed
-    expect(s.skills["tdd"]).toBeDefined();
-    expect(s.skills["tdd"]!.invokedBy).toBe("agent");
-    expect(s.skills["tdd"]!.cost).toBe(0.001);
-    // calls: 1 (once per invocation)
-    expect(s.skills["tdd"]!.calls).toBe(1);
-  });
-
-  it("does NOT push a skill for read to non-SKILL.md path", () => {
-    const msg = makeAssistantMessage({
-      model: "gpt-5",
-      provider: "openai",
-      content: [
-        makeToolCall({ name: "read", arguments: { path: "/home/doe/dev/README.md" } }),
-      ],
-      usage: {
-        input: 50,
-        output: 25,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 75,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
-      },
-    });
-
-    const s = parseAssistantMessage(msg);
-    expect(s.skills).toEqual({});
-  });
-
-  it("upgrades invokedBy to 'both' when user tag + agent read both detect same skill", () => {
-    // User invokes skill explicitly
-    parseUserMessage({
-      role: "user",
-      content: '<skill name="tdd">',
-      timestamp: Date.now(),
-    });
-
-    // Agent then reads the SKILL.md
-    const msg = makeAssistantMessage({
-      model: "gpt-5",
-      provider: "openai",
-      content: [
-        makeToolCall({ name: "read", arguments: { path: "/home/doe/.pi/agent/skills/tdd/SKILL.md" } }),
-      ],
-      usage: {
-        input: 50,
-        output: 25,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 75,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
-      },
-    });
-
-    const s = parseAssistantMessage(msg);
-    expect(s.skills["tdd"]!.invokedBy).toBe("both");
-  });
-
-  it("attributes cost to multiple skills on the stack", () => {
+  it("last tag wins when multiple skill tags present — cost goes to last one", () => {
     parseUserMessage({
       role: "user",
       content: '<skill name="tdd"><skill name="to-prd">',
@@ -1602,8 +1496,7 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     });
 
     const s = parseAssistantMessage(costMsg);
-    expect(s.skills["tdd"]!.cost).toBe(0.003);
-    expect(s.skills["tdd"]!.calls).toBe(1);
+    expect(s.skills["tdd"]).toBeUndefined();
     expect(s.skills["to-prd"]!.cost).toBe(0.003);
     expect(s.skills["to-prd"]!.calls).toBe(1);
   });
