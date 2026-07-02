@@ -60,6 +60,7 @@ export interface StatsSummary {
   projects: ProjectStat[];
   tools: ToolStat[];
   providers: ProviderStat[];
+  skills: SkillStat[];
   compactionCount: number;
   compactedTokens: number;
   modelChanges: number;

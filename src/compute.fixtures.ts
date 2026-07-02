@@ -41,6 +41,7 @@ export const makeSummary = (): StatsSummary => ({
     },
   ],
   providers: [],
+  skills: [],
   compactionCount: 0,
   compactedTokens: 0,
   modelChanges: 0,
