@@ -1300,6 +1300,94 @@ describe("realistic session file", () => {
     expect(session.compactionCount).toBe(1);
     expect(session.compactedTokens).toBe(30000);
   });
+
+  it("parses a session with skill invocations and attributes cost", async () => {
+    const filePath = join(tmpDir, "skill-session.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s-skill",
+        timestamp: "2026-06-12T10:00:00.000Z",
+        cwd: "/home/doe/dev/my-app",
+      } satisfies SessionHeader),
+      // User message with explicit skill tag
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "s-skill",
+        timestamp: "2026-06-12T10:01:00.000Z",
+        message: {
+          role: "user",
+          content: '<skill name="tdd">Add tests',
+          timestamp: 1700000000000,
+        } satisfies UserMessage,
+      }),
+      // Assistant: reads the skill's SKILL.md (agent heuristic)
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-06-12T10:02:00.000Z",
+        message: makeAssistantMessage({
+          content: [
+            makeToolCall({ name: "read", arguments: { path: "/home/doe/.pi/agent/skills/tdd/SKILL.md" }, id: "c1" }),
+          ],
+          model: "sonnet",
+          provider: "anthropic",
+          usage: {
+            input: 200,
+            output: 100,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 300,
+            cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+          },
+        }),
+      } as SessionMessageEntry),
+      // Assistant: does the actual work (cost attributed to tdd)
+      JSON.stringify({
+        type: "message",
+        id: "m3",
+        parentId: "m2",
+        timestamp: "2026-06-12T10:03:00.000Z",
+        message: makeAssistantMessage({
+          content: [
+            makeToolCall({
+              name: "edit",
+              id: "c2",
+              arguments: { path: "/src/test.ts", edits: [{ newText: "it('works', () => {})" }] },
+            }),
+          ],
+          model: "sonnet",
+          provider: "anthropic",
+          usage: {
+            input: 500,
+            output: 300,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 800,
+            cost: { input: 0.005, output: 0.006, cacheRead: 0, cacheWrite: 0, total: 0.011 },
+          },
+        }),
+      } as SessionMessageEntry),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const session = parseFile(filePath)!;
+
+    expect(session.sessionId).toBe("s-skill");
+    expect(session.project).toBe("my-app");
+
+    // Skill detection: user tag + agent read → both
+    expect(session.skills["tdd"]).toBeDefined();
+    expect(session.skills["tdd"]!.invokedBy).toBe("both");
+    // Cost: 0.003 (read SKILL.md) + 0.011 (edit) = 0.014
+    expect(session.skills["tdd"]!.cost).toBeCloseTo(0.014, 5);
+    expect(session.skills["tdd"]!.tokens).toEqual({ input: 700, output: 400, total: 1100 });
+    // calls: 1 (one invocation, despite two assistant messages)
+    expect(session.skills["tdd"]!.calls).toBe(1);
+  });
 });
 
 // ======== Skill detection ========
