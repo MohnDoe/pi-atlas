@@ -24,8 +24,8 @@ import type { SessionAgg, SessionModelUsage } from "./types";
 
 let activeSkill: { name: string; counted: boolean } | null = null;
 
-export function getActiveSkills(): string[] {
-  return activeSkill ? [activeSkill.name] : [];
+export function getActiveSkills(): string | null {
+  return activeSkill?.name ?? null;
 }
 
 export function resetActiveSkills(): void {
@@ -47,7 +47,10 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   for (const [skill, skillUsage] of Object.entries(update.skills)) {
     const existing = base.skills[skill];
     if (!existing) {
-      base.skills[skill] = skillUsage;
+      base.skills[skill] = {
+        ...skillUsage,
+        tokens: { ...skillUsage.tokens },
+      };
     } else {
       existing.cost += skillUsage.cost;
       existing.tokens.input += skillUsage.tokens.input;

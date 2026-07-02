@@ -1359,8 +1359,96 @@ describe("realistic session file", () => {
     expect(session.skills["tdd"]).toBeDefined();
     expect(session.skills["tdd"]!.cost).toBe(0.011);
     expect(session.skills["tdd"]!.tokens).toEqual({ input: 500, output: 300, total: 800 });
-    // calls: 1 (one invocation, despite two assistant messages)
     expect(session.skills["tdd"]!.calls).toBe(1);
+  });
+
+  it("parses a session with skill switching mid-session", async () => {
+    const filePath = join(tmpDir, "skill-switch.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "s-switch",
+        timestamp: "2026-06-12T10:00:00.000Z",
+        cwd: "/home/doe/dev/my-app",
+      } satisfies SessionHeader),
+      // Turn 1: tdd
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "s-switch",
+        timestamp: "2026-06-12T10:01:00.000Z",
+        message: {
+          role: "user",
+          content: '<skill name="tdd">Add tests',
+          timestamp: 1700000000000,
+        } satisfies UserMessage,
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-06-12T10:02:00.000Z",
+        message: makeAssistantMessage({
+          content: [{ type: "text", text: "Writing tests..." }],
+          model: "sonnet",
+          provider: "anthropic",
+          usage: {
+            input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150,
+            cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+          },
+        }),
+      } as SessionMessageEntry),
+      // Turn 2: grill-me — new user message resets, new skill
+      JSON.stringify({
+        type: "message",
+        id: "m3",
+        parentId: "m2",
+        timestamp: "2026-06-12T10:05:00.000Z",
+        message: {
+          role: "user",
+          content: '<skill name="grill-me">Review my design',
+          timestamp: 1700000003000,
+        } satisfies UserMessage,
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m4",
+        parentId: "m3",
+        timestamp: "2026-06-12T10:06:00.000Z",
+        message: makeAssistantMessage({
+          content: [{ type: "text", text: "Let me grill your plan..." }],
+          model: "sonnet",
+          provider: "anthropic",
+          usage: {
+            input: 200, output: 100, cacheRead: 0, cacheWrite: 0, totalTokens: 300,
+            cost: { input: 0.002, output: 0.004, cacheRead: 0, cacheWrite: 0, total: 0.006 },
+          },
+        }),
+      } as SessionMessageEntry),
+    ];
+    await writeFile(filePath, lines.join("\n"));
+
+    const session = parseFile(filePath)!;
+
+    expect(session.sessionId).toBe("s-switch");
+    expect(session.project).toBe("my-app");
+
+    // tdd: cost and tokens from turn 1, calls = 1
+    expect(session.skills["tdd"]).toBeDefined();
+    expect(session.skills["tdd"]!.cost).toBe(0.003);
+    expect(session.skills["tdd"]!.tokens).toEqual({ input: 100, output: 50, total: 150 });
+    expect(session.skills["tdd"]!.calls).toBe(1);
+
+    // grill-me: cost and tokens from turn 2, calls = 1
+    expect(session.skills["grill-me"]).toBeDefined();
+    expect(session.skills["grill-me"]!.cost).toBe(0.006);
+    expect(session.skills["grill-me"]!.tokens).toEqual({ input: 200, output: 100, total: 300 });
+    expect(session.skills["grill-me"]!.calls).toBe(1);
+
+    // Each skill has exactly 1 call (one invocation each)
+    expect(session.skills["tdd"]!.calls).toBe(1);
+    expect(session.skills["grill-me"]!.calls).toBe(1);
   });
 });
 
@@ -1378,7 +1466,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toEqual(["tdd"]);
+    expect(getActiveSkills()).toBe("tdd");
   });
 
   it("resets the active stack at the start of each parseUserMessage", () => {
@@ -1387,14 +1475,14 @@ describe("skill detection — parseUserMessage", () => {
       content: '<skill name="tdd">',
       timestamp: Date.now(),
     });
-    expect(getActiveSkills()).toEqual(["tdd"]);
+    expect(getActiveSkills()).toBe("tdd");
 
     parseUserMessage({
       role: "user",
       content: "just a normal message",
       timestamp: Date.now(),
     });
-    expect(getActiveSkills()).toEqual([]);
+    expect(getActiveSkills()).toBeNull();
   });
 
   it("user message without skill tags leaves empty stack", () => {
@@ -1404,7 +1492,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toEqual([]);
+    expect(getActiveSkills()).toBeNull();
   });
 
   it("last skill tag wins when multiple are present", () => {
@@ -1414,7 +1502,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toEqual(["grill-me"]);
+    expect(getActiveSkills()).toBe("grill-me");
   });
 
   it("same tag repeated still resolves to that skill", () => {
@@ -1424,7 +1512,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toEqual(["tdd"]);
+    expect(getActiveSkills()).toBe("tdd");
   });
 });
 
