@@ -68,12 +68,29 @@ export interface StatsSummary {
   hourlySpend: HourSpend[];
 }
 
+export interface SkillUsage {
+  invokedBy: "user" | "agent" | "both";
+  cost: number;
+  tokens: { input: number; output: number; total: number };
+  calls: number;
+}
+
+export interface SkillStat {
+  name: string;
+  invokedBy: "user" | "agent" | "both";
+  calls: number;
+  sessions: number;
+  cost: number;
+  tokens: number;
+}
+
 export interface SessionAgg {
   timestamp: SessionHeader["timestamp"];
   sessionId: SessionHeader["id"];
   project: string;
   cwd: SessionHeader["cwd"];
   models: Record<Provider, Record<Model<Api>["name"], SessionModelUsage>>;
+  skills: Record<string, SkillUsage>;
   userMsgs: number;
   toolResults: number;
   compactionCount: number;

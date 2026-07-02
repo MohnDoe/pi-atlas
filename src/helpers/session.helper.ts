@@ -16,6 +16,7 @@ export function makeSessionAgg(
     compactedTokens: overrides.compactedTokens ?? 0,
     modelChanges: overrides.modelChanges ?? 0,
     thinkingLevelCount: overrides.thinkingLevelCount ?? {},
+    skills: overrides.skills ?? {},
   };
 }
 
