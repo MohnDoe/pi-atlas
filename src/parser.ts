@@ -174,6 +174,26 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
   const modelName = msg.model;
   const provider = msg.provider ?? "";
 
+  // Detect implicit skill invocation: agent reads a SKILL.md file via the read tool.
+  // Only fires if no explicit skill tag is already active (explicit wins).
+  if (!activeSkill && msg.content) {
+    for (const block of msg.content) {
+      if (block.type === "toolCall" && block.name === "read") {
+        const parsedArgs = safeJsonParse(block.arguments);
+        const path = parsedArgs?.path as string | undefined;
+        if (path && /\/SKILL\.md$/.test(path)) {
+          // Skill name is the directory containing SKILL.md
+          const segments = path.split("/");
+          const skillName = segments[segments.length - 2];
+          if (skillName) {
+            activeSkill = { name: skillName, counted: false };
+          }
+          break;
+        }
+      }
+    }
+  }
+
   // Attribute cost to the active skill (if any)
   if (activeSkill && msg.usage) {
     session.skills[activeSkill.name] = {
