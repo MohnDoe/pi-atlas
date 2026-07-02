@@ -58,18 +58,12 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
       existing.tokens.total += skillUsage.tokens.total;
       existing.calls += skillUsage.calls;
       // Resolve invokedBy: user < agent < both
-      if (
+      existing.invokedBy =
+        existing.invokedBy !== skillUsage.invokedBy ||
         skillUsage.invokedBy === "both" ||
-        existing.invokedBy === "both" ||
-        (existing.invokedBy === "user" && skillUsage.invokedBy === "agent") ||
-        (existing.invokedBy === "agent" && skillUsage.invokedBy === "user")
-      ) {
-        existing.invokedBy = "both";
-      } else if (existing.invokedBy === "user" && skillUsage.invokedBy === "user") {
-        existing.invokedBy = "user";
-      } else {
-        existing.invokedBy = "agent";
-      }
+        existing.invokedBy === "both"
+          ? "both"
+          : existing.invokedBy;
     }
   }
 
@@ -117,6 +111,20 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
         }
       }
     }
+  }
+}
+
+// ---- Safe JSON parse ----
+
+/** Parse JSON, returning undefined on failure instead of throwing. */
+function safeJsonParse(raw: unknown): Record<string, unknown> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "string") return raw as Record<string, unknown>;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    console.warn("Failed to parse JSON tool arguments:", String(raw).slice(0, 200));
+    return undefined;
   }
 }
 
@@ -179,13 +187,8 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
   if (msg.content) {
     for (const block of msg.content) {
       if (block.type === "toolCall" && block.name === "read") {
-        const parsedArgs =
-          block.arguments !== undefined
-            ? typeof block.arguments === "string"
-              ? JSON.parse(block.arguments)
-              : block.arguments
-            : undefined;
-        const path = (parsedArgs as Record<string, unknown> | undefined)?.path as string | undefined;
+        const parsedArgs = safeJsonParse(block.arguments);
+        const path = parsedArgs?.path as string | undefined;
         if (path && path.endsWith("/SKILL.md")) {
           // Extract skill name from parent directory (the dir containing SKILL.md)
           const parentDir = path.split("/").slice(-2, -1)[0];
@@ -261,13 +264,8 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
         modelUsage.tools[sanitized] = (modelUsage.tools[sanitized] ?? 0) + 1;
 
         if (block.name === "edit" || block.name === "write") {
-          const parsedArgs =
-            block.arguments !== undefined
-              ? typeof block.arguments === "string"
-                ? JSON.parse(block.arguments)
-                : block.arguments
-              : undefined;
-          mergeLangUsage(modelUsage, block.name, parsedArgs as Record<string, unknown> | undefined);
+          const parsedArgs = safeJsonParse(block.arguments);
+          mergeLangUsage(modelUsage, block.name, parsedArgs);
         }
       }
     }
@@ -432,6 +430,7 @@ export function parseFile(
 
   resetActiveSkills();
 
+  try {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -452,6 +451,9 @@ export function parseFile(
       console.error(e);
       if (onWarning) onWarning(corruptCount);
     }
+  }
+  } finally {
+    resetActiveSkills();
   }
 
   // Return null if no valid entries or only corrupt entries
