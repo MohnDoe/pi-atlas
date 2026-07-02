@@ -4,8 +4,10 @@
   <strong>See your AI usage and cost directly in Pi.</strong>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@mohndoe/pi-atlas"><img src="https://img.shields.io/npm/v/@mohndoe/pi-atlas" alt="Version"></a>
+  <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40mohndoe%2Fpi-atlas?color=blue">
+  <a href="https://www.npmjs.com/package/@mohndoe/pi-atlas"><img src="https://img.shields.io/npm/v/%40mohndoe%2Fpi-atlas?label=release" alt="Version"></a>
   <img src="https://img.shields.io/badge/coverage-97%25-green" alt="Coverage">
+  <br/>
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&colorA=222222&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=flat&colorA=222222" alt="Bun">
   <a href="https://github.com/mohndoe/pi-atlas/blob/main/LICENSE"><img src="https://img.shields.io/github/license/mohndoe/pi-atlas?style=flat&colorA=222222&colorB=58A6FF" alt="License"></a>
