@@ -1,5 +1,7 @@
 # Triage Labels
 
+These are applied as **Linear labels** on the `pi-atlas` team. Create them in Linear if they don't exist yet.
+
 | mattpocock/skills role | Our label | Meaning |
 |------------------------|-----------|---------|
 | *(pre-triage)* | `considering` | Initial state for new issues and PRDs |
@@ -12,3 +14,5 @@
 New issues and PRDs are created with `considering`. A maintainer moves them to `needs-triage` after initial review.
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
+
+To apply labels via the CLI: use `linear issue update` (interactive) or the Linear GraphQL API for non-interactive label operations.
