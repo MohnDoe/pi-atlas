@@ -102,6 +102,16 @@ describe("Skills", () => {
     }
   });
 
+  it("shows Free for zero-cost skills", () => {
+    const freeSkills: SkillStat[] = [
+      { name: "handoff", calls: 5, sessions: 2, cost: 0, tokens: 1000 },
+    ];
+    const tab = new Skills(freeSkills, makeTheme(), mockTui, 10);
+    const lines = tab.render(80);
+    const text = lines.join("\n");
+    expect(text).toContain("Free");
+  });
+
   describe("marquee lifecycle", () => {
     beforeEach(() => {
       vi.useFakeTimers();
