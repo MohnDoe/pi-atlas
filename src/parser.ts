@@ -430,6 +430,8 @@ export function parseFile(
   let session: SessionAgg | null = null;
   let entriesFound = false;
 
+  resetActiveSkills();
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
