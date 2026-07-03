@@ -24,7 +24,7 @@ import type { SessionAgg, SessionModelUsage } from "./types";
 
 let activeSkill: { name: string; counted: boolean } | null = null;
 
-export function getActiveSkills(): string | null {
+export function getActiveSkill(): string | null {
   return activeSkill?.name ?? null;
 }
 

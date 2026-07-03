@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { dateFromISOString } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import {
-  getActiveSkills,
+  getActiveSkill,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -1466,7 +1466,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toBe("tdd");
+    expect(getActiveSkill()).toBe("tdd");
   });
 
   it("resets the active stack at the start of each parseUserMessage", () => {
@@ -1475,14 +1475,14 @@ describe("skill detection — parseUserMessage", () => {
       content: '<skill name="tdd">',
       timestamp: Date.now(),
     });
-    expect(getActiveSkills()).toBe("tdd");
+    expect(getActiveSkill()).toBe("tdd");
 
     parseUserMessage({
       role: "user",
       content: "just a normal message",
       timestamp: Date.now(),
     });
-    expect(getActiveSkills()).toBeNull();
+    expect(getActiveSkill()).toBeNull();
   });
 
   it("user message without skill tags leaves empty stack", () => {
@@ -1492,7 +1492,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toBeNull();
+    expect(getActiveSkill()).toBeNull();
   });
 
   it("last skill tag wins when multiple are present", () => {
@@ -1502,7 +1502,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toBe("grill-me");
+    expect(getActiveSkill()).toBe("grill-me");
   });
 
   it("same tag repeated still resolves to that skill", () => {
@@ -1512,7 +1512,7 @@ describe("skill detection — parseUserMessage", () => {
       timestamp: Date.now(),
     });
 
-    expect(getActiveSkills()).toBe("tdd");
+    expect(getActiveSkill()).toBe("tdd");
   });
 });
 
@@ -1647,7 +1647,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
     );
     expect(s.skills).toEqual({});
     // activeSkill should not have been set
-    expect(getActiveSkills()).toBeNull();
+    expect(getActiveSkill()).toBeNull();
   });
 
   it("does not trigger for non-read tool calls with SKILL.md-like paths", () => {
@@ -1674,7 +1674,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
       }),
     );
     expect(s.skills).toEqual({});
-    expect(getActiveSkills()).toBeNull();
+    expect(getActiveSkill()).toBeNull();
   });
 
   it("explicit user tag wins over implicit read detection", () => {
