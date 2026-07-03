@@ -1,24 +1,27 @@
+import type { Provider } from "@earendil-works/pi-ai";
 import { dateFromISOString } from "./format";
 import type {
-  DayAgg,
   DaySpend,
+  Filters,
   HourSpend,
   LangStat,
   ModelStat,
   ProjectStat,
   ProviderStat,
+  SessionAgg,
+  SkillStat,
   StatsSummary,
   TimeRange,
   ToolStat,
 } from "./types";
 
-function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
-  if (range === "All") return days;
+function daysInRange(sessions: SessionAgg[], range: TimeRange): SessionAgg[] {
+  if (range === "All") return sessions;
 
   const todayStr = dateFromISOString(new Date().toISOString());
 
   if (range === "1d") {
-    return days.filter((d) => d.date === todayStr);
+    return sessions.filter((s) => dateFromISOString(s.timestamp) === todayStr);
   }
 
   // Build cutoff as a Date, then convert back to ISO string for comparison
@@ -29,25 +32,37 @@ function daysInRange(days: DayAgg[], range: TimeRange): DayAgg[] {
     cutoff.setUTCDate(cutoff.getUTCDate() - 29);
   }
 
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  return days.filter((d) => d.date >= cutoffStr);
+  const cutoffStr = dateFromISOString(cutoff.toISOString());
+  return sessions.filter((s) => dateFromISOString(s.timestamp) >= cutoffStr);
 }
 
-function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
-  if (days.length === 0) return [];
+function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
+  if (sessions.length === 0) return [];
 
-  const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
+  // Group by date
+  const spendByDate = new Map<string, number>();
+  for (const s of sessions) {
+    let dayCost = 0;
+    for (const [provider, models] of Object.entries(s.models)) {
+      for (const [modelName, modelUsage] of Object.entries(models)) {
+        dayCost += modelUsage.usage.cost.total;
+      }
+    }
+
+    const dateStr = dateFromISOString(s.timestamp);
+    spendByDate.set(dateStr, (spendByDate.get(dateStr) ?? 0) + dayCost);
+  }
+
+  const sortedDates = [...spendByDate.keys()].sort();
+  if (sortedDates.length === 0) return [];
 
   if (range === "All") {
-    return sorted.map((d) => ({ date: d.date, cost: d.cost }));
+    return sortedDates.map((date) => ({ date, cost: spendByDate.get(date) ?? 0 }));
   }
 
   // For bounded ranges, zero-fill gaps
-  const first = sorted[0]!.date;
-  const last = sorted[sorted.length - 1]!.date;
-
-  const spendMap = new Map<string, number>();
-  for (const d of sorted) spendMap.set(d.date, d.cost);
+  const first = sortedDates[0]!;
+  const last = sortedDates[sortedDates.length - 1]!;
 
   const result: DaySpend[] = [];
   const d = new Date(first + "T00:00:00Z");
@@ -55,26 +70,60 @@ function fillDailySpend(days: DayAgg[], range: TimeRange): DaySpend[] {
 
   while (d <= end) {
     const ds = d.toISOString().slice(0, 10);
-    result.push({ date: ds, cost: spendMap.get(ds) ?? 0 });
+    result.push({ date: ds, cost: spendByDate.get(ds) ?? 0 });
     d.setUTCDate(d.getUTCDate() + 1);
   }
 
   return result;
 }
 
-function buildHourlySpend(filtered: DayAgg[], range: TimeRange): HourSpend[] {
-  if (range !== "1d" || filtered.length !== 1) return [];
+function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[] {
+  if (range !== "1d" || filtered.length === 0) return [];
 
-  const day = filtered[0]!;
+  const totalHourCost: Record<number, number> = {};
+  for (const session of filtered) {
+    const hour = new Date(session.timestamp).getHours();
+    for (const models of Object.values(session.models)) {
+      const cost = Object.values(models).reduce((val, s) => val + s.usage.cost.total, 0);
+      totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
+    }
+  }
+
   const hourly: HourSpend[] = [];
   for (let h = 0; h < 24; h++) {
-    hourly.push({ hour: h, cost: day.hourCost[h] ?? 0 });
+    hourly.push({ hour: h, cost: totalHourCost[h] ?? 0 });
   }
   return hourly;
 }
 
-export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
-  const filtered = daysInRange(days, range);
+/**
+ * Filter a session's models according to the given filters.
+ * Returns the filtered model entries that pass all active filters.
+ */
+function* filteredModels(
+  session: SessionAgg,
+  filters?: Filters,
+): Generator<{ model: string; usage: SessionAgg["models"][Provider][string] }> {
+  for (const models of Object.values(session.models)) {
+    for (const [modelName, usage] of Object.entries(models)) {
+      if (filters?.model && modelName !== filters.model) continue;
+      if (filters?.provider && usage.provider !== filters.provider) continue;
+      yield { model: modelName, usage };
+    }
+  }
+}
+
+export function summarize(
+  sessions: SessionAgg[],
+  range: TimeRange,
+  filters?: Filters,
+): StatsSummary {
+  const filtered = daysInRange(sessions, range);
+
+  // Filter by project
+  const projectFiltered = filters?.project
+    ? filtered.filter((s) => s.project === filters.project)
+    : filtered;
 
   const todayStr = dateFromISOString(new Date().toISOString());
   let todayCost = 0;
@@ -87,90 +136,117 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
   let totalOutputTokens = 0;
   let totalCacheReadTokens = 0;
   let totalCacheWriteTokens = 0;
-  const allSessions = new Set<string>();
 
   // accumulators
   const langLines: Record<string, number> = {};
   const langEdits: Record<string, number> = {};
-  const modelCost: Record<string, number> = {};
-  const modelCount: Record<string, number> = {};
-  const providerCost: Record<string, number> = {};
-  const providerCount: Record<string, number> = {};
+  const modelUsage: Record<
+    Provider,
+    {
+      models: Record<string, { cost: number; calls: number }>;
+    }
+  > = {};
   const projectCost: Record<string, number> = {};
   const projectSessions: Record<string, Set<string>> = {};
   const toolCount: Record<string, number> = {};
+  const skillAccum: Record<
+    string,
+    { cost: number; tokens: number; calls: number; sessions: Set<string> }
+  > = {};
   let compactionCount = 0;
   let compactedTokens = 0;
   let modelChanges = 0;
   const thinkingLevelCount: Record<string, number> = {};
 
-  let modelToProvider: Map<string, string> = new Map();
+  for (const session of projectFiltered) {
+    // Project attribution: the session's project gets attributed its total cost
+    let sessionCost = 0;
+    let sessionHasModels = false;
+    for (const { model: modelName, usage } of filteredModels(session, filters)) {
+      const provider = usage.provider;
+      sessionHasModels = true;
+      totalCost += usage.usage.cost.total;
+      sessionCost += usage.usage.cost.total;
+      totalTokens += usage.usage.totalTokens;
+      totalInputTokens += usage.usage.input;
+      totalOutputTokens += usage.usage.output;
+      totalCacheReadTokens += usage.usage.cacheRead;
+      totalCacheWriteTokens += usage.usage.cacheWrite;
 
-  for (const day of filtered) {
-    totalCost += day.cost;
-    totalMessages += day.userMsgs + day.asstMsgs + day.toolResults;
-    totalTokens += day.inTok + day.outTok + day.crTok + day.cwTok;
-    totalInputTokens += day.inTok;
-    totalOutputTokens += day.outTok;
-    totalCacheReadTokens += day.crTok;
-    totalCacheWriteTokens += day.cwTok;
+      // Count asstMsgs from model usage toward totalMessages
+      totalMessages += usage.asstMsgs;
 
-    for (const [model, provider] of day.modelToProvider) {
-      modelToProvider.set(model, provider);
-    }
+      if (!modelUsage[provider]) {
+        modelUsage[provider] = { models: {} };
+      }
 
-    if (day.date === todayStr) todayCost += day.cost;
+      if (!modelUsage[provider].models[modelName]) {
+        modelUsage[provider].models[modelName] = { cost: 0, calls: 0 };
+      }
+      // Model
+      modelUsage[provider].models[modelName] = {
+        cost: modelUsage[provider].models[modelName].cost + usage.usage.cost.total,
+        calls: modelUsage[provider].models[modelName].calls + usage.calls,
+      };
 
-    for (const id of day.sessionIds) allSessions.add(id);
-    sessionCount = allSessions.size;
+      // Tools
+      for (const [tool, count] of Object.entries(usage.tools)) {
+        toolCount[tool] = (toolCount[tool] ?? 0) + count;
+      }
 
-    // merge languages
-    for (const [lang, lines] of Object.entries(day.langLines)) {
-      langLines[lang] = (langLines[lang] ?? 0) + lines;
-    }
-    for (const [lang, edits] of Object.entries(day.langEdits)) {
-      langEdits[lang] = (langEdits[lang] ?? 0) + edits;
-    }
-
-    // merge models
-    for (const [model, cost] of Object.entries(day.modelCost)) {
-      modelCost[model] = (modelCost[model] ?? 0) + cost;
-    }
-    for (const [model, count] of Object.entries(day.modelCount)) {
-      modelCount[model] = (modelCount[model] ?? 0) + count;
-    }
-
-    // merge providers
-    for (const [provider, cost] of Object.entries(day.providerCost)) {
-      providerCost[provider] = (providerCost[provider] ?? 0) + cost;
-    }
-    for (const [provider, count] of Object.entries(day.providerCount)) {
-      providerCount[provider] = (providerCount[provider] ?? 0) + count;
-    }
-
-    // merge projects
-    for (const [proj, cost] of Object.entries(day.projectCost)) {
-      projectCost[proj] = (projectCost[proj] ?? 0) + cost;
-    }
-    for (const [proj, sessions] of Object.entries(day.projectSessions)) {
-      if (!projectSessions[proj]) projectSessions[proj] = new Set();
-      for (const s of sessions) projectSessions[proj].add(s);
+      // Languages
+      for (const [lang, lu] of Object.entries(usage.languages)) {
+        langLines[lang] = (langLines[lang] ?? 0) + lu.lines;
+        langEdits[lang] = (langEdits[lang] ?? 0) + lu.edits;
+      }
     }
 
-    // merge tools
-    for (const [tool, count] of Object.entries(day.toolCount)) {
-      toolCount[tool] = (toolCount[tool] ?? 0) + count;
+    // Count session-level data only for sessions that have matching models
+    if (sessionHasModels) {
+      // Session-level messages are only counted when the session has at least
+      // one model matching the active filters.
+      totalMessages += session.userMsgs + session.toolResults;
+
+      compactionCount += session.compactionCount;
+      compactedTokens += session.compactedTokens;
+      modelChanges += session.modelChanges;
+      for (const [level, count] of Object.entries(session.thinkingLevelCount)) {
+        thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+      }
+
+      // Skills
+      for (const [skillName, usage] of Object.entries(session.skills)) {
+        if (!skillAccum[skillName]) {
+          skillAccum[skillName] = { cost: 0, tokens: 0, calls: 0, sessions: new Set() };
+        }
+        skillAccum[skillName]!.cost += usage.cost;
+        skillAccum[skillName]!.tokens += usage.tokens.total;
+        skillAccum[skillName]!.calls += usage.calls;
+        skillAccum[skillName]!.sessions.add(session.sessionId);
+      }
     }
 
-    compactionCount += day.compactionCount;
-    compactedTokens += day.compactedTokens;
-    modelChanges += day.modelChanges;
-    for (const [level, count] of Object.entries(day.thinkingLevelCount)) {
-      thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+    // Only track project cost if the session has any models matching the filter
+    if (sessionHasModels && session.project) {
+      projectCost[session.project] = (projectCost[session.project] ?? 0) + sessionCost;
+      if (!projectSessions[session.project]) projectSessions[session.project] = new Set();
+      projectSessions[session.project]!.add(session.sessionId);
     }
+
+    if (dateFromISOString(session.timestamp) === todayStr) todayCost += sessionCost;
   }
 
-  const daysActive = filtered.filter((d) => d.sessionIds.size > 0).length;
+  // Sessions that have at least one model matching filters
+  const sessionsWithModels = projectFiltered.filter((s) => {
+    for (const _ of filteredModels(s, filters)) return true;
+    return false;
+  });
+  const uniqueSessionIds = new Set(sessionsWithModels.map((s) => s.sessionId));
+  sessionCount = uniqueSessionIds.size;
+
+  // Days active: unique dates that have sessions with matching models
+  const activeDates = new Set(sessionsWithModels.map((s) => dateFromISOString(s.timestamp)));
+  const daysActive = activeDates.size;
   const avgCostPerDay = daysActive > 0 ? totalCost / daysActive : 0;
 
   // build sorted result arrays
@@ -178,18 +254,25 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .map(([language, lines]) => ({ language, lines, edits: langEdits[language] ?? 0 }))
     .sort((a, b) => b.lines - a.lines);
 
-  const models: ModelStat[] = Object.entries(modelCost)
-    .map(([model, cost]) => ({
-      provider: modelToProvider.get(model) || undefined,
-      model,
-      cost,
-      calls: modelCount[model] ?? 0,
-    }))
-    .sort((a, b) => b.calls - a.calls)
-    .sort((a, b) => b.cost - a.cost);
+  const models: ModelStat[] = [];
+  for (const [providerName, provider] of Object.entries(modelUsage)) {
+    for (const [modelName, model] of Object.entries(provider.models)) {
+      models.push({
+        provider: providerName,
+        model: modelName,
+        cost: model.cost,
+        calls: model.calls,
+      });
+    }
+  }
+  models.sort((a, b) => b.calls - a.calls).sort((a, b) => b.cost - a.cost);
 
   const projects: ProjectStat[] = Object.entries(projectCost)
-    .map(([project, cost]) => ({ project, cost, sessions: projectSessions[project]?.size ?? 0 }))
+    .map(([project, cost]) => ({
+      project,
+      cost,
+      sessions: projectSessions[project]?.size ?? 0,
+    }))
     .sort((a, b) => b.sessions - a.sessions)
     .sort((a, b) => b.cost - a.cost);
 
@@ -197,11 +280,27 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     .map(([tool, count]) => ({ name: tool, count }))
     .sort((a, b) => b.count - a.count);
 
-  const providers: ProviderStat[] = Object.entries(providerCost)
-    .map(([provider, cost]) => ({ provider, cost, calls: providerCount[provider] ?? 0 }))
+  const providers: ProviderStat[] = Object.entries(modelUsage)
+    .map(([providerName, provider]) => ({
+      provider: providerName,
+      ...Object.values(provider.models).reduce(
+        (val, m) => ({ cost: val.cost + m.cost, calls: val.calls + m.calls }),
+        { cost: 0, calls: 0 },
+      ),
+    }))
     .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
-  const hourlySpend = buildHourlySpend(filtered, range);
+  const skills: SkillStat[] = Object.entries(skillAccum)
+    .map(([name, acc]) => ({
+      name,
+      calls: acc.calls,
+      sessions: acc.sessions.size,
+      cost: acc.cost,
+      tokens: acc.tokens,
+    }))
+    .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
+
+  const hourlySpend = buildHourlySpend(projectFiltered, range);
 
   return {
     totalCost,
@@ -220,6 +319,7 @@ export function summarize(days: DayAgg[], range: TimeRange): StatsSummary {
     projects,
     tools,
     providers,
+    skills,
     compactionCount,
     compactedTokens,
     modelChanges,

@@ -1,0 +1,6 @@
+# linear cli
+# https://github.com/schpet/linear-cli
+
+workspace = "pi-atlas"
+team_id = "PI"
+issue_sort = "manual"

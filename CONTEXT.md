@@ -28,7 +28,7 @@ The full-screen or overlay TUI shown by the `/atlas` command. Contains tabs for 
 _Avoid_: Popover, panel, window
 
 **Tab**:
-A named section within the Dashboard. Five tabs: Overview, Languages, Models, Projects, Usage. The user switches between them with Left/Right keys. Each tab receives its data from the StatsSummary for the currently selected Time Range.
+A named section within the Dashboard. Six tabs: Overview, Languages, Models, Projects, Usage, Skills. The user switches between them with Left/Right keys. Each tab receives its data from the StatsSummary for the currently selected Time Range.
 _Avoid_: Page, view, pane
 
 **Time Range**:
@@ -113,6 +113,18 @@ _Avoid_: Checksum, fingerprint
 **Language Count**:
 The number of lines edited or written for a language. Measured by splitting edited `newText` or written `content` by newline characters. Not character length.
 _Avoid_: Lines written, lines of code
+
+**Skill**:
+A self-contained capability package loaded on-demand by the agent. Identified by its name (e.g. "tdd", "grill-with-docs"). Tracked in SessionAgg as per-session usage with cost and token accumulators.
+_Avoid_: Capability, plugin, tool
+
+**Skill Invocation**:
+Activation of a skill. Two detection paths: (1) explicit — a user message contains `<skill name="X">`, detected via regex in parseUserMessage(); (2) implicit — the agent reads a SKILL.md file via the `read` tool, detected in parseAssistantMessage() as a tool call with path matching `/SKILL.md`.
+_Avoid_: Skill call, skill trigger
+
+**Active Skill Stack**:
+The set of skills currently active for cost attribution. A skill is pushed onto the stack when invoked (user tag or agent SKILL.md read). The stack is cleared at the start of each user message (new user topic = scope boundary). Assistant message cost is attributed to all skills on the active stack.
+_Avoid_: Skill context, skill scope
 
 **Empty State**:
 A message displayed when no session logs exist ("No sessions found in ~/.pi/agent/sessions") or when a tab has no data for the selected Time Range ("No data for this time range").

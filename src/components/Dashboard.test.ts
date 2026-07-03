@@ -218,11 +218,11 @@ describe("Dashboard", () => {
     const summary = {
       ...makeSummary(),
       models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150 },
-        { model: "deepseek-v4-pro", cost: 5.67, calls: 80 },
-        { model: "gemini-2.0-flash", cost: 1.23, calls: 40 },
+        { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150, provider: "anthropic" },
+        { model: "deepseek-v4-pro", cost: 5.67, calls: 80, provider: "deepseek" },
+        { model: "gemini-2.0-flash", cost: 1.23, calls: 40, provider: "google" },
       ],
-    };
+    } satisfies StatsSummary;
     const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(
       summaries,
@@ -245,8 +245,8 @@ describe("Dashboard", () => {
   it("formats model names in Models tab", () => {
     const summary = {
       ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10 }],
-    };
+      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10, provider: "anthropic" }],
+    } satisfies StatsSummary;
     const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(
       summaries,
@@ -287,15 +287,15 @@ describe("Dashboard", () => {
   it("Models tab updates when time range changes", () => {
     const summary1d = {
       ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 5 }],
-    };
+      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 5, provider: "anthropic" }],
+    } satisfies StatsSummary;
     const summary7d = {
       ...makeSummary(),
       models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.0, calls: 150 },
-        { model: "deepseek-v4-pro", cost: 5.0, calls: 80 },
+        { model: "claude-sonnet-4-20250514", cost: 12.0, calls: 150, provider: "anthropic" },
+        { model: "deepseek-v4-pro", cost: 5.0, calls: 80, provider: "deepseek" },
       ],
-    };
+    } satisfies StatsSummary;
     const summaries: Map<TimeRange, StatsSummary> = new Map([
       ["1d", summary1d],
       ["7d", summary7d],
@@ -344,6 +344,59 @@ describe("Dashboard", () => {
     dash.handleInput("\x1b[C"); // right
     const lines = dash.render(80);
     expect(lines.join("\n")).toContain("Languages");
+  });
+
+  // ---- Skills tab ----
+
+  it("renders Skills tab", () => {
+    const summary = {
+      ...makeSummary(),
+      skills: [
+        { name: "tdd", calls: 120, sessions: 15, cost: 15.5, tokens: 50000 },
+        { name: "grill-me", calls: 80, sessions: 10, cost: 8.2, tokens: 30000 },
+      ],
+    } satisfies StatsSummary;
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
+
+    // Navigate to Skills tab (index 4)
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    dash.handleInput("\x1b[C"); // → Projects
+    dash.handleInput("\x1b[C"); // → Skills
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("Skills");
+    expect(text).toContain("tdd");
+    expect(text).toContain("grill-me");
+  });
+
+  it("Skills tab shows empty state when no skill data", () => {
+    const summary = { ...makeSummary(), skills: [] };
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
+
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    dash.handleInput("\x1b[C"); // → Projects
+    dash.handleInput("\x1b[C"); // → Skills
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("No skill usage data");
   });
 
   // ---- Projects tab ----

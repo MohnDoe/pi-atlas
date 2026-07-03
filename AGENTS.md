@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues live as GitHub issues on `MohnDoe/pi-atlas`. See `docs/agents/issue-tracker.md`.
+Issues live as Linear issues on the `pi-atlas` team. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

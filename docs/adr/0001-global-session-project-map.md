@@ -1,5 +1,7 @@
 # Global mutable sessionProjectMap for cost attribution
 
+**Status: OBSOLETE** — Replaced by per-`SessionAgg.project` field (PRD-0003 Phase 1). Each session now carries its own `project` field, eliminating the global mutable state.
+
 Cost attribution to projects uses a module-level `sessionProjectMap: Map<string, string>` in `parser.ts`. When a `session` entry is parsed (containing `cwd`), the session ID is mapped to a project name. Subsequent `assistant` messages in the same file attribute their cost to all active projects in `sessionProjectMap`. The map is reset at the start of each `parseFile()` call.
 
 This keeps cost attribution simple — parse functions don't need to carry a context object through the call chain — at the cost of global mutable state that's invisible to callers of individual `parse*()` functions.
