@@ -127,6 +127,7 @@ export async function loadAggregate(
     const cached = await readCache(cachePath);
     const validCacheVersion = cached && cached.version && cached.version === pkg.version;
     if (validCacheVersion) {
+      // NOTE: isCacheValid internally re-reads the cache file — minor I/O overhead on cache-hit path
       const valid = await isCacheValid(cachePath, sessionsDir);
       if (valid) return cached.sessions;
     }

@@ -272,7 +272,7 @@ describe("cache read/write", () => {
     expect(payload.signature).toBe("sig-old");
     expect(payload.sessions).toHaveLength(1);
     // version should be undefined for old-format cache
-    expect(payload["version"]).toBeUndefined();
+    expect(payload.version).toBeUndefined();
   });
 
   it("returns null for missing cache", async () => {
