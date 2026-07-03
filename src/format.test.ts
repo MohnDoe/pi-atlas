@@ -182,8 +182,8 @@ describe("formatNumber", () => {
   it("handles negative numbers (no suffix — current behavior)", () => {
     // Negative numbers fall through all n >= threshold checks
     expect(formatNumber(-500)).toBe("-500");
-    expect(formatNumber(-1500)).toBe("-1500");
-    expect(formatNumber(-2_500_000)).toBe("-2500000");
+    expect(formatNumber(-1500)).toBe("-1,500");
+    expect(formatNumber(-2_500_000)).toBe("-2,500,000");
   });
 
   it("handles boundary values", () => {

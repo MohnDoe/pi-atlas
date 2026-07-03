@@ -346,6 +346,59 @@ describe("Dashboard", () => {
     expect(lines.join("\n")).toContain("Languages");
   });
 
+  // ---- Skills tab ----
+
+  it("renders Skills tab", () => {
+    const summary = {
+      ...makeSummary(),
+      skills: [
+        { name: "tdd", calls: 120, sessions: 15, cost: 15.5, tokens: 50000 },
+        { name: "grill-me", calls: 80, sessions: 10, cost: 8.2, tokens: 30000 },
+      ],
+    } satisfies StatsSummary;
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
+
+    // Navigate to Skills tab (index 4)
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    dash.handleInput("\x1b[C"); // → Projects
+    dash.handleInput("\x1b[C"); // → Skills
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("Skills");
+    expect(text).toContain("tdd");
+    expect(text).toContain("grill-me");
+  });
+
+  it("Skills tab shows empty state when no skill data", () => {
+    const summary = { ...makeSummary(), skills: [] };
+    const summaries = mapAllSummaries(allRanges, summary);
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+    );
+
+    dash.handleInput("\x1b[C"); // → Languages
+    dash.handleInput("\x1b[C"); // → Models
+    dash.handleInput("\x1b[C"); // → Projects
+    dash.handleInput("\x1b[C"); // → Skills
+    const lines = dash.render(80);
+    const text = lines.join("\n");
+
+    expect(text).toContain("No skill usage data");
+  });
+
   // ---- Projects tab ----
 
   it("renders Project tab", () => {

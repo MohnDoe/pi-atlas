@@ -18,6 +18,20 @@ import { langFromPath, projectNameFromCwd } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
 
+// ---- Active skill tracking ----
+// Skills are invoked by the user via <skill name="..."> tags. Only one skill
+// can be active at a time — if multiple tags appear the last one wins.
+
+let activeSkill: { name: string; counted: boolean } | null = null;
+
+export function getActiveSkill(): string | null {
+  return activeSkill?.name ?? null;
+}
+
+export function resetActiveSkills(): void {
+  activeSkill = null;
+}
+
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   base.userMsgs += update.userMsgs;
@@ -28,6 +42,22 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
 
   for (const [level, count] of Object.entries(update.thinkingLevelCount)) {
     base.thinkingLevelCount[level] = (base.thinkingLevelCount[level] ?? 0) + count;
+  }
+
+  for (const [skill, skillUsage] of Object.entries(update.skills)) {
+    const existing = base.skills[skill];
+    if (!existing) {
+      base.skills[skill] = {
+        ...skillUsage,
+        tokens: { ...skillUsage.tokens },
+      };
+    } else {
+      existing.cost += skillUsage.cost;
+      existing.tokens.input += skillUsage.tokens.input;
+      existing.tokens.output += skillUsage.tokens.output;
+      existing.tokens.total += skillUsage.tokens.total;
+      existing.calls += skillUsage.calls;
+    }
   }
 
   for (const [provider, models] of Object.entries(update.models)) {
@@ -77,6 +107,23 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   }
 }
 
+// ---- Safe JSON parse ----
+
+/** Parse JSON, returning undefined on failure instead of throwing. */
+function safeJsonParse(raw: unknown): Record<string, unknown> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "string") {
+    if (typeof raw === "object" && raw !== null) return raw as Record<string, unknown>;
+    return undefined;
+  }
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    console.warn("Failed to parse JSON tool arguments:", String(raw).slice(0, 200));
+    return undefined;
+  }
+}
+
 // ---- Strip control chars from tool names ----
 
 /** Strip control characters (\n, \r, \t, etc.) from a tool name. */
@@ -98,6 +145,19 @@ export function parseSessionHeader(entry: SessionHeader): SessionAgg {
 export function parseUserMessage(msg: UserMessage): SessionAgg {
   const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
+
+  // Reset active skill stack at the start of each user message
+  resetActiveSkills();
+
+  // Detect explicit skill invocations via <skill name="...">
+  // Only one skill can be active at a time — last tag wins.
+  const content = typeof msg.content === "string" ? msg.content : "";
+  const skillTagRegex = /<skill\s+name="([^"]+)"/g;
+  let match: RegExpExecArray | null;
+  while ((match = skillTagRegex.exec(content)) !== null) {
+    activeSkill = { name: match[1]!, counted: false };
+  }
+
   return session;
 }
 
@@ -116,6 +176,40 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
 
   const modelName = msg.model;
   const provider = msg.provider ?? "";
+
+  // Detect implicit skill invocation: agent reads a SKILL.md file via the read tool.
+  // Only fires if no explicit skill tag is already active (explicit wins).
+  if (!activeSkill && msg.content) {
+    for (const block of msg.content) {
+      if (block.type === "toolCall" && block.name === "read") {
+        const parsedArgs = safeJsonParse(block.arguments);
+        const path = parsedArgs?.path as string | undefined;
+        if (path && /\/SKILL\.md$/.test(path)) {
+          // Skill name is the directory containing SKILL.md
+          const segments = path.split("/");
+          const skillName = segments[segments.length - 2];
+          if (skillName) {
+            activeSkill = { name: skillName, counted: false };
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // Attribute cost to the active skill (if any)
+  if (activeSkill && msg.usage) {
+    session.skills[activeSkill.name] = {
+      cost: msg.usage.cost.total,
+      tokens: {
+        input: msg.usage.input,
+        output: msg.usage.output,
+        total: msg.usage.totalTokens,
+      },
+      calls: activeSkill.counted ? 0 : 1,
+    };
+    activeSkill.counted = true;
+  }
 
   if (!modelName) {
     // No model — nothing to track per-model
@@ -141,13 +235,8 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
         modelUsage.tools[sanitized] = (modelUsage.tools[sanitized] ?? 0) + 1;
 
         if (block.name === "edit" || block.name === "write") {
-          const parsedArgs =
-            block.arguments !== undefined
-              ? typeof block.arguments === "string"
-                ? JSON.parse(block.arguments)
-                : block.arguments
-              : undefined;
-          mergeLangUsage(modelUsage, block.name, parsedArgs as Record<string, unknown> | undefined);
+          const parsedArgs = safeJsonParse(block.arguments);
+          mergeLangUsage(modelUsage, block.name, parsedArgs);
         }
       }
     }
@@ -310,26 +399,32 @@ export function parseFile(
   let session: SessionAgg | null = null;
   let entriesFound = false;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  resetActiveSkills();
 
-    try {
-      const entry = JSON.parse(trimmed) as FileEntry;
-      const result = parseSessionLogEntry(entry);
-      if (result) {
-        entriesFound = true;
-        if (!session) {
-          session = result;
-        } else {
-          mergeToSession(session, result);
+  try {
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      try {
+        const entry = JSON.parse(trimmed) as FileEntry;
+        const result = parseSessionLogEntry(entry);
+        if (result) {
+          entriesFound = true;
+          if (!session) {
+            session = result;
+          } else {
+            mergeToSession(session, result);
+          }
         }
+      } catch (e) {
+        corruptCount++;
+        console.error(e);
+        if (onWarning) onWarning(corruptCount);
       }
-    } catch (e) {
-      corruptCount++;
-      console.error(e);
-      if (onWarning) onWarning(corruptCount);
     }
+  } finally {
+    resetActiveSkills();
   }
 
   // Return null if no valid entries or only corrupt entries

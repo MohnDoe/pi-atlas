@@ -9,6 +9,7 @@ import type {
   ProjectStat,
   ProviderStat,
   SessionAgg,
+  SkillStat,
   StatsSummary,
   TimeRange,
   ToolStat,
@@ -148,6 +149,10 @@ export function summarize(
   const projectCost: Record<string, number> = {};
   const projectSessions: Record<string, Set<string>> = {};
   const toolCount: Record<string, number> = {};
+  const skillAccum: Record<
+    string,
+    { cost: number; tokens: number; calls: number; sessions: Set<string> }
+  > = {};
   let compactionCount = 0;
   let compactedTokens = 0;
   let modelChanges = 0;
@@ -207,6 +212,17 @@ export function summarize(
       modelChanges += session.modelChanges;
       for (const [level, count] of Object.entries(session.thinkingLevelCount)) {
         thinkingLevelCount[level] = (thinkingLevelCount[level] ?? 0) + count;
+      }
+
+      // Skills
+      for (const [skillName, usage] of Object.entries(session.skills)) {
+        if (!skillAccum[skillName]) {
+          skillAccum[skillName] = { cost: 0, tokens: 0, calls: 0, sessions: new Set() };
+        }
+        skillAccum[skillName]!.cost += usage.cost;
+        skillAccum[skillName]!.tokens += usage.tokens.total;
+        skillAccum[skillName]!.calls += usage.calls;
+        skillAccum[skillName]!.sessions.add(session.sessionId);
       }
     }
 
@@ -274,6 +290,16 @@ export function summarize(
     }))
     .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
+  const skills: SkillStat[] = Object.entries(skillAccum)
+    .map(([name, acc]) => ({
+      name,
+      calls: acc.calls,
+      sessions: acc.sessions.size,
+      cost: acc.cost,
+      tokens: acc.tokens,
+    }))
+    .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
+
   const hourlySpend = buildHourlySpend(projectFiltered, range);
 
   return {
@@ -293,6 +319,7 @@ export function summarize(
     projects,
     tools,
     providers,
+    skills,
     compactionCount,
     compactedTokens,
     modelChanges,

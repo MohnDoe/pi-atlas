@@ -756,4 +756,198 @@ describe("summarize", () => {
       calls: 3,
     });
   });
+
+  describe("skill aggregation", () => {
+    it("returns empty skills for sessions without any skills", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+      });
+      addModelToSession(s, "m", { cost: 1, calls: 1 });
+
+      const result = summarize([s], "All");
+      expect(result.skills).toEqual([]);
+    });
+
+    it("single skill from one session produces correct SkillStat", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: {
+          "tdd": {
+            cost: 1.5,
+            tokens: { input: 500, output: 200, total: 700 },
+            calls: 5,
+          },
+        },
+      });
+      addModelToSession(s, "m", { cost: 1.5, calls: 5 });
+
+      const result = summarize([s], "All");
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 5, sessions: 1, cost: 1.5, tokens: 700 },
+      ]);
+    });
+
+    it("aggregates same skill across multiple sessions", () => {
+      const s1 = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: { tdd: { cost: 1.0, tokens: { input: 300, output: 100, total: 400 }, calls: 3 } },
+      });
+      addModelToSession(s1, "m", { cost: 1.0, calls: 3 });
+
+      const s2 = makeSessionAgg({
+        sessionId: "s2",
+        timestamp: new Date("2026-06-02").toISOString(),
+        skills: { tdd: { cost: 2.5, tokens: { input: 600, output: 300, total: 900 }, calls: 7 } },
+      });
+      addModelToSession(s2, "m", { cost: 2.5, calls: 7 });
+
+      const result = summarize([s1, s2], "All");
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 10, sessions: 2, cost: 3.5, tokens: 1300 },
+      ]);
+    });
+
+    it("sorts skills by cost descending, then calls descending", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: {
+          cheap: { cost: 0.1, tokens: { input: 0, output: 0, total: 10 }, calls: 5 },
+          expensive: { cost: 5.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 },
+          mid: { cost: 1.0, tokens: { input: 0, output: 0, total: 50 }, calls: 10 },
+        },
+      });
+      addModelToSession(s, "m", { cost: 6.1, calls: 17 });
+
+      const result = summarize([s], "All");
+      expect(result.skills.map((sk) => sk.name)).toEqual(["expensive", "mid", "cheap"]);
+    });
+
+    it("includes skills with zero cost but non-zero calls", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: {
+          freebie: { cost: 0, tokens: { input: 0, output: 0, total: 0 }, calls: 5 },
+        },
+      });
+      addModelToSession(s, "m", { cost: 0, calls: 5 });
+
+      const result = summarize([s], "All");
+      expect(result.skills).toEqual([
+        { name: "freebie", calls: 5, sessions: 1, cost: 0, tokens: 0 },
+      ]);
+    });
+
+    it("multiple skills across sessions produce separate SkillStats", () => {
+      const s1 = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: {
+          tdd: { cost: 1.0, tokens: { input: 300, output: 100, total: 400 }, calls: 3 },
+          "grill-me": { cost: 0.5, tokens: { input: 100, output: 50, total: 150 }, calls: 1 },
+        },
+      });
+      addModelToSession(s1, "m", { cost: 1.5, calls: 4 });
+
+      const s2 = makeSessionAgg({
+        sessionId: "s2",
+        timestamp: new Date("2026-06-02").toISOString(),
+        skills: {
+          tdd: { cost: 2.0, tokens: { input: 500, output: 200, total: 700 }, calls: 5 },
+        },
+      });
+      addModelToSession(s2, "m", { cost: 2.0, calls: 5 });
+
+      const result = summarize([s1, s2], "All");
+      // tdd cost=3.0 from s1+s2, grill-me cost=0.5 from s1 only
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 8, sessions: 2, cost: 3.0, tokens: 1100 },
+        { name: "grill-me", calls: 1, sessions: 1, cost: 0.5, tokens: 150 },
+      ]);
+    });
+
+    it("skill stats respect project filter", () => {
+      const s1 = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        project: "alpha",
+        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+      });
+      addModelToSession(s1, "m", { cost: 1.0, calls: 2 });
+
+      const s2 = makeSessionAgg({
+        sessionId: "s2",
+        timestamp: new Date("2026-06-02").toISOString(),
+        project: "beta",
+        skills: {
+          "grill-with-docs": {
+            cost: 3.0,
+            tokens: { input: 0, output: 0, total: 200 },
+            calls: 5,
+          },
+        },
+      });
+      addModelToSession(s2, "m", { cost: 3.0, calls: 5 });
+
+      const result = summarize([s1, s2], "All", { project: "alpha" });
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+      ]);
+    });
+
+    it("skill stats respect model filter", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+      });
+      addModelToSession(s, "sonnet", { cost: 0.5, calls: 1 });
+      addModelToSession(s, "haiku", { cost: 0.5, calls: 1 });
+
+      const result = summarize([s], "All", { model: "sonnet" });
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+      ]);
+    });
+
+    it("skill stats respect provider filter", () => {
+      const s = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date("2026-06-01").toISOString(),
+        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+      });
+      addModelToSession(s, "sonnet", { cost: 0.5, calls: 1 }, "anthropic");
+      addModelToSession(s, "haiku", { cost: 0.5, calls: 1 }, "anthropic");
+
+      const result = summarize([s], "All", { provider: "anthropic" });
+      expect(result.skills).toEqual([
+        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+      ]);
+    });
+
+    it("excludes skills from sessions filtered out by time range", () => {
+      const todaySession = makeSessionAgg({
+        sessionId: "s1",
+        timestamp: new Date().toISOString(),
+        skills: { recent: { cost: 1.0, tokens: { input: 0, output: 0, total: 50 }, calls: 1 } },
+      });
+      addModelToSession(todaySession, "m", { cost: 1.0, calls: 1 });
+
+      const oldSession = makeSessionAgg({
+        sessionId: "s2",
+        timestamp: new Date("2026-01-01").toISOString(),
+        skills: { old: { cost: 2.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+      });
+      addModelToSession(oldSession, "m", { cost: 2.0, calls: 2 });
+
+      const result = summarize([todaySession, oldSession], "1d");
+      expect(result.skills).toEqual([
+        { name: "recent", calls: 1, sessions: 1, cost: 1.0, tokens: 50 },
+      ]);
+    });
+  });
 });

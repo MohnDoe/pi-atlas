@@ -119,6 +119,7 @@ describe("JSONL → Dashboard", () => {
     expect(text).toContain("Languages");
     expect(text).toContain("Models");
     expect(text).toContain("Projects");
+    expect(text).toContain("Skills");
     expect(text).toContain("Usage");
 
     expect(text).toContain("$0.0015");
@@ -205,5 +206,82 @@ describe("JSONL → Dashboard", () => {
     // Should show language data from parsed file
     expect(text).toContain("TypeScript");
     expect(text).toContain("Rust");
+  });
+
+  it("end-to-end: JSONL with skill tag → parse → summarize → SkillStat output", async () => {
+    const filePath = join(tmpDir, "skill-session.jsonl");
+    const sessionTime = "2026-06-15T10:00:00.000Z";
+    const userMsgTime = "2026-06-15T10:01:00.000Z";
+    const assistantTime = "2026-06-15T10:02:00.000Z";
+    const assistantTimestamp = Math.floor(new Date(assistantTime).getTime() / 1000);
+
+    const jsonlLines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "skill-s1",
+        timestamp: sessionTime,
+        cwd: "/home/doe/proj-skill",
+      } as SessionHeader),
+      // User message with skill tag
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: userMsgTime,
+        message: {
+          role: "user",
+          timestamp: Math.floor(new Date(userMsgTime).getTime() / 1000),
+          content: '<skill name="tdd">Add tests',
+        } as UserMessage,
+      } as SessionMessageEntry),
+      // Assistant response — cost attributed to tdd skill
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: assistantTime,
+        message: makeAssistantMessage({
+          timestamp: assistantTimestamp,
+          content: [
+            { type: "text", text: "here you go" },
+            makeToolCall({ id: "t1", name: "edit", arguments: { path: "/src/foo.ts", edits: [{ newText: "test" }] } }),
+          ],
+          api: "anthropic-messages",
+          provider: "anthropic",
+          stopReason: "stop",
+          model: "claude-sonnet-4-20250514",
+          usage: {
+            input: 200,
+            output: 100,
+            cacheRead: 10,
+            cacheWrite: 0,
+            totalTokens: 310,
+            cost: {
+              input: 0.001,
+              output: 0.0005,
+              cacheRead: 0.00001,
+              cacheWrite: 0,
+              total: 0.00151,
+            },
+          },
+        }),
+      } as SessionMessageEntry),
+    ];
+    await writeFile(filePath, jsonlLines.join("\n"));
+
+    const session = parseFile(filePath);
+    expect(session).not.toBeNull();
+    expect(Object.keys(session!.skills)).toContain("tdd");
+
+    const result = summarize([session!], "All");
+    expect(result.skills).toHaveLength(1);
+    expect(result.skills[0]).toMatchObject({
+      name: "tdd",
+      calls: 1,
+      sessions: 1,
+    });
+    expect(result.skills[0]!.cost).toBeGreaterThan(0);
+    expect(result.skills[0]!.tokens).toBeGreaterThan(0);
   });
 });
