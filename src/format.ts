@@ -163,7 +163,7 @@ export function formatNumber(n: number): string {
   if (n >= 1_000_000_000) return numberFormatter.format(n / 1_000_000_000) + "B";
   if (n >= 1_000_000) return numberFormatter.format(n / 1_000_000) + "M";
   if (n >= 1_000) return numberFormatter.format(n / 1_000) + "k";
-  return String(n);
+  return numberFormatter.format(n);
 }
 
 export function formatCost(n: number): string {
