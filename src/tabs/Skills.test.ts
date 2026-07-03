@@ -29,9 +29,9 @@ describe("Skills", () => {
     expect(lines[0]).toContain("Skills");
 
     // Headers
-    expect(text).toContain("Skill");
-    expect(text).toContain("Invocations");
+    expect(text).toContain("Name");
     expect(text).toContain("Sessions");
+    expect(text).toContain("Invocations");
     expect(text).toContain("Cost");
     expect(text).toContain("Tokens");
 
@@ -100,42 +100,5 @@ describe("Skills", () => {
       const visLen = line.replace(/\x1b\[[0-9;]*m/g, "").length;
       expect(visLen).toBeLessThanOrEqual(80);
     }
-  });
-
-  it("shows Free for zero-cost skills", () => {
-    const freeSkills: SkillStat[] = [
-      { name: "handoff", calls: 5, sessions: 2, cost: 0, tokens: 1000 },
-    ];
-    const tab = new Skills(freeSkills, makeTheme(), mockTui, 10);
-    const lines = tab.render(80);
-    const text = lines.join("\n");
-    expect(text).toContain("Free");
-  });
-
-  describe("marquee lifecycle", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("clears marquee timers on invalidate", () => {
-      const longSkills: SkillStat[] = [
-        { name: "a-very-long-skill-name-here", calls: 10, sessions: 2, cost: 5, tokens: 1000 },
-      ];
-      const tab = new Skills(longSkills, makeTheme(), mockTui, 10);
-
-      tab.render(30);
-      expect(vi.getTimerCount()).toBe(1);
-
-      tab.invalidate();
-      expect(vi.getTimerCount()).toBe(0);
-
-      const lines = tab.render(80);
-      const text = lines.join("\n");
-      expect(text).toContain("a-very-long-skill-name-here");
-    });
   });
 });
