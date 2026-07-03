@@ -40,6 +40,7 @@ A [pi](https://pi.dev) extension that turns your session logs into an interactiv
 - **Languages** — Languages ranked by line written.
 - **Models** — Models ranked by cost. Shows providers, calls and cost per model.
 - **Projects** — Projects ranked by cost. Shows session count and cost per project.
+- **Skills** — Skills used ranked by cost. Estimation of what skill invocations cost.
 - **Usage** — Token breakdown (Total, Input, Output, Cache Read, Cache Write) and table of tool usage.
 
 All tabs displayed data correspond to the selected time range (press `r` to change it). Press left/right arrows to change tabs.

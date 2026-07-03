@@ -1,6 +1,6 @@
 {
   "name": "@mohndoe/pi-atlas",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "See your agent usage and cost directly in Pi — costs, languages, models, projects, and tools from session logs.",
   "keywords": [
     "pi",
