@@ -112,7 +112,10 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
 /** Parse JSON, returning undefined on failure instead of throwing. */
 function safeJsonParse(raw: unknown): Record<string, unknown> | undefined {
   if (raw === undefined || raw === null) return undefined;
-  if (typeof raw !== "string") return raw as Record<string, unknown>;
+  if (typeof raw !== "string") {
+    if (typeof raw === "object" && raw !== null) return raw as Record<string, unknown>;
+    return undefined;
+  }
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
