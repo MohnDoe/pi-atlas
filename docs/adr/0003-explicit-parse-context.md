@@ -1,9 +1,9 @@
-# Explicit ParseContext for skill tracking
+# Explicit parse context for skill tracking
 
-Parser had a module-level `activeSkill` variable that parsed messages implicitly read and wrote. This was invisible coupling — the interface claimed pure `(msg) → SessionAgg` but behaviour changed based on prior calls in the same `parseFile()` scope.
+The parser's skill-tracking state (`activeSkill`) was a module-level mutable variable — invisible to callers, requiring manual `resetActiveSkills()` in tests and lifecycle management via `try/finally` blocks. Each parse function's interface claimed to be a pure `(entry) → SessionAgg` but implicitly read and wrote the module-level state.
 
-We replaced it with an explicit immutable `ParseContext` threaded through every parse function via `(msg, ctx) → ParseResult`. The context carries `{ activeSkill: SkillState | null }` where `SkillState = { name: string; counted: boolean }`. `parseFile()` owns the lifecycle — creates it, threads it, discards it. No module-level state remains.
+We replaced it with an explicit `ParseContext` interface (`{ activeSkill: SkillState | null }`) threaded through every parse function. Each parse function now takes `(entry, ctx) → ParseResult = { session, ctx }`. `parseFile()` creates and owns the context lifecycle. The context is immutable — mutations produce a new context value returned alongside the session.
 
-**Considered:** mutable context passed by reference. Rejected because callers can't see when state changes — the same invisibility problem, just scoped.
+**Rejected alternatives**: (a) A mutable ParseContext passed by reference (simpler but hides mutation), (b) Keeping module-level state with a context object for thread-safety (least invasive but perpetuates the invisible-coupling pattern).
 
-**Consequences:** every parse function now returns `{ session: SessionAgg, ctx: ParseContext }`. This adds a destructuring step at ~20 call sites but makes the skill-tracking seam visible to every caller and testable without side-channel accessors.
+**Consequences**: Every parse function's signature changed — ~20 call sites updated. `getActiveSkill()` and `resetActiveSkills()` removed from the module's public surface. Tests no longer need `beforeEach(resetActiveSkills)`. The `counted` flag lives in SkillState inside ParseContext, maintaining the same "increment call count once per skill invocation" semantics.
