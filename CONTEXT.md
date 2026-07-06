@@ -129,3 +129,11 @@ _Avoid_: Skill context, skill scope
 **Empty State**:
 A message displayed when no session logs exist ("No sessions found in ~/.pi/agent/sessions") or when a tab has no data for the selected Time Range ("No data for this time range").
 _Avoid_: Zero state, blank state
+
+**Parse Context**:
+An immutable value threaded through every parse function carrying skill-tracking state (`activeSkill`). Created and owned by `parseFile()`; consumed by `parseUserMessage()` and `parseAssistantMessage()`. Replaces the former module-level `activeSkill` mutable variable.
+_Avoid_: Parser state, parse scope
+
+**Parse Context**:
+An immutable value (`{ activeSkill: SkillState | null }`) threaded through all parse functions during session log parsing. Carries skill-tracking state that was previously module-level mutable state. Created by `parseFile()`, consumed by `parseUserMessage()` (sets skill from `<skill>` tags) and `parseAssistantMessage()` (detects implicit skill invocation via SKILL.md reads, attributes cost, toggles `counted`). Each parse function returns a new `ParseResult = { session, ctx }` — the context is never mutated in place.
+_Avoid_: Skill context, parse state
