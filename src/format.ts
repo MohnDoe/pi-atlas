@@ -252,7 +252,10 @@ export function stripAnsi(text: string): string {
     "",
   );
   // Then strip control characters that can break terminal rendering
-  return clean.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+  return clean.replace(
+    /[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g,
+    "",
+  );
 }
 
 export function formatModelName(raw: string): string {

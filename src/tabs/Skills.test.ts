@@ -60,16 +60,19 @@ describe("Skills", () => {
   it("renders data rows with formatted values", () => {
     const tab = new Skills(skills, makeTheme(), mockTui, 10);
     const lines = tab.render(80);
+    const tableHeader = lines[1];
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Skills");
 
     // Headers
-    expect(text).toContain("Name");
-    expect(text).toContain("Sessions");
-    expect(text).toContain("Invocations");
-    expect(text).toContain("Cost");
-    expect(text).toContain("Tokens");
+    expect(tableHeader).toContain("Name");
+    expect(tableHeader).toContain("Calls");
+    expect(tableHeader).toContain("Sess.");
+    expect(tableHeader).toContain("Tokens");
+    expect(tableHeader).toContain("↑In");
+    expect(tableHeader).toContain("↓Out");
+    expect(tableHeader).toContain("Cost");
 
     // Skill names
     expect(text).toContain("tdd");

@@ -31,12 +31,27 @@ export class Skills extends Container {
     if (this.isEmpty) return;
 
     this.rows = this.skills.map((s) => [
+      // Name
       cell.text(s.name),
+      // Invocations
       cell.text(this.theme.fg("muted", formatNumber(s.calls))),
+      // Sessions
       cell.text(this.theme.fg("muted", formatNumber(s.sessions))),
-      cell.text(this.theme.fg("muted", formatNumber(s.usage.totalTokens))),
+      // Tokens
+      cell.text(formatNumber(s.usage.totalTokens)),
+      // Input
       cell.text(
-        s.usage.cost.total > 0 ? this.theme.bold(formatCost(s.usage.cost.total)) : this.theme.fg("dim", formatCost(0)),
+        this.theme.fg("muted", formatNumber(s.usage.input, { round: true })),
+      ),
+      // Output
+      cell.text(
+        this.theme.fg("muted", formatNumber(s.usage.output, { round: true })),
+      ),
+      // Cost
+      cell.text(
+        s.usage.cost.total > 0
+          ? this.theme.bold(formatCost(s.usage.cost.total))
+          : this.theme.fg("dim", formatCost(0)),
       ),
     ]);
   }
@@ -59,14 +74,16 @@ export class Skills extends Container {
           {
             columns: [
               { header: cell.header("Name"), width: "fill" },
-              { header: cell.header("Invocations"), width: 12 },
-              { header: cell.header("Sessions"), width: 8 },
-              { header: cell.header("Tokens"), width: 14 },
-              { header: cell.header("Cost"), width: 16 },
+              { header: cell.header("Calls"), width: 7 },
+              { header: cell.header("Sess."), width: 7 },
+              { header: cell.header("Tokens"), width: 10 },
+              { header: cell.header("↑In"), width: 6 },
+              { header: cell.header("↓Out"), width: 6 },
+              { header: cell.header("Cost"), width: 12 },
             ],
             rows: this.rows,
             maxHeight: this.maxHeight,
-            sort: { column: 4, direction: "desc" },
+            sort: { column: 6, direction: "desc" },
             tui: this.tui,
           },
           this.theme,
