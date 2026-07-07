@@ -70,8 +70,7 @@ export interface StatsSummary {
 }
 
 export interface SkillUsage {
-  cost: number;
-  tokens: { input: number; output: number; total: number };
+  usage: Usage;
   calls: number;
 }
 
@@ -79,8 +78,7 @@ export interface SkillStat {
   name: string;
   calls: number;
   sessions: number;
-  cost: number;
-  tokens: number;
+  usage: Usage;
 }
 
 export interface SessionAgg {

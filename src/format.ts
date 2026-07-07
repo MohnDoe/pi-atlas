@@ -159,11 +159,20 @@ const smallUsdFormatter = new Intl.NumberFormat("en-US", {
 
 // ---- Number formatting ----
 
-export function formatNumber(n: number): string {
-  if (n >= 1_000_000_000) return numberFormatter.format(n / 1_000_000_000) + "B";
-  if (n >= 1_000_000) return numberFormatter.format(n / 1_000_000) + "M";
-  if (n >= 1_000) return numberFormatter.format(n / 1_000) + "k";
-  return numberFormatter.format(n);
+export function formatNumber(n: number, opts?: { round?: boolean }): string {
+  if (n >= 1_000_000_000) {
+    const v = n / 1_000_000_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "B";
+  }
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "M";
+  }
+  if (n >= 1_000) {
+    const v = n / 1_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "k";
+  }
+  return numberFormatter.format(opts?.round ? Math.round(n) : n);
 }
 
 export function formatCost(n: number): string {
@@ -243,7 +252,10 @@ export function stripAnsi(text: string): string {
     "",
   );
   // Then strip control characters that can break terminal rendering
-  return clean.replace(/[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+  return clean.replace(
+    /[\x00-\x08\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g,
+    "",
+  );
 }
 
 export function formatModelName(raw: string): string {

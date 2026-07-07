@@ -7,9 +7,45 @@ describe("Skills", () => {
   const mockTui = makeMockTUI();
 
   const skills: SkillStat[] = [
-    { name: "tdd", calls: 120, sessions: 15, cost: 15.5, tokens: 50000 },
-    { name: "grill-me", calls: 80, sessions: 10, cost: 8.2, tokens: 30000 },
-    { name: "handoff", calls: 20, sessions: 3, cost: 1.25, tokens: 5000 },
+    {
+      name: "tdd",
+      calls: 120,
+      sessions: 15,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 50000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 15.5 },
+      },
+    },
+    {
+      name: "grill-me",
+      calls: 80,
+      sessions: 10,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 30000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 8.2 },
+      },
+    },
+    {
+      name: "handoff",
+      calls: 20,
+      sessions: 3,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 5000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 1.25 },
+      },
+    },
   ];
 
   it("renders empty state when no skills", () => {
@@ -24,16 +60,19 @@ describe("Skills", () => {
   it("renders data rows with formatted values", () => {
     const tab = new Skills(skills, makeTheme(), mockTui, 10);
     const lines = tab.render(80);
+    const tableHeader = lines[1];
     const text = lines.join("\n");
 
     expect(lines[0]).toContain("Skills");
 
     // Headers
-    expect(text).toContain("Name");
-    expect(text).toContain("Sessions");
-    expect(text).toContain("Invocations");
-    expect(text).toContain("Cost");
-    expect(text).toContain("Tokens");
+    expect(tableHeader).toContain("Name");
+    expect(tableHeader).toContain("Calls");
+    expect(tableHeader).toContain("Sess.");
+    expect(tableHeader).toContain("Tokens");
+    expect(tableHeader).toContain("↑In");
+    expect(tableHeader).toContain("↓Out");
+    expect(tableHeader).toContain("Cost");
 
     // Skill names
     expect(text).toContain("tdd");
