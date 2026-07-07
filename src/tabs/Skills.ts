@@ -34,9 +34,9 @@ export class Skills extends Container {
       cell.text(s.name),
       cell.text(this.theme.fg("muted", formatNumber(s.calls))),
       cell.text(this.theme.fg("muted", formatNumber(s.sessions))),
-      cell.text(this.theme.fg("muted", formatNumber(s.tokens))),
+      cell.text(this.theme.fg("muted", formatNumber(s.usage.totalTokens))),
       cell.text(
-        s.cost > 0 ? this.theme.bold(formatCost(s.cost)) : this.theme.fg("dim", formatCost(0)),
+        s.usage.cost.total > 0 ? this.theme.bold(formatCost(s.usage.cost.total)) : this.theme.fg("dim", formatCost(0)),
       ),
     ]);
   }

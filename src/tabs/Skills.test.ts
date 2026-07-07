@@ -7,9 +7,45 @@ describe("Skills", () => {
   const mockTui = makeMockTUI();
 
   const skills: SkillStat[] = [
-    { name: "tdd", calls: 120, sessions: 15, cost: 15.5, tokens: 50000 },
-    { name: "grill-me", calls: 80, sessions: 10, cost: 8.2, tokens: 30000 },
-    { name: "handoff", calls: 20, sessions: 3, cost: 1.25, tokens: 5000 },
+    {
+      name: "tdd",
+      calls: 120,
+      sessions: 15,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 50000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 15.5 },
+      },
+    },
+    {
+      name: "grill-me",
+      calls: 80,
+      sessions: 10,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 30000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 8.2 },
+      },
+    },
+    {
+      name: "handoff",
+      calls: 20,
+      sessions: 3,
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 5000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 1.25 },
+      },
+    },
   ];
 
   it("renders empty state when no skills", () => {

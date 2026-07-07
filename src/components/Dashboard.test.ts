@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { makeMockTUI, makeRangeSelector, makeTheme } from "./components.fixtures";
+import {
+  makeMockTUI,
+  makeRangeSelector,
+  makeTheme,
+} from "./components.fixtures";
 import { makeSummary } from "../compute.fixtures";
 import type { StatsSummary, TimeRange } from "../types";
 import { Dashboard } from "./Dashboard";
@@ -7,7 +11,10 @@ import { Dashboard } from "./Dashboard";
 const mockTui = makeMockTUI();
 export const allRanges: TimeRange[] = ["1d", "7d", "30d", "All"];
 
-export function mapAllSummaries(ranges: TimeRange[], summary: ReturnType<typeof makeSummary>) {
+export function mapAllSummaries(
+  ranges: TimeRange[],
+  summary: ReturnType<typeof makeSummary>,
+) {
   return new Map(ranges.map((r) => [r, { ...summary }]));
 }
 
@@ -218,9 +225,24 @@ describe("Dashboard", () => {
     const summary = {
       ...makeSummary(),
       models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.34, calls: 150, provider: "anthropic" },
-        { model: "deepseek-v4-pro", cost: 5.67, calls: 80, provider: "deepseek" },
-        { model: "gemini-2.0-flash", cost: 1.23, calls: 40, provider: "google" },
+        {
+          model: "claude-sonnet-4-20250514",
+          cost: 12.34,
+          calls: 150,
+          provider: "anthropic",
+        },
+        {
+          model: "deepseek-v4-pro",
+          cost: 5.67,
+          calls: 80,
+          provider: "deepseek",
+        },
+        {
+          model: "gemini-2.0-flash",
+          cost: 1.23,
+          calls: 40,
+          provider: "google",
+        },
       ],
     } satisfies StatsSummary;
     const summaries = mapAllSummaries(allRanges, summary);
@@ -245,7 +267,14 @@ describe("Dashboard", () => {
   it("formats model names in Models tab", () => {
     const summary = {
       ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 10, provider: "anthropic" }],
+      models: [
+        {
+          model: "claude-sonnet-4-20250514",
+          cost: 1.0,
+          calls: 10,
+          provider: "anthropic",
+        },
+      ],
     } satisfies StatsSummary;
     const summaries = mapAllSummaries(allRanges, summary);
     const dash = new Dashboard(
@@ -287,13 +316,30 @@ describe("Dashboard", () => {
   it("Models tab updates when time range changes", () => {
     const summary1d = {
       ...makeSummary(),
-      models: [{ model: "claude-sonnet-4-20250514", cost: 1.0, calls: 5, provider: "anthropic" }],
+      models: [
+        {
+          model: "claude-sonnet-4-20250514",
+          cost: 1.0,
+          calls: 5,
+          provider: "anthropic",
+        },
+      ],
     } satisfies StatsSummary;
     const summary7d = {
       ...makeSummary(),
       models: [
-        { model: "claude-sonnet-4-20250514", cost: 12.0, calls: 150, provider: "anthropic" },
-        { model: "deepseek-v4-pro", cost: 5.0, calls: 80, provider: "deepseek" },
+        {
+          model: "claude-sonnet-4-20250514",
+          cost: 12.0,
+          calls: 150,
+          provider: "anthropic",
+        },
+        {
+          model: "deepseek-v4-pro",
+          cost: 5.0,
+          calls: 80,
+          provider: "deepseek",
+        },
       ],
     } satisfies StatsSummary;
     const summaries: Map<TimeRange, StatsSummary> = new Map([
@@ -352,8 +398,44 @@ describe("Dashboard", () => {
     const summary = {
       ...makeSummary(),
       skills: [
-        { name: "tdd", calls: 120, sessions: 15, cost: 15.5, tokens: 50000 },
-        { name: "grill-me", calls: 80, sessions: 10, cost: 8.2, tokens: 30000 },
+        {
+          name: "tdd",
+          calls: 120,
+          sessions: 15,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 50000,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 15.5,
+            },
+          },
+        },
+        {
+          name: "grill-me",
+          calls: 80,
+          sessions: 10,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 30000,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 8.2,
+            },
+          },
+        },
       ],
     } satisfies StatsSummary;
     const summaries = mapAllSummaries(allRanges, summary);

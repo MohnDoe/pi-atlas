@@ -1,5 +1,6 @@
-import type { Provider } from "@earendil-works/pi-ai";
+import type { Provider, Usage } from "@earendil-works/pi-ai";
 import { dateFromISOString } from "./format";
+import { emptyUsage, mergeUsage } from "./helpers/usage.helper";
 import type {
   DaySpend,
   Filters,
@@ -57,7 +58,10 @@ function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
   if (sortedDates.length === 0) return [];
 
   if (range === "All") {
-    return sortedDates.map((date) => ({ date, cost: spendByDate.get(date) ?? 0 }));
+    return sortedDates.map((date) => ({
+      date,
+      cost: spendByDate.get(date) ?? 0,
+    }));
   }
 
   // For bounded ranges, zero-fill gaps
@@ -77,14 +81,20 @@ function fillDailySpend(sessions: SessionAgg[], range: TimeRange): DaySpend[] {
   return result;
 }
 
-function buildHourlySpend(filtered: SessionAgg[], range: TimeRange): HourSpend[] {
+function buildHourlySpend(
+  filtered: SessionAgg[],
+  range: TimeRange,
+): HourSpend[] {
   if (range !== "1d" || filtered.length === 0) return [];
 
   const totalHourCost: Record<number, number> = {};
   for (const session of filtered) {
     const hour = new Date(session.timestamp).getHours();
     for (const models of Object.values(session.models)) {
-      const cost = Object.values(models).reduce((val, s) => val + s.usage.cost.total, 0);
+      const cost = Object.values(models).reduce(
+        (val, s) => val + s.usage.cost.total,
+        0,
+      );
       totalHourCost[hour] = (totalHourCost[hour] ?? 0) + cost;
     }
   }
@@ -151,7 +161,7 @@ export function summarize(
   const toolCount: Record<string, number> = {};
   const skillAccum: Record<
     string,
-    { cost: number; tokens: number; calls: number; sessions: Set<string> }
+    { usage: Usage; calls: number; sessions: Set<string> }
   > = {};
   let compactionCount = 0;
   let compactedTokens = 0;
@@ -162,7 +172,10 @@ export function summarize(
     // Project attribution: the session's project gets attributed its total cost
     let sessionCost = 0;
     let sessionHasModels = false;
-    for (const { model: modelName, usage } of filteredModels(session, filters)) {
+    for (const { model: modelName, usage } of filteredModels(
+      session,
+      filters,
+    )) {
       const provider = usage.provider;
       sessionHasModels = true;
       totalCost += usage.usage.cost.total;
@@ -185,7 +198,8 @@ export function summarize(
       }
       // Model
       modelUsage[provider].models[modelName] = {
-        cost: modelUsage[provider].models[modelName].cost + usage.usage.cost.total,
+        cost:
+          modelUsage[provider].models[modelName].cost + usage.usage.cost.total,
         calls: modelUsage[provider].models[modelName].calls + usage.calls,
       };
 
@@ -215,25 +229,34 @@ export function summarize(
       }
 
       // Skills
-      for (const [skillName, usage] of Object.entries(session.skills)) {
+      for (const [skillName, skillUsage] of Object.entries(session.skills)) {
         if (!skillAccum[skillName]) {
-          skillAccum[skillName] = { cost: 0, tokens: 0, calls: 0, sessions: new Set() };
+          skillAccum[skillName] = {
+            usage: emptyUsage(),
+            calls: 0,
+            sessions: new Set(),
+          };
         }
-        skillAccum[skillName]!.cost += usage.cost;
-        skillAccum[skillName]!.tokens += usage.tokens.total;
-        skillAccum[skillName]!.calls += usage.calls;
+        skillAccum[skillName]!.usage = mergeUsage(
+          skillAccum[skillName].usage,
+          skillUsage.usage,
+        );
+        skillAccum[skillName]!.calls += skillUsage.calls;
         skillAccum[skillName]!.sessions.add(session.sessionId);
       }
     }
 
     // Only track project cost if the session has any models matching the filter
     if (sessionHasModels && session.project) {
-      projectCost[session.project] = (projectCost[session.project] ?? 0) + sessionCost;
-      if (!projectSessions[session.project]) projectSessions[session.project] = new Set();
+      projectCost[session.project] =
+        (projectCost[session.project] ?? 0) + sessionCost;
+      if (!projectSessions[session.project])
+        projectSessions[session.project] = new Set();
       projectSessions[session.project]!.add(session.sessionId);
     }
 
-    if (dateFromISOString(session.timestamp) === todayStr) todayCost += sessionCost;
+    if (dateFromISOString(session.timestamp) === todayStr)
+      todayCost += sessionCost;
   }
 
   // Sessions that have at least one model matching filters
@@ -245,13 +268,19 @@ export function summarize(
   sessionCount = uniqueSessionIds.size;
 
   // Days active: unique dates that have sessions with matching models
-  const activeDates = new Set(sessionsWithModels.map((s) => dateFromISOString(s.timestamp)));
+  const activeDates = new Set(
+    sessionsWithModels.map((s) => dateFromISOString(s.timestamp)),
+  );
   const daysActive = activeDates.size;
   const avgCostPerDay = daysActive > 0 ? totalCost / daysActive : 0;
 
   // build sorted result arrays
   const languages: LangStat[] = Object.entries(langLines)
-    .map(([language, lines]) => ({ language, lines, edits: langEdits[language] ?? 0 }))
+    .map(([language, lines]) => ({
+      language,
+      lines,
+      edits: langEdits[language] ?? 0,
+    }))
     .sort((a, b) => b.lines - a.lines);
 
   const models: ModelStat[] = [];
@@ -291,14 +320,21 @@ export function summarize(
     .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
 
   const skills: SkillStat[] = Object.entries(skillAccum)
-    .map(([name, acc]) => ({
-      name,
-      calls: acc.calls,
-      sessions: acc.sessions.size,
-      cost: acc.cost,
-      tokens: acc.tokens,
-    }))
-    .sort((a, b) => b.cost - a.cost || b.calls - a.calls);
+    .map(
+      ([name, acc]) =>
+        ({
+          name,
+          calls: acc.calls,
+          sessions: acc.sessions.size,
+          usage: acc.usage,
+        }) satisfies SkillStat,
+    )
+    .sort(
+      (a, b) =>
+        b.usage.cost.total - a.usage.cost.total ||
+        b.usage.totalTokens - a.usage.totalTokens ||
+        b.calls - a.calls,
+    );
 
   const hourlySpend = buildHourlySpend(projectFiltered, range);
 

@@ -27,7 +27,11 @@ import {
   parseUserMessage,
   resetActiveSkills,
 } from "./parser";
-import { makeAssistantMessage, makeToolCall, makeToolResult } from "./tests/factories/pi.factory";
+import {
+  makeAssistantMessage,
+  makeToolCall,
+  makeToolResult,
+} from "./tests/factories/pi.factory";
 
 describe("parseFile — SessionAgg", () => {
   let tmpDir: string;
@@ -73,7 +77,13 @@ describe("parseFile — SessionAgg", () => {
             cacheRead: 0,
             cacheWrite: 0,
             totalTokens: 150,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.01 },
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.01,
+            },
           },
         }),
       }),
@@ -92,7 +102,9 @@ describe("parseFile — SessionAgg", () => {
 
     assert(session.models["deepseek"]);
     assert(session.models["deepseek"]["deepseek-v4"]);
-    expect(session.models["deepseek"]["deepseek-v4"].usage.cost.total).toBe(0.01);
+    expect(session.models["deepseek"]["deepseek-v4"].usage.cost.total).toBe(
+      0.01,
+    );
     expect(session.models["deepseek"]["deepseek-v4"].calls).toBe(1);
     expect(session.models["deepseek"]["deepseek-v4"].usage.input).toBe(100);
     expect(session.models["deepseek"]["deepseek-v4"].usage.output).toBe(50);
@@ -214,7 +226,13 @@ describe("parseFile — SessionAgg", () => {
           cacheRead: 0,
           cacheWrite: 0,
           totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+          cost: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: cost,
+          },
         },
       }),
     });
@@ -387,7 +405,13 @@ describe("parseAssistantMessage", () => {
         cacheRead: 10,
         cacheWrite: 5,
         totalTokens: 165,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+        cost: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0.003,
+        },
       },
     });
     const s = parseAssistantMessage(msg);
@@ -414,7 +438,13 @@ describe("parseAssistantMessage", () => {
         cacheRead: 0,
         cacheWrite: 0,
         totalTokens: 15,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+        cost: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0.003,
+        },
       },
     });
     const s = parseAssistantMessage(msg);
@@ -442,7 +472,12 @@ describe("parseAssistantMessage", () => {
     const msg = makeAssistantMessage({
       model: "m",
       provider: "provider",
-      content: [makeToolCall({ name: "ls -la agent/\n</parameter", arguments: { command: "ls" } })],
+      content: [
+        makeToolCall({
+          name: "ls -la agent/\n</parameter",
+          arguments: { command: "ls" },
+        }),
+      ],
     });
     const s = parseAssistantMessage(msg);
     const m = s.models["provider"]!["m"];
@@ -542,7 +577,10 @@ describe("parseAssistantMessage", () => {
           id: "c1",
           name: "edit",
           //@ts-expect-error
-          arguments: JSON.stringify({ path: "/src/foo.ts", edits: [{ newText: "abc" }] }),
+          arguments: JSON.stringify({
+            path: "/src/foo.ts",
+            edits: [{ newText: "abc" }],
+          }),
         },
       ],
       usage: {
@@ -738,7 +776,13 @@ describe("parseSessionLogEntry", () => {
           cacheRead: 100,
           cacheWrite: 0,
           totalTokens: 1300,
-          cost: { input: 0.001, output: 0.0004, cacheRead: 0.00001, cacheWrite: 0, total: 0.00141 },
+          cost: {
+            input: 0.001,
+            output: 0.0004,
+            cacheRead: 0.00001,
+            cacheWrite: 0,
+            total: 0.00141,
+          },
         },
       }),
     };
@@ -761,7 +805,11 @@ describe("parseSessionLogEntry", () => {
       id: "m1",
       parentId: "p",
       timestamp: "2026-06-08T10:01:00.000Z",
-      message: { role: "user" as const, content: "hi", timestamp: 1700000000000 },
+      message: {
+        role: "user" as const,
+        content: "hi",
+        timestamp: 1700000000000,
+      },
     })!;
 
     expect(s.userMsgs).toBe(1);
@@ -803,7 +851,11 @@ describe("parseSessionLogEntry", () => {
             },
             id: "c2",
           }),
-          makeToolCall({ name: "read", arguments: { path: "/home/doe/proj/README.md" }, id: "c3" }),
+          makeToolCall({
+            name: "read",
+            arguments: { path: "/home/doe/proj/README.md" },
+            id: "c3",
+          }),
         ],
         model: "sonnet",
         provider: "anthropic",
@@ -1070,30 +1122,94 @@ describe("mergeToSession", () => {
   it("merges skills records — sums cost/tokens/calls", () => {
     const base = makeEmptySession("s1", new Date("2026-06-08"), "p");
     base.skills = {
-      tdd: { cost: 0.01, tokens: { input: 100, output: 50, total: 150 }, calls: 1 },
-      "grill-me": { cost: 0.02, tokens: { input: 200, output: 100, total: 300 }, calls: 1 },
+      tdd: {
+        usage: {
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 150,
+          cost: {
+            input: 0.005,
+            output: 0.005,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.01,
+          },
+        },
+        calls: 1,
+      },
+      "grill-me": {
+        usage: {
+          input: 200,
+          output: 100,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 300,
+          cost: {
+            input: 0.01,
+            output: 0.01,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.02,
+          },
+        },
+        calls: 1,
+      },
     };
 
     const update = makeEmptySession("", new Date(0), "");
     update.skills = {
-      tdd: { cost: 0.005, tokens: { input: 50, output: 25, total: 75 }, calls: 1 },
-      "to-prd": { cost: 0.01, tokens: { input: 80, output: 40, total: 120 }, calls: 1 },
+      tdd: {
+        usage: {
+          input: 50,
+          output: 25,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 75,
+          cost: {
+            input: 0.0025,
+            output: 0.0025,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.005,
+          },
+        },
+        calls: 1,
+      },
+      "to-prd": {
+        usage: {
+          input: 80,
+          output: 40,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 120,
+          cost: {
+            input: 0.005,
+            output: 0.005,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.01,
+          },
+        },
+        calls: 1,
+      },
     };
 
     mergeToSession(base, update);
 
     // tdd: sums cost/tokens, calls=2 (two separate invocations)
-    expect(base.skills["tdd"]!.cost).toBe(0.015);
-    expect(base.skills["tdd"]!.tokens.input).toBe(150);
-    expect(base.skills["tdd"]!.tokens.output).toBe(75);
-    expect(base.skills["tdd"]!.tokens.total).toBe(225);
+    expect(base.skills["tdd"]!.usage.cost.total).toBe(0.015);
+    expect(base.skills["tdd"]!.usage.input).toBe(150);
+    expect(base.skills["tdd"]!.usage.output).toBe(75);
+    expect(base.skills["tdd"]!.usage.totalTokens).toBe(225);
     expect(base.skills["tdd"]!.calls).toBe(2);
 
     // grill-me: unchanged (not in update)
-    expect(base.skills["grill-me"]!.cost).toBe(0.02);
+    expect(base.skills["grill-me"]!.usage.cost.total).toBe(0.02);
 
     // to-prd: new from update
-    expect(base.skills["to-prd"]!.cost).toBe(0.01);
+    expect(base.skills["to-prd"]!.usage.cost.total).toBe(0.01);
   });
 
   it("merges multiple different models", () => {
@@ -1151,7 +1267,10 @@ describe("mergeToSession", () => {
 
     mergeToSession(base, a);
     mergeToSession(base, b);
-    expect(Object.keys(base.models["anthropic"]!).sort()).toEqual(["haiku", "sonnet"]);
+    expect(Object.keys(base.models["anthropic"]!).sort()).toEqual([
+      "haiku",
+      "sonnet",
+    ]);
   });
 });
 
@@ -1203,14 +1322,21 @@ describe("realistic session file", () => {
             { type: "text", text: "sure" },
             makeToolCall({
               name: "edit",
-              arguments: { path: "/src/lib.ts", edits: [{ newText: "console.log(1)\n" }] },
+              arguments: {
+                path: "/src/lib.ts",
+                edits: [{ newText: "console.log(1)\n" }],
+              },
             }),
             makeToolCall({
               name: "write",
               arguments: { path: "/src/log.rs", content: "fn log() {}" },
               id: "c2",
             }),
-            makeToolCall({ name: "read", arguments: { path: "/src/main.ts" }, id: "c3" }),
+            makeToolCall({
+              name: "read",
+              arguments: { path: "/src/main.ts" },
+              id: "c3",
+            }),
           ],
           model: "sonnet-v3",
           provider: "anthropic",
@@ -1332,7 +1458,10 @@ describe("realistic session file", () => {
             makeToolCall({
               name: "edit",
               id: "c1",
-              arguments: { path: "/src/test.ts", edits: [{ newText: "it('works', () => {})" }] },
+              arguments: {
+                path: "/src/test.ts",
+                edits: [{ newText: "it('works', () => {})" }],
+              },
             }),
           ],
           model: "sonnet",
@@ -1343,7 +1472,13 @@ describe("realistic session file", () => {
             cacheRead: 0,
             cacheWrite: 0,
             totalTokens: 800,
-            cost: { input: 0.005, output: 0.006, cacheRead: 0, cacheWrite: 0, total: 0.011 },
+            cost: {
+              input: 0.005,
+              output: 0.006,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.011,
+            },
           },
         }),
       } as SessionMessageEntry),
@@ -1357,8 +1492,21 @@ describe("realistic session file", () => {
 
     // Skill detection: user tag sets active skill
     expect(session.skills["tdd"]).toBeDefined();
-    expect(session.skills["tdd"]!.cost).toBe(0.011);
-    expect(session.skills["tdd"]!.tokens).toEqual({ input: 500, output: 300, total: 800 });
+    expect(session.skills["tdd"]!.usage.cost.total).toBe(0.011);
+    expect(session.skills["tdd"]!.usage).toEqual({
+      input: 500,
+      output: 300,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 800,
+      cost: {
+        input: 0.005,
+        output: 0.006,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.011,
+      },
+    });
     expect(session.skills["tdd"]!.calls).toBe(1);
   });
 
@@ -1394,8 +1542,18 @@ describe("realistic session file", () => {
           model: "sonnet",
           provider: "anthropic",
           usage: {
-            input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150,
-            cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+            input: 100,
+            output: 50,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 150,
+            cost: {
+              input: 0.001,
+              output: 0.002,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.003,
+            },
           },
         }),
       } as SessionMessageEntry),
@@ -1421,8 +1579,18 @@ describe("realistic session file", () => {
           model: "sonnet",
           provider: "anthropic",
           usage: {
-            input: 200, output: 100, cacheRead: 0, cacheWrite: 0, totalTokens: 300,
-            cost: { input: 0.002, output: 0.004, cacheRead: 0, cacheWrite: 0, total: 0.006 },
+            input: 200,
+            output: 100,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 300,
+            cost: {
+              input: 0.002,
+              output: 0.004,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.006,
+            },
           },
         }),
       } as SessionMessageEntry),
@@ -1436,14 +1604,40 @@ describe("realistic session file", () => {
 
     // tdd: cost and tokens from turn 1, calls = 1
     expect(session.skills["tdd"]).toBeDefined();
-    expect(session.skills["tdd"]!.cost).toBe(0.003);
-    expect(session.skills["tdd"]!.tokens).toEqual({ input: 100, output: 50, total: 150 });
+    expect(session.skills["tdd"]!.usage.cost.total).toBe(0.003);
+    expect(session.skills["tdd"]!.usage).toEqual({
+      input: 100,
+      output: 50,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 150,
+      cost: {
+        input: 0.001,
+        output: 0.002,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.003,
+      },
+    });
     expect(session.skills["tdd"]!.calls).toBe(1);
 
     // grill-me: cost and tokens from turn 2, calls = 1
     expect(session.skills["grill-me"]).toBeDefined();
-    expect(session.skills["grill-me"]!.cost).toBe(0.006);
-    expect(session.skills["grill-me"]!.tokens).toEqual({ input: 200, output: 100, total: 300 });
+    expect(session.skills["grill-me"]!.usage.cost.total).toBe(0.006);
+    expect(session.skills["grill-me"]!.usage).toEqual({
+      input: 200,
+      output: 100,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 300,
+      cost: {
+        input: 0.002,
+        output: 0.004,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.006,
+      },
+    });
     expect(session.skills["grill-me"]!.calls).toBe(1);
 
     // Each skill has exactly 1 call (one invocation each)
@@ -1459,7 +1653,7 @@ describe("skill detection — parseUserMessage", () => {
     resetActiveSkills();
   });
 
-  it("detects <skill name=\"tdd\"> and pushes to active stack", () => {
+  it('detects <skill name="tdd"> and pushes to active stack', () => {
     parseUserMessage({
       role: "user",
       content: '<skill name="tdd">',
@@ -1531,7 +1725,13 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
       cacheRead: 0,
       cacheWrite: 0,
       totalTokens: 150,
-      cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+      cost: {
+        input: 0.001,
+        output: 0.002,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.003,
+      },
     },
   });
 
@@ -1545,8 +1745,21 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
 
     const s = parseAssistantMessage(costMsg);
     expect(s.skills["tdd"]).toBeDefined();
-    expect(s.skills["tdd"]!.cost).toBe(0.003);
-    expect(s.skills["tdd"]!.tokens).toEqual({ input: 100, output: 50, total: 150 });
+    expect(s.skills["tdd"]!.usage.cost.total).toBe(0.003);
+    expect(s.skills["tdd"]!.usage).toEqual({
+      input: 100,
+      output: 50,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 150,
+      cost: {
+        input: 0.001,
+        output: 0.002,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.003,
+      },
+    });
     expect(s.skills["tdd"]!.calls).toBe(1);
   });
 
@@ -1570,8 +1783,21 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     mergeToSession(merged, s1);
     mergeToSession(merged, s2);
 
-    expect(merged.skills["tdd"]!.cost).toBe(0.006);
-    expect(merged.skills["tdd"]!.tokens).toEqual({ input: 200, output: 100, total: 300 });
+    expect(merged.skills["tdd"]!.usage.cost.total).toBe(0.006);
+    expect(merged.skills["tdd"]!.usage).toEqual({
+      input: 200,
+      output: 100,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 300,
+      cost: {
+        input: 0.002,
+        output: 0.004,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.006,
+      },
+    });
     // calls should stay at 1 — incremented once per invocation, not per message
     expect(merged.skills["tdd"]!.calls).toBe(1);
   });
@@ -1585,7 +1811,7 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
 
     const s = parseAssistantMessage(costMsg);
     expect(s.skills["tdd"]).toBeUndefined();
-    expect(s.skills["to-prd"]!.cost).toBe(0.003);
+    expect(s.skills["to-prd"]!.usage.cost.total).toBe(0.003);
     expect(s.skills["to-prd"]!.calls).toBe(1);
   });
 });
@@ -1610,15 +1836,34 @@ describe("skill detection — implicit via read of SKILL.md", () => {
       cacheRead: 0,
       cacheWrite: 0,
       totalTokens: 300,
-      cost: { input: 0.002, output: 0.004, cacheRead: 0, cacheWrite: 0, total: 0.006 },
+      cost: {
+        input: 0.002,
+        output: 0.004,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.006,
+      },
     },
   });
 
   it("detects read of SKILL.md and attributes cost to the skill", () => {
     const s = parseAssistantMessage(costMsg);
     expect(s.skills["tdd"]).toBeDefined();
-    expect(s.skills["tdd"]!.cost).toBe(0.006);
-    expect(s.skills["tdd"]!.tokens).toEqual({ input: 200, output: 100, total: 300 });
+    expect(s.skills["tdd"]!.usage.cost.total).toBe(0.006);
+    expect(s.skills["tdd"]!.usage).toEqual({
+      input: 200,
+      output: 100,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 300,
+      cost: {
+        input: 0.002,
+        output: 0.004,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.006,
+      },
+    });
     expect(s.skills["tdd"]!.calls).toBe(1);
   });
 
@@ -1641,7 +1886,13 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           cacheRead: 0,
           cacheWrite: 0,
           totalTokens: 15,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
+          cost: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.001,
+          },
         },
       }),
     );
@@ -1660,7 +1911,10 @@ describe("skill detection — implicit via read of SKILL.md", () => {
         content: [
           makeToolCall({
             name: "edit",
-            arguments: { path: "/home/doe/skills/tdd/SKILL.md", edits: [{ newText: "x" }] },
+            arguments: {
+              path: "/home/doe/skills/tdd/SKILL.md",
+              edits: [{ newText: "x" }],
+            },
           }),
         ],
         usage: {
@@ -1669,7 +1923,13 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           cacheRead: 0,
           cacheWrite: 0,
           totalTokens: 15,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
+          cost: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.001,
+          },
         },
       }),
     );
@@ -1702,14 +1962,20 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           cacheRead: 0,
           cacheWrite: 0,
           totalTokens: 150,
-          cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+          cost: {
+            input: 0.001,
+            output: 0.002,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.003,
+          },
         },
       }),
     );
 
     // Cost goes to tdd (explicit), not grill-me (implicit)
     expect(s.skills["tdd"]).toBeDefined();
-    expect(s.skills["tdd"]!.cost).toBe(0.003);
+    expect(s.skills["tdd"]!.usage.cost.total).toBe(0.003);
     expect(s.skills["grill-me"]).toBeUndefined();
   });
 
@@ -1728,7 +1994,13 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           cacheRead: 0,
           cacheWrite: 0,
           totalTokens: 75,
-          cost: { input: 0.0005, output: 0.001, cacheRead: 0, cacheWrite: 0, total: 0.0015 },
+          cost: {
+            input: 0.0005,
+            output: 0.001,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.0015,
+          },
         },
       }),
     );
@@ -1737,8 +2009,21 @@ describe("skill detection — implicit via read of SKILL.md", () => {
     mergeToSession(merged, s1);
     mergeToSession(merged, s2);
 
-    expect(merged.skills["tdd"]!.cost).toBe(0.0075);
-    expect(merged.skills["tdd"]!.tokens).toEqual({ input: 250, output: 125, total: 375 });
+    expect(merged.skills["tdd"]!.usage.cost.total).toBe(0.0075);
+    expect(merged.skills["tdd"]!.usage).toEqual({
+      input: 250,
+      output: 125,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 375,
+      cost: {
+        input: 0.0025,
+        output: 0.005,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0.0075,
+      },
+    });
     expect(merged.skills["tdd"]!.calls).toBe(1);
   });
 });

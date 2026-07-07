@@ -20,3 +20,40 @@ export function mergeUsage(a: Usage, b: Usage): Usage {
     },
   };
 }
+
+export function makeUsage(
+  overrides: Partial<Omit<Usage, "cost">> & { cost?: Partial<Usage["cost"]> },
+): Usage {
+  const e = emptyUsage();
+  return {
+    input: overrides.input ?? e.input,
+    output: overrides.output ?? e.output,
+    cacheRead: overrides.cacheRead ?? e.cacheRead,
+    cacheWrite: overrides.cacheWrite ?? e.cacheWrite,
+    totalTokens: overrides.totalTokens ?? e.totalTokens,
+    cost: {
+      total: overrides.cost?.total ?? e.cost.total,
+      cacheRead: overrides.cost?.cacheRead ?? e.cost.cacheRead,
+      cacheWrite: overrides.cost?.cacheWrite ?? e.cost.cacheWrite,
+      input: overrides.cost?.input ?? e.cost.input,
+      output: overrides.cost?.output ?? e.cost.output,
+    },
+  };
+}
+
+export function emptyUsage(): Usage {
+  return {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: {
+      total: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      input: 0,
+      output: 0,
+    },
+  };
+}
