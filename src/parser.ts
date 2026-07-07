@@ -15,6 +15,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { langFromPath, projectNameFromCwd } from "./format";
+import { mergeUsage } from "./helpers/usage.helper";
 import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
 
@@ -73,20 +74,7 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
           languages: { ...modelUsage.languages },
         };
       } else {
-        existing.usage = {
-          cost: {
-            total: existing.usage.cost.total + modelUsage.usage.cost.total,
-            cacheRead: existing.usage.cost.cacheRead + modelUsage.usage.cost.cacheRead,
-            cacheWrite: existing.usage.cost.cacheWrite + modelUsage.usage.cost.cacheWrite,
-            input: existing.usage.cost.input + modelUsage.usage.cost.input,
-            output: existing.usage.cost.output + modelUsage.usage.cost.output,
-          },
-          output: existing.usage.output + modelUsage.usage.output,
-          input: existing.usage.input + modelUsage.usage.input,
-          cacheWrite: existing.usage.cacheWrite + modelUsage.usage.cacheWrite,
-          cacheRead: existing.usage.cacheRead + modelUsage.usage.cacheRead,
-          totalTokens: existing.usage.totalTokens + modelUsage.usage.totalTokens,
-        };
+        existing.usage = mergeUsage(existing.usage, modelUsage.usage);
         existing.calls += modelUsage.calls;
         existing.asstMsgs += modelUsage.asstMsgs;
 
