@@ -159,11 +159,20 @@ const smallUsdFormatter = new Intl.NumberFormat("en-US", {
 
 // ---- Number formatting ----
 
-export function formatNumber(n: number): string {
-  if (n >= 1_000_000_000) return numberFormatter.format(n / 1_000_000_000) + "B";
-  if (n >= 1_000_000) return numberFormatter.format(n / 1_000_000) + "M";
-  if (n >= 1_000) return numberFormatter.format(n / 1_000) + "k";
-  return numberFormatter.format(n);
+export function formatNumber(n: number, opts?: { round?: boolean }): string {
+  if (n >= 1_000_000_000) {
+    const v = n / 1_000_000_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "B";
+  }
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "M";
+  }
+  if (n >= 1_000) {
+    const v = n / 1_000;
+    return numberFormatter.format(opts?.round ? Math.round(v) : v) + "k";
+  }
+  return numberFormatter.format(opts?.round ? Math.round(n) : n);
 }
 
 export function formatCost(n: number): string {
