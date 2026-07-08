@@ -6,7 +6,7 @@
 <p align="center">
   <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40mohndoe%2Fpi-atlas?color=blue">
   <a href="https://www.npmjs.com/package/@mohndoe/pi-atlas"><img src="https://img.shields.io/npm/v/%40mohndoe%2Fpi-atlas?label=release" alt="Version"></a>
-  <img src="https://img.shields.io/badge/coverage-97%25-green" alt="Coverage">
+  <img src="https://img.shields.io/badge/coverage-99%25-green" alt="Coverage">
   <br/>
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&colorA=222222&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=flat&colorA=222222" alt="Bun">
@@ -26,11 +26,11 @@ A [pi](https://pi.dev) extension that turns your session logs into an interactiv
 - **Multiple time ranges** — Today, Last 7 days, Last 30 days, or All time
 - **Cost tracking** — per-model, per-project, based on real usage costs
 - **Language breakdown** — lines written and edited
-- **Model analytics** — provider-aware model cost, call count, works with local LLMs too
+- **Model analytics** — provider-aware model cost, call count. Models are keyed by provider+model combination (same model on different providers tracked separately). Works with local LLMs too.
 - **Project attribution** — cost and session count per project directory
 - **Usage overview** — tool call frequency and token breakdown (input, output, cache read/write)
-- **Cache** — SHA-256-gated persists day aggregates; near-instant open on next visits
-- **Zero dependencies** — uses only the pi TUI and the [`@mohndoe/pi-tui-extras`](https://github.com/MohnDoe/pi-tui-extras) component library
+- **Cache** — SHA-256-gated persists session aggregates; near-instant open on next visits
+- **Lightweight** — only two dependencies: [`chalk`](https://github.com/chalk/chalk) for color output and [`@mohndoe/pi-tui-extras`](https://github.com/MohnDoe/pi-tui-extras) for TUI components
 
 ## Dashboard
 
@@ -40,10 +40,10 @@ A [pi](https://pi.dev) extension that turns your session logs into an interactiv
 - **Languages** — Languages ranked by line written.
 - **Models** — Models ranked by cost. Shows providers, calls and cost per model.
 - **Projects** — Projects ranked by cost. Shows session count and cost per project.
-- **Skills** — Skills used ranked by cost. Estimation of what skill invocations cost.
+- **Skills** — Skills ranked by cost with invocation count, session count, and token breakdown (total, input, output).
 - **Usage** — Token breakdown (Total, Input, Output, Cache Read, Cache Write) and table of tool usage.
 
-All tabs displayed data correspond to the selected time range (press `r` to change it). Press left/right arrows to change tabs.
+All tabs display data corresponding to the selected time range (press `r` to change it). Press `←`/`→` to switch tabs, `↑`/`↓` to scroll table rows.
 
 ## Install
 
@@ -64,10 +64,10 @@ In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is l
          │
          ▼ parseFile()        ◄── entry types handled
   ┌──────────────────┐
-  │  DayAgg[]         │   per calendar day
+  │  SessionAgg[]     │   per session, cached to disk
   └────────┬─────────┘
            │
-           ▼ summarize(days, range)
+           ▼ summarize(sessions, range)
   ┌──────────────────┐
   │ StatsSummary × 4  │   1d, 7d, 30d, All pre-computed
   └────────┬─────────┘
@@ -78,7 +78,7 @@ In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is l
 
 **Data sources** — pi stores every session as a `.jsonl` file in `~/.pi/agent/sessions/`. Pi Atlas parses entry types: session headers, user messages, assistant messages, tool results, model changes, thinking level changes, compactions, and branch summaries.
 
-**Caching** — On first open, the sessions directory is scanned and all JSONL files are parsed into `DayAgg` objects. This aggregate is cached to disk alongside a SHA-256 signature of the directory (file paths, sizes, modification times). On subsequent opens, the cache is reused if the signature matches, making the dashboard appear instantly.
+**Caching** — On first open, the sessions directory is scanned and all JSONL files are parsed into `SessionAgg` objects. This aggregate is cached to disk alongside a SHA-256 signature of the directory (file paths, sizes, modification times) and the package version. On subsequent opens, the cache is reused if both the signature and version match, making the dashboard appear instantly.
 
 **Language detection** — Lines are counted by splitting written/edited content on `\n`. File extensions map to language names via a built-in mapping of 70+ extensions (TypeScript, Python, Rust, Go, etc.).
 

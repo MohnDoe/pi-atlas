@@ -40,7 +40,11 @@ function addModelToSession(
       cacheWrite: opts.cwTok ?? 0,
       input: opts.inTok ?? 0,
       output: opts.outTok ?? 0,
-      totalTokens: (opts.inTok ?? 0) + (opts.outTok ?? 0) + (opts.crTok ?? 0) + (opts.cwTok ?? 0),
+      totalTokens:
+        (opts.inTok ?? 0) +
+        (opts.outTok ?? 0) +
+        (opts.crTok ?? 0) +
+        (opts.cwTok ?? 0),
     },
     calls: opts.calls ?? 0,
     asstMsgs: opts.asstMsgs ?? 0,
@@ -70,7 +74,10 @@ describe("summarize", () => {
   });
 
   it("computes KPIs from a single session", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date().toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date().toISOString(),
+    });
     addModelToSession(
       s,
       "sonnet",
@@ -181,7 +188,10 @@ describe("summarize", () => {
   });
 
   it("sorts models by cost descending (then calls descending), tools by count descending", () => {
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: new Date().toISOString() });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date().toISOString(),
+    });
     addModelToSession(s1, "free", { cost: 0, calls: 12 });
     addModelToSession(s1, "secondFree", { cost: 0, calls: 15 });
     addModelToSession(s1, "cheap", { cost: 0.1, calls: 10 });
@@ -207,7 +217,10 @@ describe("summarize", () => {
 
   it("reports todayCost separately", () => {
     const today = new Date().toISOString();
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-01-01").toISOString() });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-01-01").toISOString(),
+    });
     addModelToSession(s1, "m", { cost: 100, calls: 1 });
 
     const s2 = makeSessionAgg({ sessionId: "s2", timestamp: today });
@@ -218,7 +231,10 @@ describe("summarize", () => {
   });
 
   it("returns todayCost 0 when today is not in filtered range", () => {
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s1, "m", { cost: 10, calls: 1 });
 
     const result = summarize([s1], "1d");
@@ -227,13 +243,22 @@ describe("summarize", () => {
   });
 
   it("dailySpend for All range is sorted dates without zero-fill", () => {
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s1, "m", { cost: 1, calls: 1 });
 
-    const s2 = makeSessionAgg({ sessionId: "s2", timestamp: new Date("2026-06-05").toISOString() });
+    const s2 = makeSessionAgg({
+      sessionId: "s2",
+      timestamp: new Date("2026-06-05").toISOString(),
+    });
     addModelToSession(s2, "m", { cost: 5, calls: 1 });
 
-    const s3 = makeSessionAgg({ sessionId: "s3", timestamp: new Date("2026-06-10").toISOString() });
+    const s3 = makeSessionAgg({
+      sessionId: "s3",
+      timestamp: new Date("2026-06-10").toISOString(),
+    });
     addModelToSession(s3, "m", { cost: 10, calls: 1 });
 
     const result = summarize([s3, s1, s2], "All");
@@ -253,7 +278,12 @@ describe("summarize", () => {
     const d1 = day2ago.toISOString();
     const d2 = day1ago.toISOString();
 
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: d1, userMsgs: 5, toolResults: 3 });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: d1,
+      userMsgs: 5,
+      toolResults: 3,
+    });
     addModelToSession(
       s1,
       "sonnet",
@@ -289,7 +319,12 @@ describe("summarize", () => {
     };
     s1.models["anthropic"]!["haiku"]!.tools = { bash: 1, read: 1 };
 
-    const s2 = makeSessionAgg({ sessionId: "s2", timestamp: d2, userMsgs: 3, toolResults: 1 });
+    const s2 = makeSessionAgg({
+      sessionId: "s2",
+      timestamp: d2,
+      userMsgs: 3,
+      toolResults: 1,
+    });
     addModelToSession(
       s2,
       "sonnet",
@@ -305,7 +340,9 @@ describe("summarize", () => {
       "anthropic",
     );
     s2.models["anthropic"]!["sonnet"]!.tools = { edit: 1, write: 1 };
-    s2.models["anthropic"]!["sonnet"]!.languages = { Python: { lines: 200, edits: 2 } };
+    s2.models["anthropic"]!["sonnet"]!.languages = {
+      Python: { lines: 200, edits: 2 },
+    };
 
     const result = summarize([s1, s2], "7d");
     expect(result.totalCost).toBe(4.0);
@@ -341,7 +378,10 @@ describe("summarize", () => {
   it("hourlySpend for 1d range has 24 zero-filled entries when no hourly cost", () => {
     const today = new Date();
     today.setHours(15);
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: today.toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: today.toISOString(),
+    });
     addModelToSession(s, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s], "1d");
@@ -367,14 +407,20 @@ describe("summarize", () => {
     addModelToSession(todayMorningSession, "m", { cost: 1.5, calls: 1 });
     addModelToSession(todayAfternoonSession, "m", { cost: 2, calls: 1 });
 
-    const result = summarize([todayMorningSession, todayAfternoonSession], "1d");
+    const result = summarize(
+      [todayMorningSession, todayAfternoonSession],
+      "1d",
+    );
     expect(result.hourlySpend).toHaveLength(24);
     expect(result.hourlySpend[10]!.cost).toBe(1.5);
     expect(result.hourlySpend[15]!.cost).toBe(2.0);
   });
 
   it("returns providers sorted by cost descending", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-08").toISOString(),
+    });
     addModelToSession(s, "sonnet", { cost: 5.0, calls: 15 }, "anthropic");
     addModelToSession(s, "gpt-5", { cost: 1.0, calls: 5 }, "openai");
     addModelToSession(s, "free-model", { cost: 0, calls: 100 }, "free-model");
@@ -406,14 +452,21 @@ describe("summarize", () => {
   });
 
   it("attaches provider to model stats", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-08").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-08").toISOString(),
+    });
     addModelToSession(s, "sonnet", { cost: 2.0, calls: 5 }, "anthropic");
     addModelToSession(s, "haiku", { cost: 0.5, calls: 2 }, "anthropic");
 
     const result = summarize([s], "All");
     expect(result.models).toHaveLength(2);
-    expect(result.models.find((m) => m.model === "sonnet")?.provider).toBe("anthropic");
-    expect(result.models.find((m) => m.model === "haiku")?.provider).toBe("anthropic");
+    expect(result.models.find((m) => m.model === "sonnet")?.provider).toBe(
+      "anthropic",
+    );
+    expect(result.models.find((m) => m.model === "haiku")?.provider).toBe(
+      "anthropic",
+    );
   });
 
   it("deduplicates session IDs across multiple sessions with same ID", () => {
@@ -464,18 +517,35 @@ describe("summarize", () => {
 
     const result = summarize([s1, s2, s3], "All");
     expect(result.projects).toHaveLength(2);
-    expect(result.projects[0]).toEqual({ project: "pi", cost: 15, sessions: 2 });
-    expect(result.projects[1]).toEqual({ project: "other", cost: 5, sessions: 1 });
+    expect(result.projects[0]).toEqual({
+      project: "pi",
+      cost: 15,
+      sessions: 2,
+    });
+    expect(result.projects[1]).toEqual({
+      project: "other",
+      cost: 5,
+      sessions: 1,
+    });
   });
 
   it("excludes sessions with zero models from daysActive", () => {
-    const s1 = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s1 = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s1, "m", { cost: 10, calls: 1 });
 
-    const s2 = makeSessionAgg({ sessionId: "s2", timestamp: new Date("2026-06-02").toISOString() });
+    const s2 = makeSessionAgg({
+      sessionId: "s2",
+      timestamp: new Date("2026-06-02").toISOString(),
+    });
     addModelToSession(s2, "m", { cost: 5, calls: 1 });
 
-    const s3 = makeSessionAgg({ sessionId: "s3", timestamp: new Date("2026-06-03").toISOString() }); // no models
+    const s3 = makeSessionAgg({
+      sessionId: "s3",
+      timestamp: new Date("2026-06-03").toISOString(),
+    }); // no models
 
     const result = summarize([s1, s2, s3], "All");
     expect(result.daysActive).toBe(2);
@@ -495,7 +565,10 @@ describe("summarize", () => {
   });
 
   it("hourlySpend is empty for 7d, 30d, All ranges", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s, "m", { cost: 5, calls: 1 });
 
     expect(summarize([s], "7d").hourlySpend).toEqual([]);
@@ -504,7 +577,10 @@ describe("summarize", () => {
   });
 
   it("hourlySpend is empty when 1d range has no matching days", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s, "m", { cost: 5, calls: 1 });
 
     const result = summarize([s], "1d");
@@ -537,7 +613,10 @@ describe("summarize", () => {
   });
 
   it("filters by model", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s, "sonnet", {
       cost: 10,
       calls: 2,
@@ -566,7 +645,10 @@ describe("summarize", () => {
   });
 
   it("filters by provider", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s, "sonnet", { cost: 10, calls: 2 }, "anthropic");
     addModelToSession(s, "gpt-5", { cost: 5, calls: 1 }, "openai");
 
@@ -574,7 +656,9 @@ describe("summarize", () => {
     expect(result.totalCost).toBe(10);
     expect(result.models).toHaveLength(1);
     expect(result.models[0]!.model).toBe("sonnet");
-    expect(result.providers).toEqual([{ provider: "anthropic", cost: 10, calls: 2 }]);
+    expect(result.providers).toEqual([
+      { provider: "anthropic", cost: 10, calls: 2 },
+    ]);
   });
 
   it("filters combined: project + model + provider", () => {
@@ -655,7 +739,10 @@ describe("summarize", () => {
   });
 
   it("filtering by model scopes tools and languages correctly", () => {
-    const s = makeSessionAgg({ sessionId: "s1", timestamp: new Date("2026-06-01").toISOString() });
+    const s = makeSessionAgg({
+      sessionId: "s1",
+      timestamp: new Date("2026-06-01").toISOString(),
+    });
     addModelToSession(s, "sonnet", {
       tools: { bash: 5, edit: 2 },
       languages: { TS: { lines: 100, edits: 5 } },
@@ -774,9 +861,21 @@ describe("summarize", () => {
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
         skills: {
-          "tdd": {
-            cost: 1.5,
-            tokens: { input: 500, output: 200, total: 700 },
+          tdd: {
+            usage: {
+              input: 500,
+              output: 200,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 700,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.5,
+              },
+            },
             calls: 5,
           },
         },
@@ -785,7 +884,25 @@ describe("summarize", () => {
 
       const result = summarize([s], "All");
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 5, sessions: 1, cost: 1.5, tokens: 700 },
+        {
+          name: "tdd",
+          calls: 5,
+          sessions: 1,
+          usage: {
+            input: 500,
+            output: 200,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 700,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 1.5,
+            },
+          },
+        },
       ]);
     });
 
@@ -793,20 +910,74 @@ describe("summarize", () => {
       const s1 = makeSessionAgg({
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
-        skills: { tdd: { cost: 1.0, tokens: { input: 300, output: 100, total: 400 }, calls: 3 } },
+        skills: {
+          tdd: {
+            usage: {
+              input: 300,
+              output: 100,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 400,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 3,
+          },
+        },
       });
       addModelToSession(s1, "m", { cost: 1.0, calls: 3 });
 
       const s2 = makeSessionAgg({
         sessionId: "s2",
         timestamp: new Date("2026-06-02").toISOString(),
-        skills: { tdd: { cost: 2.5, tokens: { input: 600, output: 300, total: 900 }, calls: 7 } },
+        skills: {
+          tdd: {
+            usage: {
+              input: 600,
+              output: 300,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 900,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 2.5,
+              },
+            },
+            calls: 7,
+          },
+        },
       });
       addModelToSession(s2, "m", { cost: 2.5, calls: 7 });
 
       const result = summarize([s1, s2], "All");
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 10, sessions: 2, cost: 3.5, tokens: 1300 },
+        {
+          name: "tdd",
+          calls: 10,
+          sessions: 2,
+          usage: {
+            input: 900,
+            output: 400,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 1300,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 3.5,
+            },
+          },
+        },
       ]);
     });
 
@@ -815,15 +986,67 @@ describe("summarize", () => {
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
         skills: {
-          cheap: { cost: 0.1, tokens: { input: 0, output: 0, total: 10 }, calls: 5 },
-          expensive: { cost: 5.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 },
-          mid: { cost: 1.0, tokens: { input: 0, output: 0, total: 50 }, calls: 10 },
+          cheap: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 10,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0.1,
+              },
+            },
+            calls: 5,
+          },
+          expensive: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 5.0,
+              },
+            },
+            calls: 2,
+          },
+          mid: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 50,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 10,
+          },
         },
       });
       addModelToSession(s, "m", { cost: 6.1, calls: 17 });
 
       const result = summarize([s], "All");
-      expect(result.skills.map((sk) => sk.name)).toEqual(["expensive", "mid", "cheap"]);
+      expect(result.skills.map((sk) => sk.name)).toEqual([
+        "expensive",
+        "mid",
+        "cheap",
+      ]);
     });
 
     it("includes skills with zero cost but non-zero calls", () => {
@@ -831,14 +1054,48 @@ describe("summarize", () => {
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
         skills: {
-          freebie: { cost: 0, tokens: { input: 0, output: 0, total: 0 }, calls: 5 },
+          freebie: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            calls: 5,
+          },
         },
       });
       addModelToSession(s, "m", { cost: 0, calls: 5 });
 
       const result = summarize([s], "All");
       expect(result.skills).toEqual([
-        { name: "freebie", calls: 5, sessions: 1, cost: 0, tokens: 0 },
+        {
+          name: "freebie",
+          calls: 5,
+          sessions: 1,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0,
+            },
+          },
+        },
       ]);
     });
 
@@ -847,8 +1104,40 @@ describe("summarize", () => {
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
         skills: {
-          tdd: { cost: 1.0, tokens: { input: 300, output: 100, total: 400 }, calls: 3 },
-          "grill-me": { cost: 0.5, tokens: { input: 100, output: 50, total: 150 }, calls: 1 },
+          tdd: {
+            usage: {
+              input: 300,
+              output: 100,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 400,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 3,
+          },
+          "grill-me": {
+            usage: {
+              input: 100,
+              output: 50,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 150,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0.5,
+              },
+            },
+            calls: 1,
+          },
         },
       });
       addModelToSession(s1, "m", { cost: 1.5, calls: 4 });
@@ -857,7 +1146,23 @@ describe("summarize", () => {
         sessionId: "s2",
         timestamp: new Date("2026-06-02").toISOString(),
         skills: {
-          tdd: { cost: 2.0, tokens: { input: 500, output: 200, total: 700 }, calls: 5 },
+          tdd: {
+            usage: {
+              input: 500,
+              output: 200,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 700,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 2.0,
+              },
+            },
+            calls: 5,
+          },
         },
       });
       addModelToSession(s2, "m", { cost: 2.0, calls: 5 });
@@ -865,8 +1170,44 @@ describe("summarize", () => {
       const result = summarize([s1, s2], "All");
       // tdd cost=3.0 from s1+s2, grill-me cost=0.5 from s1 only
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 8, sessions: 2, cost: 3.0, tokens: 1100 },
-        { name: "grill-me", calls: 1, sessions: 1, cost: 0.5, tokens: 150 },
+        {
+          name: "tdd",
+          calls: 8,
+          sessions: 2,
+          usage: {
+            input: 800,
+            output: 300,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 1100,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 3.0,
+            },
+          },
+        },
+        {
+          name: "grill-me",
+          calls: 1,
+          sessions: 1,
+          usage: {
+            input: 100,
+            output: 50,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 150,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.5,
+            },
+          },
+        },
       ]);
     });
 
@@ -875,7 +1216,25 @@ describe("summarize", () => {
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
         project: "alpha",
-        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+        skills: {
+          tdd: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 2,
+          },
+        },
       });
       addModelToSession(s1, "m", { cost: 1.0, calls: 2 });
 
@@ -885,8 +1244,20 @@ describe("summarize", () => {
         project: "beta",
         skills: {
           "grill-with-docs": {
-            cost: 3.0,
-            tokens: { input: 0, output: 0, total: 200 },
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 200,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 3.0,
+              },
+            },
             calls: 5,
           },
         },
@@ -895,7 +1266,25 @@ describe("summarize", () => {
 
       const result = summarize([s1, s2], "All", { project: "alpha" });
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+        {
+          name: "tdd",
+          calls: 2,
+          sessions: 1,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 100,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 1.0,
+            },
+          },
+        },
       ]);
     });
 
@@ -903,14 +1292,50 @@ describe("summarize", () => {
       const s = makeSessionAgg({
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
-        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+        skills: {
+          tdd: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 2,
+          },
+        },
       });
       addModelToSession(s, "sonnet", { cost: 0.5, calls: 1 });
       addModelToSession(s, "haiku", { cost: 0.5, calls: 1 });
 
       const result = summarize([s], "All", { model: "sonnet" });
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+        {
+          name: "tdd",
+          calls: 2,
+          sessions: 1,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 100,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 1.0,
+            },
+          },
+        },
       ]);
     });
 
@@ -918,14 +1343,50 @@ describe("summarize", () => {
       const s = makeSessionAgg({
         sessionId: "s1",
         timestamp: new Date("2026-06-01").toISOString(),
-        skills: { tdd: { cost: 1.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+        skills: {
+          tdd: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 2,
+          },
+        },
       });
       addModelToSession(s, "sonnet", { cost: 0.5, calls: 1 }, "anthropic");
       addModelToSession(s, "haiku", { cost: 0.5, calls: 1 }, "anthropic");
 
       const result = summarize([s], "All", { provider: "anthropic" });
       expect(result.skills).toEqual([
-        { name: "tdd", calls: 2, sessions: 1, cost: 1.0, tokens: 100 },
+        {
+          name: "tdd",
+          calls: 2,
+          sessions: 1,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 100,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 1.0,
+            },
+          },
+        },
       ]);
     });
 
@@ -933,20 +1394,74 @@ describe("summarize", () => {
       const todaySession = makeSessionAgg({
         sessionId: "s1",
         timestamp: new Date().toISOString(),
-        skills: { recent: { cost: 1.0, tokens: { input: 0, output: 0, total: 50 }, calls: 1 } },
+        skills: {
+          recent: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 50,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 1.0,
+              },
+            },
+            calls: 1,
+          },
+        },
       });
       addModelToSession(todaySession, "m", { cost: 1.0, calls: 1 });
 
       const oldSession = makeSessionAgg({
         sessionId: "s2",
         timestamp: new Date("2026-01-01").toISOString(),
-        skills: { old: { cost: 2.0, tokens: { input: 0, output: 0, total: 100 }, calls: 2 } },
+        skills: {
+          old: {
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 2.0,
+              },
+            },
+            calls: 2,
+          },
+        },
       });
       addModelToSession(oldSession, "m", { cost: 2.0, calls: 2 });
 
       const result = summarize([todaySession, oldSession], "1d");
       expect(result.skills).toEqual([
-        { name: "recent", calls: 1, sessions: 1, cost: 1.0, tokens: 50 },
+        {
+          name: "recent",
+          calls: 1,
+          sessions: 1,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 50,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 1.0,
+            },
+          },
+        },
       ]);
     });
   });

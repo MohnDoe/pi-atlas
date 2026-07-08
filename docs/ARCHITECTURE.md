@@ -5,23 +5,23 @@
 ```
 src/
 ├── index.ts        — Extension entry point. Registers /atlas.
-├── types.ts        — Shared types (DayAgg, StatsSummary, etc.)
-├── parser.ts       — .jsonl → DayAgg[]. Global sessionProjectMap for cost attribution.
-├── compute.ts      — summarize(): DayAgg[] × TimeRange → StatsSummary (pure).
+├── types.ts        — Shared types (SessionAgg, StatsSummary, etc.)
+├── parser.ts       — .jsonl → SessionAgg[]. Global sessionProjectMap for cost attribution.
+├── compute.ts      — summarize(): SessionAgg[] × TimeRange → StatsSummary (pure).
 ├── cache.ts        — loadAggregate(): try SHA-256-keyed cache, fall back to parse.
 ├── format.ts       — Cost/number/date formatters + language detection (EXT_TO_LANG).
 ├── colorPalette.ts — chalk color lookups per language and per provider.
 ├── components/     — TUI components (Dashboard, SortedTable, cells, BarChart, etc.)
-├── tabs/           — Five tab implementations (Overview, Languages, Models, Projects, Usage).
+├── tabs/           — Six tab implementations (Overview, Languages, Models, Projects, Skills, Usage).
 └── __tests__/      — Tests mirror src layout.
 ```
 
 ## Data pipeline
 
 ```
-.jsonl files → parseFile() → DayAgg[] (per calendar day)
+.jsonl files → parseFile() → SessionAgg[] (per session)
                                    ↓
-                             summarize(days, range)
+                             summarize(sessions, range)
                                    ↓
                     StatsSummary × 4 (pre-computed for 1d/7d/30d/All)
                                    ↓
@@ -36,7 +36,7 @@ All four ranges are computed up front (see [ADR-0002](../docs/adr/0002-precomput
 Dashboard (extends BorderBox from @mohndoe/pi-tui-extras)
 ├── TabBar                 (←→ navigation)
 ├── separator
-├── active tab content      (one of: Overview, Languages, Models, Projects, Usage)
+├── active tab content      (one of: Overview, Languages, Models, Projects, Skills, Usage)
 ├── separator
 └── controls hint
 ```
@@ -45,7 +45,7 @@ Dashboard (extends BorderBox from @mohndoe/pi-tui-extras)
 - Title bar shows app name (left) + current range label (right). Footer shows update timestamp + controls hint.
 - Tabs extend `Container` (from `@earendil-works/pi-tui`), which implements `Component`.
 - Every tab wraps its content in one or more `BorderBox` instances (from `@mohndoe/pi-tui-extras`).
-- The **SortedTable** (used by Languages, Models, Projects, Usage) delegates cell rendering to `cells.ts` — a factory of `CellComponent` types: `text`, `header` (with sort indicators), `marquee` (auto-scroll), `bar` (horizontal bar).
+- The **SortedTable** (used by Languages, Models, Projects, Skills, Usage) delegates cell rendering to `cells.ts` — a factory of `CellComponent` types: `text`, `header` (with sort indicators), `marquee` (auto-scroll), `bar` (horizontal bar).
 
 ### Chrome
 

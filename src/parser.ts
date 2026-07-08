@@ -15,6 +15,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { langFromPath, projectNameFromCwd } from "./format";
+import { mergeUsage } from "./helpers/usage.helper";
 import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
 
@@ -48,7 +49,8 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
   base.modelChanges += update.modelChanges;
 
   for (const [level, count] of Object.entries(update.thinkingLevelCount)) {
-    base.thinkingLevelCount[level] = (base.thinkingLevelCount[level] ?? 0) + count;
+    base.thinkingLevelCount[level] =
+      (base.thinkingLevelCount[level] ?? 0) + count;
   }
 
   for (const [skill, skillUsage] of Object.entries(update.skills)) {
@@ -56,13 +58,9 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
     if (!existing) {
       base.skills[skill] = {
         ...skillUsage,
-        tokens: { ...skillUsage.tokens },
       };
     } else {
-      existing.cost += skillUsage.cost;
-      existing.tokens.input += skillUsage.tokens.input;
-      existing.tokens.output += skillUsage.tokens.output;
-      existing.tokens.total += skillUsage.tokens.total;
+      existing.usage = mergeUsage(existing.usage, skillUsage.usage);
       existing.calls += skillUsage.calls;
     }
   }
@@ -80,20 +78,7 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
           languages: { ...modelUsage.languages },
         };
       } else {
-        existing.usage = {
-          cost: {
-            total: existing.usage.cost.total + modelUsage.usage.cost.total,
-            cacheRead: existing.usage.cost.cacheRead + modelUsage.usage.cost.cacheRead,
-            cacheWrite: existing.usage.cost.cacheWrite + modelUsage.usage.cost.cacheWrite,
-            input: existing.usage.cost.input + modelUsage.usage.cost.input,
-            output: existing.usage.cost.output + modelUsage.usage.cost.output,
-          },
-          output: existing.usage.output + modelUsage.usage.output,
-          input: existing.usage.input + modelUsage.usage.input,
-          cacheWrite: existing.usage.cacheWrite + modelUsage.usage.cacheWrite,
-          cacheRead: existing.usage.cacheRead + modelUsage.usage.cacheRead,
-          totalTokens: existing.usage.totalTokens + modelUsage.usage.totalTokens,
-        };
+        existing.usage = mergeUsage(existing.usage, modelUsage.usage);
         existing.calls += modelUsage.calls;
         existing.asstMsgs += modelUsage.asstMsgs;
 
@@ -120,13 +105,17 @@ export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
 function safeJsonParse(raw: unknown): Record<string, unknown> | undefined {
   if (raw === undefined || raw === null) return undefined;
   if (typeof raw !== "string") {
-    if (typeof raw === "object" && raw !== null) return raw as Record<string, unknown>;
+    if (typeof raw === "object" && raw !== null)
+      return raw as Record<string, unknown>;
     return undefined;
   }
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    console.warn("Failed to parse JSON tool arguments:", String(raw).slice(0, 200));
+    console.warn(
+      "Failed to parse JSON tool arguments:",
+      String(raw).slice(0, 200),
+    );
     return undefined;
   }
 }
@@ -135,21 +124,35 @@ function safeJsonParse(raw: unknown): Record<string, unknown> | undefined {
 
 /** Strip control characters (\n, \r, \t, etc.) from a tool name. */
 function sanitizeToolName(name: string): string {
-  return name.replace(/[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g, "");
+  return name.replace(
+    /[\x00-\x09\x0A-\x1F\x7F\u200B-\u200F\u2028-\u2029\uFEFF]/g,
+    "",
+  );
 }
 
 // ---- Session header ----
 
-export function parseSessionHeader(entry: SessionHeader, ctx: ParseContext): ParseResult {
+export function parseSessionHeader(
+  entry: SessionHeader,
+  ctx: ParseContext,
+): ParseResult {
   const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
   const cwd = entry.cwd ?? "";
-  const session = makeEmptySession(entry.id, new Date(entry.timestamp), project, cwd);
+  const session = makeEmptySession(
+    entry.id,
+    new Date(entry.timestamp),
+    project,
+    cwd,
+  );
   return { session, ctx };
 }
 
 // ---- Message parsing ----
 
-export function parseUserMessage(msg: UserMessage, ctx: ParseContext): ParseResult {
+export function parseUserMessage(
+  msg: UserMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
 
@@ -168,7 +171,10 @@ export function parseUserMessage(msg: UserMessage, ctx: ParseContext): ParseResu
   return { session, ctx: { activeSkill } };
 }
 
-export function parseToolResultMessage(msg: ToolResultMessage, ctx: ParseContext): ParseResult {
+export function parseToolResultMessage(
+  msg: ToolResultMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp));
   session.toolResults = 1;
   // Tool results contribute to the session-level toolResults count.
@@ -178,7 +184,10 @@ export function parseToolResultMessage(msg: ToolResultMessage, ctx: ParseContext
   return { session, ctx };
 }
 
-export function parseAssistantMessage(msg: AssistantMessage, ctx: ParseContext): ParseResult {
+export function parseAssistantMessage(
+  msg: AssistantMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp));
 
   const modelName = msg.model;
@@ -208,12 +217,7 @@ export function parseAssistantMessage(msg: AssistantMessage, ctx: ParseContext):
   // Attribute cost to the active skill (if any)
   if (activeSkill && msg.usage) {
     session.skills[activeSkill.name] = {
-      cost: msg.usage.cost.total,
-      tokens: {
-        input: msg.usage.input,
-        output: msg.usage.output,
-        total: msg.usage.totalTokens,
-      },
+      usage: msg.usage,
       calls: activeSkill.counted ? 0 : 1,
     };
     activeSkill = { name: activeSkill.name, counted: true };
@@ -268,11 +272,16 @@ function mergeLangUsage(
   const lang = langFromPath(path);
 
   if (toolName === "edit") {
-    const edits = args?.edits as Array<{ newText?: string; oldText?: string }> | undefined;
+    const edits = args?.edits as
+      | Array<{ newText?: string; oldText?: string }>
+      | undefined;
     if (Array.isArray(edits)) {
       let totalNewLines = 0;
       for (const edit of edits) {
-        totalNewLines += countNewLines(edit.newText ?? "") + countNewLines(edit.oldText ?? "") + 1;
+        totalNewLines +=
+          countNewLines(edit.newText ?? "") +
+          countNewLines(edit.oldText ?? "") +
+          1;
         const existing = modelUsage.languages[lang];
         if (existing) {
           existing.edits += 1;
@@ -336,19 +345,28 @@ function parseAgentMessage(msg: AgentMessage, ctx: ParseContext): ParseResult {
 
 // ---- New entry types ----
 
-export function parseModelChangeEntry(entry: ModelChangeEntry, ctx: ParseContext): ParseResult {
+export function parseModelChangeEntry(
+  entry: ModelChangeEntry,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.modelChanges = 1;
   return { session, ctx };
 }
 
-export function parseThinkingLevelChangeEntry(entry: ThinkingLevelChangeEntry, ctx: ParseContext): ParseResult {
+export function parseThinkingLevelChangeEntry(
+  entry: ThinkingLevelChangeEntry,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.thinkingLevelCount[entry.thinkingLevel] = 1;
   return { session, ctx };
 }
 
-export function parseCompactionEntry(entry: CompactionEntry, ctx: ParseContext): ParseResult {
+export function parseCompactionEntry(
+  entry: CompactionEntry,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.compactionCount = 1;
   session.compactedTokens = entry.tokensBefore;
@@ -357,7 +375,10 @@ export function parseCompactionEntry(entry: CompactionEntry, ctx: ParseContext):
 
 // ---- Top-level dispatch ----
 
-export function parseSessionLogEntry(entry: FileEntry, ctx: ParseContext): ParseResult | null {
+export function parseSessionLogEntry(
+  entry: FileEntry,
+  ctx: ParseContext,
+): ParseResult | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
@@ -375,7 +396,10 @@ export function parseSessionLogEntry(entry: FileEntry, ctx: ParseContext): Parse
     case "model_change":
       return parseModelChangeEntry(entry as ModelChangeEntry, ctx);
     case "thinking_level_change":
-      return parseThinkingLevelChangeEntry(entry as ThinkingLevelChangeEntry, ctx);
+      return parseThinkingLevelChangeEntry(
+        entry as ThinkingLevelChangeEntry,
+        ctx,
+      );
     case "compaction":
       return parseCompactionEntry(entry as CompactionEntry, ctx);
     // Silently skip entry types with no cost-relevant data

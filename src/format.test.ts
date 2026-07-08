@@ -198,6 +198,39 @@ describe("formatNumber", () => {
   it("handles large numbers beyond billions", () => {
     expect(formatNumber(1_000_000_000_000)).toBe("1,000B");
   });
+
+  it("rounds thousand-boundary values to nearest integer when round:true", () => {
+    expect(formatNumber(1500, { round: true })).toBe("2k");
+  });
+
+  it("rounds millions to nearest integer when round:true", () => {
+    expect(formatNumber(2_500_000, { round: true })).toBe("3M");
+  });
+
+  it("rounds billions to nearest integer when round:true", () => {
+    expect(formatNumber(12_530_000_000, { round: true })).toBe("13B");
+  });
+
+  it("rounds sub-thousand values to nearest integer when round:true", () => {
+    expect(formatNumber(499.7, { round: true })).toBe("500");
+    expect(formatNumber(100.4, { round: true })).toBe("100");
+  });
+
+  it("rounds negative numbers when round:true", () => {
+    // Negatives don't get suffix treatment; round applies to the value itself
+    expect(formatNumber(-500.7, { round: true })).toBe("-501");
+    expect(formatNumber(-500.4, { round: true })).toBe("-500");
+  });
+
+  it("does not round when round:false (explicit)", () => {
+    expect(formatNumber(1517, { round: false })).toBe("1.52k");
+    expect(formatNumber(12_538_000_000, { round: false })).toBe("12.54B");
+  });
+
+  it("behaves identically without options and with round:false", () => {
+    expect(formatNumber(1517)).toBe("1.52k");
+    expect(formatNumber(1517, { round: false })).toBe("1.52k");
+  });
 });
 
 describe("formatCost", () => {

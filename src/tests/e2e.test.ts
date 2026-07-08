@@ -281,7 +281,7 @@ describe("JSONL → Dashboard", () => {
       calls: 1,
       sessions: 1,
     });
-    expect(result.skills[0]!.cost).toBeGreaterThan(0);
-    expect(result.skills[0]!.tokens).toBeGreaterThan(0);
+    expect(result.skills[0]!.usage.cost.total).toBeGreaterThan(0);
+    expect(result.skills[0]!.usage.totalTokens).toBeGreaterThan(0);
   });
 });

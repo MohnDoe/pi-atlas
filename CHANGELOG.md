@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/MohnDoe/pi-atlas/compare/v0.2.0...v0.2.1) (2026-07-07)
+
+
+### Features
+
+* add token input and output to the skills table ([#80](https://github.com/MohnDoe/pi-atlas/issues/80)) ([37cbcdc](https://github.com/MohnDoe/pi-atlas/commit/37cbcdc2d20e252052b0e587be43b6e856826959))
+
+
+### Miscellaneous Chores
+
+* release 0.2.1 ([abc592b](https://github.com/MohnDoe/pi-atlas/commit/abc592b93fb0e7cdd71cc64413b267ec07ddc21b))
+
 ## [0.2.0](https://github.com/MohnDoe/pi-atlas/compare/v0.1.5...v0.2.0) (2026-07-03)
 
 ### Features
