@@ -19,19 +19,26 @@ import { mergeUsage } from "./helpers/usage.helper";
 import { makeEmptySession } from "./helpers/session.helper";
 import type { SessionAgg, SessionModelUsage } from "./types";
 
-// ---- Active skill tracking ----
-// Skills are invoked by the user via <skill name="..."> tags. Only one skill
-// can be active at a time — if multiple tags appear the last one wins.
+// ---- Parse Context ----
+// Carries skill-tracking state through the parse call chain.
+// Created and owned by parseFile(); threaded through every parse function.
+// Immutable — each mutation returns a new ParseResult with updated ctx.
 
-let activeSkill: { name: string; counted: boolean } | null = null;
-
-export function getActiveSkill(): string | null {
-  return activeSkill?.name ?? null;
+export interface SkillState {
+  name: string;
+  counted: boolean;
 }
 
-export function resetActiveSkills(): void {
-  activeSkill = null;
+export interface ParseContext {
+  activeSkill: SkillState | null;
 }
+
+export interface ParseResult {
+  session: SessionAgg;
+  ctx: ParseContext;
+}
+
+export const emptyContext: ParseContext = { activeSkill: null };
 
 /** Merge a partial SessionAgg into the base session. */
 export function mergeToSession(base: SessionAgg, update: SessionAgg): void {
@@ -125,7 +132,10 @@ function sanitizeToolName(name: string): string {
 
 // ---- Session header ----
 
-export function parseSessionHeader(entry: SessionHeader): SessionAgg {
+export function parseSessionHeader(
+  entry: SessionHeader,
+  ctx: ParseContext,
+): ParseResult {
   const project = entry.cwd ? projectNameFromCwd(entry.cwd) : "";
   const cwd = entry.cwd ?? "";
   const session = makeEmptySession(
@@ -134,17 +144,20 @@ export function parseSessionHeader(entry: SessionHeader): SessionAgg {
     project,
     cwd,
   );
-  return session;
+  return { session, ctx };
 }
 
 // ---- Message parsing ----
 
-export function parseUserMessage(msg: UserMessage): SessionAgg {
+export function parseUserMessage(
+  msg: UserMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp * 1000), "");
   session.userMsgs = 1;
 
   // Reset active skill stack at the start of each user message
-  resetActiveSkills();
+  let activeSkill: SkillState | null = null;
 
   // Detect explicit skill invocations via <skill name="...">
   // Only one skill can be active at a time — last tag wins.
@@ -155,24 +168,31 @@ export function parseUserMessage(msg: UserMessage): SessionAgg {
     activeSkill = { name: match[1]!, counted: false };
   }
 
-  return session;
+  return { session, ctx: { activeSkill } };
 }
 
-export function parseToolResultMessage(msg: ToolResultMessage): SessionAgg {
+export function parseToolResultMessage(
+  msg: ToolResultMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp));
   session.toolResults = 1;
   // Tool results contribute to the session-level toolResults count.
   // The tool name is tracked via the most recent model's tools — but since
   // tool results don't carry a model, we simply count the result here.
   // The tool name is not attributed to any specific model in SessionAgg.
-  return session;
+  return { session, ctx };
 }
 
-export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
+export function parseAssistantMessage(
+  msg: AssistantMessage,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(msg.timestamp));
 
   const modelName = msg.model;
   const provider = msg.provider ?? "";
+  let activeSkill = ctx.activeSkill;
 
   // Detect implicit skill invocation: agent reads a SKILL.md file via the read tool.
   // Only fires if no explicit skill tag is already active (explicit wins).
@@ -200,12 +220,12 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
       usage: msg.usage,
       calls: activeSkill.counted ? 0 : 1,
     };
-    activeSkill.counted = true;
+    activeSkill = { name: activeSkill.name, counted: true };
   }
 
   if (!modelName) {
     // No model — nothing to track per-model
-    return session;
+    return { session, ctx: { activeSkill } };
   }
 
   // Build this model's usage entry
@@ -238,7 +258,7 @@ export function parseAssistantMessage(msg: AssistantMessage): SessionAgg {
   }
   session.models[provider][modelName] = modelUsage;
 
-  return session;
+  return { session, ctx: { activeSkill } };
 }
 
 function mergeLangUsage(
@@ -305,70 +325,83 @@ function countNewLines(s: string): number {
   return (s.match(/\n/g) ?? []).length;
 }
 
-function parseAgentMessage(msg: AgentMessage): SessionAgg {
+function parseAgentMessage(msg: AgentMessage, ctx: ParseContext): ParseResult {
   switch (msg.role) {
     case "user":
-      return parseUserMessage(msg);
+      return parseUserMessage(msg, ctx);
     case "toolResult":
-      return parseToolResultMessage(msg as ToolResultMessage);
+      return parseToolResultMessage(msg as ToolResultMessage, ctx);
     case "assistant":
-      return parseAssistantMessage(msg as AssistantMessage);
+      return parseAssistantMessage(msg as AssistantMessage, ctx);
     // skip non-cost-relevant message types
     case "bashExecution":
     case "custom":
     case "branchSummary":
     case "compactionSummary":
     default:
-      return makeEmptySession("", new Date(msg.timestamp));
+      return { session: makeEmptySession("", new Date(msg.timestamp)), ctx };
   }
 }
 
 // ---- New entry types ----
 
-export function parseModelChangeEntry(entry: ModelChangeEntry): SessionAgg {
+export function parseModelChangeEntry(
+  entry: ModelChangeEntry,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.modelChanges = 1;
-  return session;
+  return { session, ctx };
 }
 
 export function parseThinkingLevelChangeEntry(
   entry: ThinkingLevelChangeEntry,
-): SessionAgg {
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.thinkingLevelCount[entry.thinkingLevel] = 1;
-  return session;
+  return { session, ctx };
 }
 
-export function parseCompactionEntry(entry: CompactionEntry): SessionAgg {
+export function parseCompactionEntry(
+  entry: CompactionEntry,
+  ctx: ParseContext,
+): ParseResult {
   const session = makeEmptySession("", new Date(entry.timestamp));
   session.compactionCount = 1;
   session.compactedTokens = entry.tokensBefore;
-  return session;
+  return { session, ctx };
 }
 
 // ---- Top-level dispatch ----
 
-export function parseSessionLogEntry(entry: FileEntry): SessionAgg | null {
+export function parseSessionLogEntry(
+  entry: FileEntry,
+  ctx: ParseContext,
+): ParseResult | null {
   // Runtime resilience: JSONL files may contain corrupt data despite typing
   if (!entry || typeof entry !== "object") return null;
 
   switch (entry.type) {
     case "session":
-      return parseSessionHeader(entry as SessionHeader);
+      return parseSessionHeader(entry as SessionHeader, ctx);
     case "message": {
       const msgEntry = entry as SessionMessageEntry;
       const day = makeEmptySession("", new Date(entry.timestamp));
-      const agentResult = parseAgentMessage(msgEntry.message);
-      mergeToSession(day, agentResult);
+      const agentResult = parseAgentMessage(msgEntry.message, ctx);
+      mergeToSession(day, agentResult.session);
 
-      return day;
+      return { session: day, ctx: agentResult.ctx };
     }
     case "model_change":
-      return parseModelChangeEntry(entry as ModelChangeEntry);
+      return parseModelChangeEntry(entry as ModelChangeEntry, ctx);
     case "thinking_level_change":
-      return parseThinkingLevelChangeEntry(entry as ThinkingLevelChangeEntry);
+      return parseThinkingLevelChangeEntry(
+        entry as ThinkingLevelChangeEntry,
+        ctx,
+      );
     case "compaction":
-      return parseCompactionEntry(entry as CompactionEntry);
+      return parseCompactionEntry(entry as CompactionEntry, ctx);
     // Silently skip entry types with no cost-relevant data
     case "branch_summary":
     case "custom":
@@ -397,33 +430,29 @@ export function parseFile(
   let corruptCount = 0;
   let session: SessionAgg | null = null;
   let entriesFound = false;
+  let ctx: ParseContext = emptyContext;
 
-  resetActiveSkills();
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-  try {
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      try {
-        const entry = JSON.parse(trimmed) as FileEntry;
-        const result = parseSessionLogEntry(entry);
-        if (result) {
-          entriesFound = true;
-          if (!session) {
-            session = result;
-          } else {
-            mergeToSession(session, result);
-          }
+    try {
+      const entry = JSON.parse(trimmed) as FileEntry;
+      const result = parseSessionLogEntry(entry, ctx);
+      if (result) {
+        entriesFound = true;
+        ctx = result.ctx;
+        if (!session) {
+          session = result.session;
+        } else {
+          mergeToSession(session, result.session);
         }
-      } catch (e) {
-        corruptCount++;
-        console.error(e);
-        if (onWarning) onWarning(corruptCount);
       }
+    } catch (e) {
+      corruptCount++;
+      console.error(e);
+      if (onWarning) onWarning(corruptCount);
     }
-  } finally {
-    resetActiveSkills();
   }
 
   // Return null if no valid entries or only corrupt entries

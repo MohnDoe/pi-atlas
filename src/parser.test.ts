@@ -14,7 +14,6 @@ import { join } from "node:path";
 import { dateFromISOString } from "./format";
 import { makeEmptySession } from "./helpers/session.helper";
 import {
-  getActiveSkill,
   mergeToSession,
   parseAssistantMessage,
   parseCompactionEntry,
@@ -25,7 +24,7 @@ import {
   parseThinkingLevelChangeEntry,
   parseToolResultMessage,
   parseUserMessage,
-  resetActiveSkills,
+  emptyContext,
 } from "./parser";
 import {
   makeAssistantMessage,
@@ -365,11 +364,14 @@ describe("emptySession", () => {
 
 describe("parseUserMessage", () => {
   it("returns a SessionAgg with userMsgs: 1", () => {
-    const s = parseUserMessage({
-      timestamp: Date.now(),
-      content: "hey",
-      role: "user",
-    });
+    const { session: s } = parseUserMessage(
+      {
+        timestamp: Date.now(),
+        content: "hey",
+        role: "user",
+      },
+      emptyContext,
+    );
     expect(s.userMsgs).toBe(1);
     expect(s.models).toEqual({});
   });
@@ -380,13 +382,13 @@ describe("parseUserMessage", () => {
 describe("parseToolResultMessage", () => {
   it("counts one tool result", () => {
     const msg = makeToolResult({ toolName: "bash" });
-    const s = parseToolResultMessage(msg);
+    const { session: s } = parseToolResultMessage(msg, emptyContext);
     expect(s.toolResults).toBe(1);
   });
 
   it("handles empty toolName gracefully", () => {
     const msg = makeToolResult({ toolName: "" });
-    const s = parseToolResultMessage(msg);
+    const { session: s } = parseToolResultMessage(msg, emptyContext);
     expect(s.toolResults).toBe(1);
   });
 });
@@ -414,7 +416,7 @@ describe("parseAssistantMessage", () => {
         },
       },
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     assert(s.models["deepseek"]);
     const m = s.models["deepseek"]["deepseek-v4-pro"];
     assert(m);
@@ -447,7 +449,7 @@ describe("parseAssistantMessage", () => {
         },
       },
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     expect(s.models).toEqual({});
   });
 
@@ -461,7 +463,7 @@ describe("parseAssistantMessage", () => {
       model: "sonnet",
       provider: "anthropic",
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.tools["read"]).toBe(2);
@@ -479,7 +481,7 @@ describe("parseAssistantMessage", () => {
         }),
       ],
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["provider"]!["m"];
     assert(m);
     expect(m.tools["ls -la agent/</parameter"]).toBe(1);
@@ -502,7 +504,7 @@ describe("parseAssistantMessage", () => {
         }),
       ],
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["anthropic"]!["sonnet"];
     assert(m);
     expect(m.languages["TypeScript"]!.lines).toBe(1);
@@ -525,7 +527,7 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
       },
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
@@ -539,7 +541,7 @@ describe("parseAssistantMessage", () => {
       provider: "p",
       content: [{ type: "text", text: "hi" }],
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
@@ -560,7 +562,7 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
       },
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.asstMsgs).toBe(1);
@@ -592,7 +594,7 @@ describe("parseAssistantMessage", () => {
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
       },
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.tools["edit"]).toBe(1);
@@ -607,7 +609,7 @@ describe("parseAssistantMessage", () => {
       model: "m",
       provider: "p",
     });
-    const s = parseAssistantMessage(msg);
+    const { session: s } = parseAssistantMessage(msg, emptyContext);
     const m = s.models["p"]!["m"];
     assert(m);
     expect(m.tools["read"]).toBe(1);
@@ -625,7 +627,7 @@ describe("parseSessionHeader", () => {
       timestamp: "2026-06-09T10:00:00.000Z",
       cwd: "/home/doe",
     };
-    const s = parseSessionHeader(entry);
+    const { session: s } = parseSessionHeader(entry, emptyContext);
     expect(s.sessionId).toBe("abc-123");
     expect(dateFromISOString(s.timestamp)).toBe("2026-06-09");
     expect(s.project).toBe("doe");
@@ -639,7 +641,7 @@ describe("parseSessionHeader", () => {
       timestamp: "2026-06-09T10:00:00.000Z",
       cwd: "/home/doe/dev/my-app",
     };
-    const s = parseSessionHeader(entry);
+    const { session: s } = parseSessionHeader(entry, emptyContext);
     expect(s.project).toBe("my-app");
   });
 
@@ -651,7 +653,7 @@ describe("parseSessionHeader", () => {
       timestamp: "2026-06-09T10:00:00.000Z",
       cwd: "",
     };
-    const s = parseSessionHeader(entry);
+    const { session: s } = parseSessionHeader(entry, emptyContext);
     expect(s.project).toBe("");
   });
 });
@@ -668,7 +670,7 @@ describe("parseModelChangeEntry", () => {
       provider: "deepseek",
       modelId: "deepseek-v4-pro",
     };
-    const s = parseModelChangeEntry(entry);
+    const { session: s } = parseModelChangeEntry(entry, emptyContext);
     expect(s.modelChanges).toBe(1);
   });
 });
@@ -684,7 +686,7 @@ describe("parseThinkingLevelChangeEntry", () => {
       timestamp: "2026-06-09T10:00:00.000Z",
       thinkingLevel: "high",
     };
-    const s = parseThinkingLevelChangeEntry(entry);
+    const { session: s } = parseThinkingLevelChangeEntry(entry, emptyContext);
     expect(s.thinkingLevelCount).toEqual({ high: 1 });
   });
 
@@ -705,8 +707,14 @@ describe("parseThinkingLevelChangeEntry", () => {
     };
 
     const base = makeEmptySession("s1", new Date(), "p");
-    mergeToSession(base, parseThinkingLevelChangeEntry(low));
-    mergeToSession(base, parseThinkingLevelChangeEntry(high));
+    mergeToSession(
+      base,
+      parseThinkingLevelChangeEntry(low, emptyContext).session,
+    );
+    mergeToSession(
+      base,
+      parseThinkingLevelChangeEntry(high, emptyContext).session,
+    );
     expect(base.thinkingLevelCount).toEqual({ low: 1, high: 1 });
   });
 });
@@ -724,7 +732,7 @@ describe("parseCompactionEntry", () => {
       firstKeptEntryId: "m1",
       tokensBefore: 50000,
     };
-    const s = parseCompactionEntry(entry);
+    const { session: s } = parseCompactionEntry(entry, emptyContext);
     expect(s.compactionCount).toBe(1);
     expect(s.compactedTokens).toBe(50000);
   });
@@ -741,7 +749,7 @@ describe("parseSessionLogEntry", () => {
       timestamp: "2026-06-08T17:37:04.122Z",
       cwd: "/home/doe/dev/pi-atlas",
     };
-    const s = parseSessionLogEntry(entry)!;
+    const { session: s } = parseSessionLogEntry(entry, emptyContext)!;
     expect(s!.sessionId).toBe("abc-123");
     expect(dateFromISOString(s!.timestamp)).toBe("2026-06-08");
     expect(s!.project).toBe("pi-atlas");
@@ -749,15 +757,15 @@ describe("parseSessionLogEntry", () => {
 
   it("returns null for corrupt/null/undefined entries", () => {
     // @ts-expect-error: testing runtime resilience
-    expect(parseSessionLogEntry(null)).toBeNull();
+    expect(parseSessionLogEntry(null, emptyContext)).toBeNull();
     // @ts-expect-error: testing runtime resilience
-    expect(parseSessionLogEntry(undefined)).toBeNull();
+    expect(parseSessionLogEntry(undefined, emptyContext)).toBeNull();
     // @ts-expect-error: testing runtime resilience
-    expect(parseSessionLogEntry("corrupt")).toBeNull();
+    expect(parseSessionLogEntry("corrupt", emptyContext)).toBeNull();
     // @ts-expect-error: testing runtime resilience
-    expect(parseSessionLogEntry(42)).toBeNull();
+    expect(parseSessionLogEntry(42, emptyContext)).toBeNull();
     // @ts-expect-error: testing runtime resilience
-    expect(parseSessionLogEntry(true)).toBeNull();
+    expect(parseSessionLogEntry(true, emptyContext)).toBeNull();
   });
 
   it("returns a SessionAgg for an assistant message with usage", () => {
@@ -787,7 +795,7 @@ describe("parseSessionLogEntry", () => {
       }),
     };
 
-    const s = parseSessionLogEntry(msgEntry)!;
+    const { session: s } = parseSessionLogEntry(msgEntry, emptyContext)!;
     const m = s.models["deepseek"]!["deepseek-v4-pro"];
     assert(m);
     expect(m.usage.cost.total).toBe(0.00141);
@@ -800,67 +808,76 @@ describe("parseSessionLogEntry", () => {
   });
 
   it("returns a SessionAgg for a user message", () => {
-    const s = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: {
-        role: "user" as const,
-        content: "hi",
-        timestamp: 1700000000000,
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        message: {
+          role: "user" as const,
+          content: "hi",
+          timestamp: 1700000000000,
+        },
       },
-    })!;
+      emptyContext,
+    )!;
 
     expect(s.userMsgs).toBe(1);
   });
 
   it("returns a SessionAgg for a tool result message", () => {
-    const s = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:02:00.000Z",
-      message: makeToolResult({ toolName: "bash" }),
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:02:00.000Z",
+        message: makeToolResult({ toolName: "bash" }),
+      },
+      emptyContext,
+    )!;
 
     expect(s.toolResults).toBe(1);
   });
 
   it("detects languages from edit/write tool calls", () => {
-    const s = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: makeAssistantMessage({
-        content: [
-          makeToolCall({
-            name: "edit",
-            arguments: {
-              path: "/home/doe/proj/src/foo.ts",
-              edits: [{ oldText: "a", newText: "ab" }],
-            },
-          }),
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        message: makeAssistantMessage({
+          content: [
+            makeToolCall({
+              name: "edit",
+              arguments: {
+                path: "/home/doe/proj/src/foo.ts",
+                edits: [{ oldText: "a", newText: "ab" }],
+              },
+            }),
 
-          makeToolCall({
-            name: "write",
-            arguments: {
-              path: "/home/doe/proj/src/bar.rs",
-              content: "fn main() {}",
-            },
-            id: "c2",
-          }),
-          makeToolCall({
-            name: "read",
-            arguments: { path: "/home/doe/proj/README.md" },
-            id: "c3",
-          }),
-        ],
-        model: "sonnet",
-        provider: "anthropic",
-      }),
-    })!;
+            makeToolCall({
+              name: "write",
+              arguments: {
+                path: "/home/doe/proj/src/bar.rs",
+                content: "fn main() {}",
+              },
+              id: "c2",
+            }),
+            makeToolCall({
+              name: "read",
+              arguments: { path: "/home/doe/proj/README.md" },
+              id: "c3",
+            }),
+          ],
+          model: "sonnet",
+          provider: "anthropic",
+        }),
+      },
+      emptyContext,
+    )!;
 
     const m = s.models["anthropic"]!["sonnet"];
     assert(m);
@@ -872,21 +889,24 @@ describe("parseSessionLogEntry", () => {
   });
 
   it("counts tool calls from assistant content", () => {
-    const s = parseSessionLogEntry({
-      type: "message",
-      id: "m1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:01:00.000Z",
-      message: makeAssistantMessage({
-        content: [
-          makeToolCall({ name: "bash", arguments: { command: "ls" } }),
-          makeToolCall({ name: "read", arguments: { path: "f" }, id: "c2" }),
-          makeToolCall({ name: "read", arguments: { path: "g" }, id: "c3" }),
-        ],
-        model: "sonnet",
-        provider: "anthropic",
-      }),
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "message",
+        id: "m1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:01:00.000Z",
+        message: makeAssistantMessage({
+          content: [
+            makeToolCall({ name: "bash", arguments: { command: "ls" } }),
+            makeToolCall({ name: "read", arguments: { path: "f" }, id: "c2" }),
+            makeToolCall({ name: "read", arguments: { path: "g" }, id: "c3" }),
+          ],
+          model: "sonnet",
+          provider: "anthropic",
+        }),
+      },
+      emptyContext,
+    )!;
 
     const m = s.models["anthropic"]!["sonnet"];
     assert(m);
@@ -895,112 +915,139 @@ describe("parseSessionLogEntry", () => {
   });
 
   it("handles compaction entries", () => {
-    const s = parseSessionLogEntry({
-      type: "compaction",
-      id: "c1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      summary: "Summary",
-      firstKeptEntryId: "m1",
-      tokensBefore: 42000,
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "compaction",
+        id: "c1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        summary: "Summary",
+        firstKeptEntryId: "m1",
+        tokensBefore: 42000,
+      },
+      emptyContext,
+    )!;
 
     expect(s.compactionCount).toBe(1);
     expect(s.compactedTokens).toBe(42000);
   });
 
   it("handles model_change entries", () => {
-    const s = parseSessionLogEntry({
-      type: "model_change",
-      id: "mc1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      provider: "openai",
-      modelId: "gpt-5",
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "model_change",
+        id: "mc1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        provider: "openai",
+        modelId: "gpt-5",
+      },
+      emptyContext,
+    )!;
 
     expect(s.modelChanges).toBe(1);
   });
 
   it("handles thinking_level_change entries", () => {
-    const s = parseSessionLogEntry({
-      type: "thinking_level_change",
-      id: "t1",
-      parentId: "p",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      thinkingLevel: "xhigh",
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "thinking_level_change",
+        id: "t1",
+        parentId: "p",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        thinkingLevel: "xhigh",
+      },
+      emptyContext,
+    )!;
 
     expect(s.thinkingLevelCount).toEqual({ xhigh: 1 });
   });
 
   it("returns null for unknown/skipped entry types", () => {
     expect(
-      parseSessionLogEntry({
-        type: "branch_summary",
-        id: "b1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        fromId: "m1",
-        summary: "branch",
-      }),
+      parseSessionLogEntry(
+        {
+          type: "branch_summary",
+          id: "b1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          fromId: "m1",
+          summary: "branch",
+        },
+        emptyContext,
+      ),
     ).toBeNull();
 
     expect(
-      parseSessionLogEntry({
-        type: "custom",
-        id: "c1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        customType: "my-ext",
-      }),
+      parseSessionLogEntry(
+        {
+          type: "custom",
+          id: "c1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          customType: "my-ext",
+        },
+        emptyContext,
+      ),
     ).toBeNull();
 
     expect(
-      parseSessionLogEntry({
-        type: "label",
-        id: "l1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        targetId: "t1",
-        label: "checkpoint",
-      }),
+      parseSessionLogEntry(
+        {
+          type: "label",
+          id: "l1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          targetId: "t1",
+          label: "checkpoint",
+        },
+        emptyContext,
+      ),
     ).toBeNull();
   });
 
   it("returns null for custom_message and session_info types", () => {
     expect(
-      parseSessionLogEntry({
-        type: "custom_message",
-        id: "cm1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        //@ts-expect-error
-        contentType: "my-type",
-        message: "hi",
-      }),
+      parseSessionLogEntry(
+        {
+          type: "custom_message",
+          id: "cm1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          //@ts-expect-error
+          contentType: "my-type",
+          message: "hi",
+        },
+        emptyContext,
+      ),
     ).toBeNull();
 
     expect(
-      parseSessionLogEntry({
-        type: "session_info",
-        id: "si1",
-        parentId: "p",
-        timestamp: "2026-06-08T10:00:00.000Z",
-        //@ts-expect-error
-        totalTokens: 100,
-      }),
+      parseSessionLogEntry(
+        {
+          type: "session_info",
+          id: "si1",
+          parentId: "p",
+          timestamp: "2026-06-08T10:00:00.000Z",
+          //@ts-expect-error
+          totalTokens: 100,
+        },
+        emptyContext,
+      ),
     ).toBeNull();
   });
 
   it("handles session entry with empty cwd", () => {
-    const s = parseSessionLogEntry({
-      type: "session",
-      version: 3,
-      id: "s1",
-      timestamp: "2026-06-08T10:00:00.000Z",
-      cwd: "",
-    })!;
+    const { session: s } = parseSessionLogEntry(
+      {
+        type: "session",
+        version: 3,
+        id: "s1",
+        timestamp: "2026-06-08T10:00:00.000Z",
+        cwd: "",
+      },
+      emptyContext,
+    )!;
 
     expect(s.sessionId).toBe("s1");
     expect(s.project).toBe("");
@@ -1649,72 +1696,66 @@ describe("realistic session file", () => {
 // ======== Skill detection ========
 
 describe("skill detection — parseUserMessage", () => {
-  beforeEach(() => {
-    resetActiveSkills();
-  });
-
-  it('detects <skill name="tdd"> and pushes to active stack', () => {
-    parseUserMessage({
-      role: "user",
+  it('detects <skill name="tdd"> and sets active skill in context', () => {
+    const msg = {
+      role: "user" as const,
       content: '<skill name="tdd">',
       timestamp: Date.now(),
-    });
-
-    expect(getActiveSkill()).toBe("tdd");
+    };
+    const { ctx } = parseUserMessage(msg, emptyContext);
+    expect(ctx.activeSkill?.name).toBe("tdd");
   });
 
-  it("resets the active stack at the start of each parseUserMessage", () => {
-    parseUserMessage({
-      role: "user",
+  it("resets the active skill at the start of each parseUserMessage", () => {
+    const msg1 = {
+      role: "user" as const,
       content: '<skill name="tdd">',
       timestamp: Date.now(),
-    });
-    expect(getActiveSkill()).toBe("tdd");
+    };
+    let { ctx } = parseUserMessage(msg1, emptyContext);
+    expect(ctx.activeSkill?.name).toBe("tdd");
 
-    parseUserMessage({
-      role: "user",
+    const msg2 = {
+      role: "user" as const,
       content: "just a normal message",
       timestamp: Date.now(),
-    });
-    expect(getActiveSkill()).toBeNull();
+    };
+    ctx = parseUserMessage(msg2, ctx).ctx;
+    expect(ctx.activeSkill).toBeNull();
   });
 
-  it("user message without skill tags leaves empty stack", () => {
-    parseUserMessage({
-      role: "user",
+  it("user message without skill tags leaves active skill null", () => {
+    const msg = {
+      role: "user" as const,
       content: "hello world",
       timestamp: Date.now(),
-    });
-
-    expect(getActiveSkill()).toBeNull();
+    };
+    const { ctx } = parseUserMessage(msg, emptyContext);
+    expect(ctx.activeSkill).toBeNull();
   });
 
   it("last skill tag wins when multiple are present", () => {
-    parseUserMessage({
-      role: "user",
+    const msg = {
+      role: "user" as const,
       content: '<skill name="tdd"><skill name="grill-me">',
       timestamp: Date.now(),
-    });
-
-    expect(getActiveSkill()).toBe("grill-me");
+    };
+    const { ctx } = parseUserMessage(msg, emptyContext);
+    expect(ctx.activeSkill?.name).toBe("grill-me");
   });
 
   it("same tag repeated still resolves to that skill", () => {
-    parseUserMessage({
-      role: "user",
+    const msg = {
+      role: "user" as const,
       content: '<skill name="tdd"><skill name="tdd">',
       timestamp: Date.now(),
-    });
-
-    expect(getActiveSkill()).toBe("tdd");
+    };
+    const { ctx } = parseUserMessage(msg, emptyContext);
+    expect(ctx.activeSkill?.name).toBe("tdd");
   });
 });
 
 describe("skill detection — cost attribution in parseAssistantMessage", () => {
-  beforeEach(() => {
-    resetActiveSkills();
-  });
-
   const costMsg = makeAssistantMessage({
     model: "gpt-5",
     provider: "openai",
@@ -1735,15 +1776,15 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     },
   });
 
-  it("attributes cost to skills on the active stack", () => {
-    // Set up a skill on the stack
-    parseUserMessage({
-      role: "user",
+  it("attributes cost to active skill on context", () => {
+    const setMsg = {
+      role: "user" as const,
       content: '<skill name="tdd">',
       timestamp: Date.now(),
-    });
+    };
+    const { ctx } = parseUserMessage(setMsg, emptyContext);
 
-    const s = parseAssistantMessage(costMsg);
+    const { session: s } = parseAssistantMessage(costMsg, ctx);
     expect(s.skills["tdd"]).toBeDefined();
     expect(s.skills["tdd"]!.usage.cost.total).toBe(0.003);
     expect(s.skills["tdd"]!.usage).toEqual({
@@ -1763,22 +1804,22 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
     expect(s.skills["tdd"]!.calls).toBe(1);
   });
 
-  it("returns empty skills when stack is empty", () => {
-    const s = parseAssistantMessage(costMsg);
+  it("returns empty skills when context has no active skill", () => {
+    const { session: s } = parseAssistantMessage(costMsg, emptyContext);
     expect(s.skills).toEqual({});
   });
 
   it("accumulates cost across multiple assistant messages (calls stays at 1)", () => {
-    parseUserMessage({
-      role: "user",
+    const setMsg = {
+      role: "user" as const,
       content: '<skill name="tdd">',
       timestamp: Date.now(),
-    });
+    };
+    let ctx = parseUserMessage(setMsg, emptyContext).ctx;
 
-    const s1 = parseAssistantMessage(costMsg);
-    const s2 = parseAssistantMessage(costMsg);
+    const { session: s1, ctx: ctx1 } = parseAssistantMessage(costMsg, ctx);
+    const { session: s2 } = parseAssistantMessage(costMsg, ctx1);
 
-    // s1 and s2 are separate SessionAgg objects — merge them
     const merged = makeEmptySession("s1", new Date(), "p");
     mergeToSession(merged, s1);
     mergeToSession(merged, s2);
@@ -1803,13 +1844,14 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
   });
 
   it("last tag wins when multiple skill tags present — cost goes to last one", () => {
-    parseUserMessage({
-      role: "user",
+    const setMsg = {
+      role: "user" as const,
       content: '<skill name="tdd"><skill name="to-prd">',
       timestamp: Date.now(),
-    });
+    };
+    const { ctx } = parseUserMessage(setMsg, emptyContext);
 
-    const s = parseAssistantMessage(costMsg);
+    const { session: s } = parseAssistantMessage(costMsg, ctx);
     expect(s.skills["tdd"]).toBeUndefined();
     expect(s.skills["to-prd"]!.usage.cost.total).toBe(0.003);
     expect(s.skills["to-prd"]!.calls).toBe(1);
@@ -1817,10 +1859,6 @@ describe("skill detection — cost attribution in parseAssistantMessage", () => 
 });
 
 describe("skill detection — implicit via read of SKILL.md", () => {
-  beforeEach(() => {
-    resetActiveSkills();
-  });
-
   const costMsg = makeAssistantMessage({
     model: "gpt-5",
     provider: "openai",
@@ -1847,7 +1885,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
   });
 
   it("detects read of SKILL.md and attributes cost to the skill", () => {
-    const s = parseAssistantMessage(costMsg);
+    const { session: s } = parseAssistantMessage(costMsg, emptyContext);
     expect(s.skills["tdd"]).toBeDefined();
     expect(s.skills["tdd"]!.usage.cost.total).toBe(0.006);
     expect(s.skills["tdd"]!.usage).toEqual({
@@ -1868,9 +1906,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
   });
 
   it("does not trigger for read of non-SKILL.md files", () => {
-    resetActiveSkills();
-
-    const s = parseAssistantMessage(
+    const { session: s, ctx } = parseAssistantMessage(
       makeAssistantMessage({
         model: "gpt-5",
         provider: "openai",
@@ -1895,16 +1931,15 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           },
         },
       }),
+      emptyContext,
     );
     expect(s.skills).toEqual({});
-    // activeSkill should not have been set
-    expect(getActiveSkill()).toBeNull();
+    // activeSkill should not have been set — ctx passes through unchanged
+    expect(ctx.activeSkill).toBeNull();
   });
 
   it("does not trigger for non-read tool calls with SKILL.md-like paths", () => {
-    resetActiveSkills();
-
-    const s = parseAssistantMessage(
+    const { session: s, ctx } = parseAssistantMessage(
       makeAssistantMessage({
         model: "gpt-5",
         provider: "openai",
@@ -1932,21 +1967,23 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           },
         },
       }),
+      emptyContext,
     );
     expect(s.skills).toEqual({});
-    expect(getActiveSkill()).toBeNull();
+    expect(ctx.activeSkill).toBeNull();
   });
 
   it("explicit user tag wins over implicit read detection", () => {
     // Explicit tag sets tdd first
-    parseUserMessage({
-      role: "user",
+    const setMsg = {
+      role: "user" as const,
       content: '<skill name="tdd">',
       timestamp: Date.now(),
-    });
+    };
+    const { ctx } = parseUserMessage(setMsg, emptyContext);
 
     // Then assistant reads a different SKILL.md — explicit tdd should still be active
-    const s = parseAssistantMessage(
+    const { session: s } = parseAssistantMessage(
       makeAssistantMessage({
         model: "gpt-5",
         provider: "openai",
@@ -1971,6 +2008,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           },
         },
       }),
+      ctx,
     );
 
     // Cost goes to tdd (explicit), not grill-me (implicit)
@@ -1981,9 +2019,12 @@ describe("skill detection — implicit via read of SKILL.md", () => {
 
   it("accumulates cost across multiple assistant messages (calls stays at 1)", () => {
     // Parse first assistant message with SKILL.md read — implicit detection + cost
-    const s1 = parseAssistantMessage(costMsg);
+    const { session: s1, ctx: ctx1 } = parseAssistantMessage(
+      costMsg,
+      emptyContext,
+    );
     // Parse second assistant message — continues attributing to tdd
-    const s2 = parseAssistantMessage(
+    const { session: s2 } = parseAssistantMessage(
       makeAssistantMessage({
         model: "gpt-5",
         provider: "openai",
@@ -2003,6 +2044,7 @@ describe("skill detection — implicit via read of SKILL.md", () => {
           },
         },
       }),
+      ctx1,
     );
 
     const merged = makeEmptySession("s1", new Date(), "p");
