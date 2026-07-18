@@ -55,7 +55,7 @@ Then run `/reload` in pi (or restart pi). The `/atlas` command is now available.
 
 ## Usage
 
-In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is loaded from `~/.pi/agent/sessions/` -- on first load this may take a moment while JSONL files are parsed. Subsequent opens use a cached snapshot and load instantly.
+In the pi terminal, type `/atlas` to open the atlas dashboard. Session data is loaded from `~/.pi/agent/sessions/` -- on first load this may take a moment while JSONL files are parsed. Subsequent opens use a cached snapshot and load instantly. If you've set the `PI_CODING_AGENT_DIR` environment variable, sessions are loaded from `<PI_CODING_AGENT_DIR>/sessions` instead.
 
 ## How it works
 

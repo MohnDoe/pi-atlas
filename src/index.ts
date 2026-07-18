@@ -1,17 +1,19 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import {
+  type ExtensionAPI,
+  getAgentDir,
+} from "@earendil-works/pi-coding-agent";
+import type { OverlayOptions } from "@earendil-works/pi-tui";
 import { getCacheTimestamp, loadAggregate } from "./cache";
 import { Dashboard } from "./components/Dashboard";
 import { LoadingView } from "./components/LoadingView";
+import { type RangeOption, RangeSelector } from "./components/RangeSelector";
 import { summarize } from "./compute";
 import { formatCacheTimestamp } from "./format";
 import type { TimeRange } from "./types";
-import { RangeSelector, type RangeOption } from "./components/RangeSelector";
-import type { OverlayOptions } from "@earendil-works/pi-tui";
 
-const SESSIONS_DIR = join(homedir(), ".pi", "agent", "sessions");
-const CACHE_PATH = join(homedir(), ".pi", "pi-atlas-cache.json");
+const SESSIONS_DIR = join(getAgentDir(), "sessions");
+const CACHE_PATH = join(getAgentDir(), "..", "pi-atlas-cache.json");
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("atlas", {

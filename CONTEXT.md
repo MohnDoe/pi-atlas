@@ -36,7 +36,7 @@ A filter applied across all tabs. Options: 1d, 7d, 30d, All. The user cycles thr
 _Avoid_: Period, window, filter
 
 **Session Log**:
-A `.jsonl` file in `~/.pi/agent/sessions/` in pi's session format (a FileEntry union of 10 entry types). Contains session headers and tree-linked entries: messages, model changes, thinking level changes, compactions, branch summaries, custom entries, custom messages, labels, and session info.
+A `.jsonl` file in the sessions directory returned by `getAgentDir() + "/sessions"` (default `~/.pi/agent/sessions`, overridable via the `PI_CODING_AGENT_DIR` environment variable) in pi's session format (a FileEntry union of 10 entry types). Contains session headers and tree-linked entries: messages, model changes, thinking level changes, compactions, branch summaries, custom entries, custom messages, labels, and session info.
 _Avoid_: Log file, trace, history file
 
 **Compaction Entry**:
@@ -127,7 +127,7 @@ The set of skills currently active for cost attribution. A skill is pushed onto 
 _Avoid_: Skill context, skill scope
 
 **Empty State**:
-A message displayed when no session logs exist ("No sessions found in ~/.pi/agent/sessions") or when a tab has no data for the selected Time Range ("No data for this time range").
+A message displayed when no session logs exist (e.g. "No sessions found in <sessions-dir>") or when a tab has no data for the selected Time Range ("No data for this time range").
 _Avoid_: Zero state, blank state
 
 **Parse Context**:
