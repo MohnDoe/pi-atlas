@@ -61,6 +61,31 @@ describe("Dashboard", () => {
     expect(text).toContain("No sessions found");
   });
 
+  it("renders the configured sessions directory in the empty state", () => {
+    const zeroSummary = {
+      ...makeSummary(),
+      totalCost: 0,
+      sessionCount: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      dailySpend: [],
+    };
+    const summaries = mapAllSummaries(allRanges, zeroSummary);
+    const customPath = "/tmp/custom-agent/sessions";
+    const dash = new Dashboard(
+      summaries,
+      makeTheme(),
+      mockTui,
+      null,
+      makeRangeSelector(makeTheme()),
+      undefined,
+      customPath,
+    );
+    const text = dash.render(80).join("\n");
+    expect(text).toContain(`No sessions found in ${customPath}`);
+    expect(text).not.toContain("~/.pi/agent/sessions");
+  });
+
   it("shows 'No data for this time range' when current range is empty", () => {
     const dataSummary = { ...makeSummary(), totalCost: 5.0, sessionCount: 3 };
     const zeroSummary = {

@@ -1,4 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { join } from "node:path";
 import { matchesKey, Spacer, Text, type Component, type TUI } from "@earendil-works/pi-tui";
 import { BorderBox } from "@mohndoe/pi-tui-extras";
 import type { TextDef } from "@mohndoe/pi-tui-extras/src";
@@ -38,6 +40,7 @@ export class Dashboard extends BorderBox {
     updateLabel: string | null,
     private rangeSelector: RangeSelector,
     onClose?: () => void,
+    private sessionsDir: string = join(getAgentDir(), "sessions"),
   ) {
     // BorderBox footer with update label (styled to match current DashboardPopup look)
     const footers = updateLabel
@@ -136,7 +139,7 @@ export class Dashboard extends BorderBox {
     if (allEmpty) {
       this.addChild(new Spacer(1));
       this.addChild(
-        new Text(this.theme.fg("muted", "No sessions found in ~/.pi/agent/sessions"), 1, 0),
+        new Text(this.theme.fg("muted", `No sessions found in ${this.sessionsDir}`), 1, 0),
       );
       this.addChild(new Spacer(1));
     } else if (this.currentSummary.sessionCount === 0) {
